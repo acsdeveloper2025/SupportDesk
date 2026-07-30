@@ -8,6 +8,7 @@ describe("auth identity schema boundary", () => {
     expect(tableNames).toEqual(
       expect.arrayContaining([
         "audit_events",
+        "auth_tokens",
         "permissions",
         "refresh_tokens",
         "role_permissions",

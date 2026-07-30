@@ -16,6 +16,8 @@ erDiagram
   USER ||--o{ USER_PREFERENCE : stores
   USER ||--o{ SESSION : opens
   SESSION ||--o{ REFRESH_TOKEN : rotates
+  TENANT ||--o{ AUTH_TOKEN : owns
+  USER ||--o{ AUTH_TOKEN : verifies
   TENANT ||--o{ GROUP : defines
   GROUP }o--o{ TENANT_MEMBERSHIP : includes
 

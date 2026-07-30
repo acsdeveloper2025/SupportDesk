@@ -25,6 +25,7 @@ Indexes must support tenant isolation, queue performance, auditability, and futu
 | Comments         | `comments(tenant_id, ticket_id, created_at)`                                                                                              | Timeline rendering.                     |
 | Attachments      | `attachments(tenant_id, ticket_id, scan_state, created_at)`                                                                               | Quarantine and ticket access.           |
 | Audit            | `audit_events(tenant_id, action, instant)` and `audit_events(tenant_id, target_type, target_id, instant)`                                 | Investigation and export.               |
+| Auth tokens      | `auth_tokens(tenant_id, user_id, purpose, state)` and `auth_tokens(expires_at)`                                                           | Verification/recovery token lifecycle.  |
 | Outbox           | `outbox_events(state, available_at, tenant_id)`                                                                                           | Worker claiming and backlog visibility. |
 | Notifications    | `notification_intents(tenant_id, state, next_attempt_at)`                                                                                 | Retry and suppression.                  |
 | Email            | `email_messages(tenant_id, provider_message_id)`                                                                                          | Deduplication and threading.            |
@@ -42,6 +43,7 @@ Minimum uniqueness requirements:
 - `roles(tenant_id, name)`
 - `groups(tenant_id, name)`
 - `permissions.key`
+- `auth_tokens.token_hash`
 - `tickets(tenant_id, public_ref)`
 - `comments(tenant_id, channel, provider_source_id)` when provider identity exists
 - `attachments(tenant_id, storage_identity)`

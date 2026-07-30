@@ -61,6 +61,22 @@ enum RefreshTokenState {
   @@map("refresh_token_state")
 }
 
+enum AuthTokenPurpose {
+  EMAIL_VERIFICATION @map("email_verification")
+  PASSWORD_RESET     @map("password_reset")
+
+  @@map("auth_token_purpose")
+}
+
+enum AuthTokenState {
+  ACTIVE  @map("active")
+  USED    @map("used")
+  REVOKED @map("revoked")
+  EXPIRED @map("expired")
+
+  @@map("auth_token_state")
+}
+
 enum AuditOutcome {
   SUCCESS @map("success")
   FAILURE @map("failure")
@@ -93,6 +109,7 @@ model Tenant {
   rolePermissions             RolePermission[]
   sessions                    Session[]
   refreshTokens               RefreshToken[]
+  authTokens                  AuthToken[]
   auditEvents                 AuditEvent[]
 
   @@index([state], map: "idx_tenants__state")
@@ -152,6 +169,7 @@ model User {
   roles                      UserRole[]
   sessions                   Session[]
   refreshTokens              RefreshToken[]
+  authTokens                 AuthToken[]
   auditEvents                AuditEvent[]    @relation("AuditActorUser")
 
   @@index([state], map: "idx_users__state")
@@ -306,6 +324,28 @@ model RefreshToken {
   @@index([familyId, state], map: "idx_refresh_tokens__family_id_state")
   @@index([expiresAt], map: "idx_refresh_tokens__expires_at")
   @@map("refresh_tokens")
+}
+
+model AuthToken {
+  id            String           @id(map: "pk_auth_tokens") @default(uuid()) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  purpose       AuthTokenPurpose
+  tokenHash     String           @unique(map: "uq_auth_tokens__token_hash") @map("token_hash") @db.VarChar(255)
+  state         AuthTokenState   @default(ACTIVE)
+  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(3)
+  usedAt        DateTime?        @map("used_at") @db.Timestamptz(3)
+  revokedAt     DateTime?        @map("revoked_at") @db.Timestamptz(3)
+  revokeReason  String?          @map("revoke_reason") @db.VarChar(255)
+  correlationId String?          @map("correlation_id") @db.VarChar(100)
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_auth_tokens__tenants__tenant_id")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_auth_tokens__users__user_id")
+
+  @@index([tenantId, userId, purpose, state], map: "idx_auth_tokens__tenant_id_user_id_purpose_state")
+  @@index([expiresAt], map: "idx_auth_tokens__expires_at")
+  @@map("auth_tokens")
 }
 
 model AuditEvent {
