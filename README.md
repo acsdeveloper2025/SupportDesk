@@ -1,6 +1,6 @@
 # SupportDesk
 
-SupportDesk is the documentation-first foundation for an enterprise, multi-tenant ticketing SaaS. The repository now includes a production-ready monorepo bootstrap for future implementation, while intentionally excluding authentication, users, organizations, tickets, RBAC, workflows, SLA, notifications, reports, search, and other business features.
+SupportDesk is the documentation-first foundation for an enterprise, multi-tenant ticketing SaaS. The repository now includes a production-ready monorepo bootstrap and is implementing Authentication & Identity issue-by-issue. Ticketing, workflows, SLA, notifications, reports, search, and other business features remain intentionally excluded until their milestones begin.
 
 ## Project foundation
 
@@ -43,6 +43,10 @@ Default local URLs:
 - Health: `http://localhost:3001/health`
 - Readiness: `http://localhost:3001/ready`
 - Liveness: `http://localhost:3001/live`
+
+## Environment
+
+`.env.example` documents every local environment variable. Authentication security settings currently cover Argon2id hashing cost, secure token entropy, and password policy requirements. Never commit real secrets or tenant-specific production values.
 
 ## Docker Development
 
