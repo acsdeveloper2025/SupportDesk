@@ -4,7 +4,7 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import { SignJWT } from "jose";
 
 import { SecureTokenService } from "../security/secure-token.service";
-import { AuthTokenRepository } from "./auth-token.repository";
+import { AuthTokenRepository, type RefreshTokenRecord } from "./auth-token.repository";
 
 export interface AuthTokenConfig {
   accessTokenTtlMinutes: number;
@@ -36,6 +36,13 @@ export type RefreshTokenResult =
   | {
       status: "denied";
     };
+
+export interface RefreshTokenRequest {
+  correlationId?: string;
+  ipAddress?: string;
+  refreshToken?: string;
+  userAgent?: string;
+}
 
 @Injectable()
 export class AuthTokenService {
@@ -90,10 +97,12 @@ export class AuthTokenService {
     };
   }
 
-  async refreshTokenPair(input: { refreshToken?: string }): Promise<RefreshTokenResult> {
+  async refreshTokenPair(input: RefreshTokenRequest): Promise<RefreshTokenResult> {
     const rawToken = input.refreshToken?.trim();
 
     if (!rawToken) {
+      await this.auditRefreshFailure(input, "token_missing");
+
       return {
         status: "denied",
       };
@@ -103,6 +112,8 @@ export class AuthTokenService {
     const storedToken = await this.repository.findRefreshTokenByHash(tokenHash);
 
     if (!storedToken) {
+      await this.auditRefreshFailure(input, "token_unavailable");
+
       return {
         status: "denied",
       };
@@ -113,8 +124,16 @@ export class AuthTokenService {
       await this.repository.recordAuthAuditEvent({
         action: "auth.refresh_token.reuse_detected",
         actorUserId: storedToken.userId,
+        correlationId: input.correlationId,
+        ipAddress: input.ipAddress,
+        metadata: {
+          reason: "token_reused",
+        },
         outcome: "DENIED",
+        targetId: storedToken.session.id,
+        targetType: "session",
         tenantId: storedToken.tenantId,
+        userAgent: input.userAgent,
       });
 
       return {
@@ -127,6 +146,8 @@ export class AuthTokenService {
       storedToken.session.revokedAt !== null ||
       storedToken.session.expiresAt.getTime() <= this.now().getTime()
     ) {
+      await this.auditRefreshFailure(input, "token_or_session_expired", storedToken);
+
       return {
         status: "denied",
       };
@@ -151,6 +172,18 @@ export class AuthTokenService {
     });
     const accessTokenExpiresAt = addMinutes(this.now(), this.config.accessTokenTtlMinutes);
 
+    await this.repository.recordAuthAuditEvent({
+      action: "auth.refresh.succeeded",
+      actorUserId: storedToken.userId,
+      correlationId: input.correlationId,
+      ipAddress: input.ipAddress,
+      outcome: "SUCCESS",
+      targetId: storedToken.session.id,
+      targetType: "session",
+      tenantId: storedToken.tenantId,
+      userAgent: input.userAgent,
+    });
+
     return {
       accessToken: await this.signAccessToken(
         {
@@ -169,6 +202,27 @@ export class AuthTokenService {
       refreshTokenExpiresAt,
       status: "refreshed",
     };
+  }
+
+  private async auditRefreshFailure(
+    input: RefreshTokenRequest,
+    reason: string,
+    token?: RefreshTokenRecord,
+  ): Promise<void> {
+    await this.repository.recordAuthAuditEvent({
+      action: "auth.refresh.failed",
+      actorUserId: token?.userId,
+      correlationId: input.correlationId,
+      ipAddress: input.ipAddress,
+      metadata: {
+        reason,
+      },
+      outcome: "FAILURE",
+      targetId: token?.session.id,
+      targetType: token ? "session" : "refresh_token",
+      tenantId: token?.tenantId,
+      userAgent: input.userAgent,
+    });
   }
 
   private async signAccessToken(input: IssueTokenPairInput, expiresAt: Date): Promise<string> {

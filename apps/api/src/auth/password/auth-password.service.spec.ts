@@ -90,7 +90,9 @@ describe("AuthPasswordService", () => {
         correlationId: "corr-1",
         currentPassword: "CorrectHorse9!Battery",
         currentSessionId: sessionId,
+        ipAddress: "203.0.113.12",
         newPassword: "NewCorrectHorse9!Battery",
+        userAgent: "Password Test Browser",
       }),
     ).resolves.toEqual({ status: "changed" });
 
@@ -105,8 +107,10 @@ describe("AuthPasswordService", () => {
     expect(repository.audits).toContainEqual(
       expect.objectContaining({
         action: "auth.password_change.completed",
+        ipAddress: "203.0.113.12",
         outcome: "SUCCESS",
         tenantId,
+        userAgent: "Password Test Browser",
       }),
     );
   });

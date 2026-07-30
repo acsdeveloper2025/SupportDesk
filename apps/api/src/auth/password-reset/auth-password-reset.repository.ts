@@ -1,15 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
-  AuditOutcome,
   AuthTokenPurpose,
   AuthTokenState,
-  Prisma,
   RefreshTokenState,
   SessionState,
   TenantState,
   UserState,
 } from "@prisma/client";
 
+import { type AuditEventInput, buildAuditEventData } from "../../audit/audit-event";
 import { PrismaService } from "../../database/prisma.service";
 
 export interface PasswordResetCandidate {
@@ -48,14 +47,7 @@ export interface CompletePasswordResetInput {
   userId: string;
 }
 
-export interface AuthPasswordResetAuditInput {
-  action: string;
-  actorUserId?: string | null;
-  correlationId?: string;
-  metadata?: Record<string, unknown>;
-  outcome: keyof typeof AuditOutcome;
-  tenantId?: string | null;
-}
+export type AuthPasswordResetAuditInput = AuditEventInput;
 
 export abstract class AuthPasswordResetRepository {
   abstract findPasswordResetCandidate(
@@ -246,14 +238,7 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
 
   async recordAuthAuditEvent(input: AuthPasswordResetAuditInput): Promise<void> {
     await this.prisma.auditEvent.create({
-      data: {
-        action: input.action,
-        actorUserId: input.actorUserId,
-        correlationId: input.correlationId,
-        metadata: input.metadata as Prisma.InputJsonValue | undefined,
-        outcome: AuditOutcome[input.outcome],
-        tenantId: input.tenantId,
-      },
+      data: buildAuditEventData(input),
     });
   }
 }

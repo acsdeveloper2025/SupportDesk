@@ -61,6 +61,7 @@ export class AuthController {
     const result = await this.registration.register({
       ...body,
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
 
@@ -80,6 +81,7 @@ export class AuthController {
     await this.registration.confirmEmailVerification({
       ...body,
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
 
@@ -98,6 +100,7 @@ export class AuthController {
     return this.passwordReset.requestPasswordReset({
       ...body,
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
   }
@@ -112,6 +115,7 @@ export class AuthController {
     return this.passwordReset.confirmPasswordReset({
       ...body,
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
   }
@@ -154,6 +158,8 @@ export class AuthController {
       ...body,
       correlationId: getCorrelationId(request),
       currentSessionId: sessionHeader,
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent"),
     });
 
     if (result.status === "denied") {
@@ -227,6 +233,8 @@ export class AuthController {
       ...body,
       correlationId: getCorrelationId(request),
       currentSessionId: body.currentSessionId ?? sessionHeader,
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent"),
     });
   }
 
@@ -259,7 +267,9 @@ export class AuthController {
     return this.sessions.logout({
       correlationId: getCorrelationId(request),
       currentSessionId: sessionHeader,
+      ipAddress: request.ip,
       targetSessionId: sessionId,
+      userAgent: request.header("user-agent"),
     });
   }
 
@@ -272,9 +282,12 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: "Refresh denied without token validity disclosure.",
   })
-  async refresh(@Body() body: { refreshToken?: string }) {
+  async refresh(@Body() body: { refreshToken?: string }, @Req() request: Request) {
     const result = await this.tokens.refreshTokenPair({
+      correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       refreshToken: body.refreshToken,
+      userAgent: request.header("user-agent"),
     });
 
     if (result.status !== "refreshed") {

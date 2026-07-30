@@ -37,4 +37,6 @@ Tenant password-expiration policy is enforced during login through an explicit `
 
 Authentication-sensitive endpoints are protected by endpoint-scoped fixed-window throttles partitioned by hashed tenant, identifier, token, session, device, and IP dimensions. Exceeded buckets return HTTP 429 with retry guidance and create a redacted audit event. Login failures update persistent user lockout state according to the selected tenant's threshold, window, and duration; callers receive the same denial for wrong credentials and active lockouts.
 
+Authentication audit metadata is constructed through a shared recursive redaction boundary. Raw passwords, access/refresh/recovery/verification tokens, secrets, authorization values, cookies, credentials, IP addresses, and user-agent strings are never persisted in audit metadata; request identifiers are represented by SHA-256 hashes. Authentication-sensitive operations await the audit write and fail closed if evidence cannot be persisted. Audit-write failures must page operations as defined in [17-observability.md](17-observability.md).
+
 The initial rate-limit store is process-local and intentionally isolated behind `AuthRateLimitStore`. A shared atomic store such as Redis is required before horizontally scaling the API; production readiness must block multi-replica deployment until that adapter is configured.

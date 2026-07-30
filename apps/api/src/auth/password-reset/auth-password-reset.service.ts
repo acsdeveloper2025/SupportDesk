@@ -7,7 +7,10 @@ import { hashIdentifier } from "../registration/auth-registration.repository";
 import { PasswordHashingService } from "../security/password-hashing.service";
 import { SecureTokenService } from "../security/secure-token.service";
 import { PasswordPolicyService } from "../validation/password-policy.service";
-import { AuthPasswordResetRepository } from "./auth-password-reset.repository";
+import {
+  type AuthPasswordResetAuditInput,
+  AuthPasswordResetRepository,
+} from "./auth-password-reset.repository";
 import type {
   ConfirmPasswordResetRequest,
   PasswordResetRequest,
@@ -48,7 +51,7 @@ export class AuthPasswordResetService {
     const emailNormalized = normalizeEmail(input.email);
 
     if (!emailNormalized || !input.tenant) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.request_rejected",
         metadata: {
           reason: "request_invalid",
@@ -63,7 +66,7 @@ export class AuthPasswordResetService {
     const emailHash = hashIdentifier(emailNormalized);
 
     if (tenantResolution.status !== "found") {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.request_rejected",
         metadata: {
           emailHash,
@@ -79,7 +82,7 @@ export class AuthPasswordResetService {
     const candidate = await this.repository.findPasswordResetCandidate(tenantId, emailNormalized);
 
     if (!candidate) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.request_rejected",
         metadata: {
           emailHash,
@@ -114,7 +117,7 @@ export class AuthPasswordResetService {
         token: resetToken.token,
         userId: candidate.id,
       });
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.requested",
         actorUserId: candidate.id,
         correlationId: input.correlationId,
@@ -125,7 +128,7 @@ export class AuthPasswordResetService {
         tenantId,
       });
     } catch {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.request_rejected",
         metadata: {
           emailHash,
@@ -144,6 +147,14 @@ export class AuthPasswordResetService {
     const initialPasswordValidation = this.passwordPolicy.validate(password);
 
     if (!initialPasswordValidation.valid) {
+      await this.recordAudit(input, {
+        action: "auth.password_reset.rejected",
+        metadata: {
+          reason: "password_policy_rejected",
+        },
+        outcome: "DENIED",
+      });
+
       return {
         errors: initialPasswordValidation.errors,
         status: "validation_failed",
@@ -153,7 +164,7 @@ export class AuthPasswordResetService {
     const token = normalizeOptionalString(input.token);
 
     if (!token) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.rejected",
         metadata: {
           reason: "token_missing",
@@ -169,7 +180,7 @@ export class AuthPasswordResetService {
     );
 
     if (!tokenRecord) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.rejected",
         metadata: {
           reason: "token_unavailable",
@@ -181,7 +192,7 @@ export class AuthPasswordResetService {
     }
 
     if (tokenRecord.state !== AuthTokenState.ACTIVE) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.replay_detected",
         actorUserId: tokenRecord.userId,
         metadata: {
@@ -196,7 +207,7 @@ export class AuthPasswordResetService {
 
     if (tokenRecord.expiresAt.getTime() <= this.now().getTime()) {
       await this.repository.markPasswordResetTokenExpired(tokenRecord.id);
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.rejected",
         actorUserId: tokenRecord.userId,
         metadata: {
@@ -210,7 +221,7 @@ export class AuthPasswordResetService {
     }
 
     if (tokenRecord.userState !== UserState.ACTIVE) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_reset.rejected",
         actorUserId: tokenRecord.userId,
         metadata: {
@@ -233,6 +244,16 @@ export class AuthPasswordResetService {
     });
 
     if (!passwordValidation.valid) {
+      await this.recordAudit(input, {
+        action: "auth.password_reset.rejected",
+        actorUserId: tokenRecord.userId,
+        metadata: {
+          reason: "password_policy_rejected",
+        },
+        outcome: "DENIED",
+        tenantId: tokenRecord.tenantId,
+      });
+
       return {
         errors: passwordValidation.errors,
         status: "validation_failed",
@@ -252,7 +273,7 @@ export class AuthPasswordResetService {
       tokenId: tokenRecord.id,
       userId: tokenRecord.userId,
     });
-    await this.repository.recordAuthAuditEvent({
+    await this.recordAudit(input, {
       action: "auth.password_reset.completed",
       actorUserId: tokenRecord.userId,
       correlationId: input.correlationId,
@@ -261,6 +282,18 @@ export class AuthPasswordResetService {
     });
 
     return accepted;
+  }
+
+  private async recordAudit(
+    request: PasswordResetRequest | ConfirmPasswordResetRequest,
+    event: AuthPasswordResetAuditInput,
+  ): Promise<void> {
+    await this.repository.recordAuthAuditEvent({
+      ...event,
+      correlationId: event.correlationId ?? request.correlationId,
+      ipAddress: request.ipAddress,
+      userAgent: request.userAgent,
+    });
   }
 }
 

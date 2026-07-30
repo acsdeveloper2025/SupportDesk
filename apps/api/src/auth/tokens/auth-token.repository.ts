@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { Inject, Injectable } from "@nestjs/common";
-import { AuditOutcome, Prisma, RefreshTokenState, SessionState } from "@prisma/client";
+import { RefreshTokenState, SessionState } from "@prisma/client";
 
+import { type AuditEventInput, buildAuditEventData } from "../../audit/audit-event";
 import { PrismaService } from "../../database/prisma.service";
 
 export interface RefreshTokenSessionRecord {
@@ -36,14 +37,7 @@ export interface CreateRefreshTokenInput {
   userId: string;
 }
 
-export interface AuthTokenAuditInput {
-  action: string;
-  actorUserId?: string | null;
-  correlationId?: string;
-  metadata?: Record<string, unknown>;
-  outcome: keyof typeof AuditOutcome;
-  tenantId?: string | null;
-}
+export type AuthTokenAuditInput = AuditEventInput;
 
 export abstract class AuthTokenRepository {
   abstract createRefreshToken(
@@ -165,14 +159,7 @@ export class PrismaAuthTokenRepository implements AuthTokenRepository {
 
   async recordAuthAuditEvent(input: AuthTokenAuditInput): Promise<void> {
     await this.prisma.auditEvent.create({
-      data: {
-        action: input.action,
-        actorUserId: input.actorUserId,
-        correlationId: input.correlationId,
-        metadata: input.metadata as Prisma.InputJsonValue | undefined,
-        outcome: AuditOutcome[input.outcome],
-        tenantId: input.tenantId,
-      },
+      data: buildAuditEventData(input),
     });
   }
 }

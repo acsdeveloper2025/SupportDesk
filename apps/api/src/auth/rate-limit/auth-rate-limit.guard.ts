@@ -63,9 +63,11 @@ export class AuthRateLimitGuard implements CanActivate {
     response.setHeader("Retry-After", String(decision.retryAfterSeconds));
     await this.audit.recordExceeded({
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       retryAfterSeconds: decision.retryAfterSeconds,
       scope: metadata.scope,
       tenantId: readTenantId(request.body),
+      userAgent: request.header("user-agent"),
     });
 
     throw new HttpException(

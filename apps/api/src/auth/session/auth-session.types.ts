@@ -16,7 +16,9 @@ export interface LoginRequest {
 export interface LogoutRequest {
   correlationId?: string;
   currentSessionId?: string;
+  ipAddress?: string;
   targetSessionId?: string;
+  userAgent?: string;
 }
 
 export interface ListSessionsRequest {

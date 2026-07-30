@@ -33,6 +33,8 @@ Audit Events are immutable, tenant-scoped evidence described in [07-security-com
 
 Payloads must exclude secrets, tokens, raw attachment content, unnecessary personal data, and cross-tenant existence details.
 
+Authentication audit writes pass through one envelope builder. It recursively redacts password, secret, authorization, cookie, credential, and token fields. IP addresses and user-agent values are stored only as SHA-256 request hashes in metadata. The builder preserves the correlation ID and adds tenant, actor, and target identifiers when they are known. Authentication-sensitive operations await audit persistence; an audit-write failure fails the request closed and is an operational alert condition.
+
 ## Catalogue
 
 | Event                                      | Category       | Actor                          | Target               | Required metadata                       | Notification/outbox                 |
@@ -41,8 +43,18 @@ Payloads must exclude secrets, tokens, raw attachment content, unnecessary perso
 | `auth.login.failed`                        | Authentication | Anonymous/user candidate       | Identifier hash      | Reason class, IP risk signal            | Security alert threshold.           |
 | `auth.logout`                              | Authentication | User                           | Session              | Session ID hash, reason                 | None.                               |
 | `auth.session.revoked`                     | Authentication | User/admin                     | Session              | Revoked by, reason                      | Security notice.                    |
+| `auth.registration.completed`              | Authentication | New User                       | User                 | Identifier hash, Tenant                 | Verification delivery intent.       |
+| `auth.registration.rejected`               | Authentication | Anonymous/user candidate       | User candidate       | Safe reason, identifier hash if valid   | Security alert threshold.           |
+| `auth.email_verification.completed`        | Authentication | User                           | User                 | Tenant, request hashes                  | Optional security notice.           |
+| `auth.email_verification.rejected`         | Authentication | Anonymous/user candidate       | Token candidate      | Safe reason class                       | Security alert threshold.           |
 | `auth.password_reset.requested`            | Authentication | Anonymous                      | User candidate       | Identifier hash, delivery intent        | Password reset email.               |
+| `auth.password_reset.request_rejected`     | Authentication | Anonymous                      | User candidate       | Safe reason, identifier hash if valid   | Security alert threshold.           |
+| `auth.password_reset.rejected`             | Authentication | Anonymous/user candidate       | User candidate       | Safe reason class                       | Security alert threshold.           |
+| `auth.password_reset.replay_detected`      | Authentication | User candidate                 | User                 | Safe replay reason                      | Security alert.                     |
 | `auth.password_reset.completed`            | Authentication | User                           | User                 | Method, session changes                 | Security notice.                    |
+| `auth.refresh.succeeded`                   | Authentication | User                           | Session              | Request hashes                          | None.                               |
+| `auth.refresh.failed`                      | Authentication | Anonymous/user candidate       | Session/token        | Safe reason class                       | Security alert threshold.           |
+| `auth.refresh_token.reuse_detected`        | Authentication | User                           | Session              | Safe replay reason                      | Security alert.                     |
 | `auth.login.password_change_required`      | Authentication | User                           | Session              | Tenant selected, expiry state           | Optional security notice.           |
 | `auth.password_change.rejected`            | Authentication | Anonymous/user candidate       | User/session         | Safe reason class                       | Security alert threshold.           |
 | `auth.password_change.completed`           | Authentication | User                           | User                 | Tenant, credential revocation summary   | Security notice.                    |

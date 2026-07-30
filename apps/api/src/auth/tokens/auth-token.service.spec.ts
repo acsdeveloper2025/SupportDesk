@@ -18,7 +18,12 @@ class FakeTokenRepository implements AuthTokenRepository {
   createdRefresh: Array<CreateRefreshTokenInput & { familyId: string }> = [];
   rotatedTokenId: string | null = null;
   revokedFamilyId: string | null = null;
-  audits: Array<{ action: string; outcome: string; tenantId: string | null }> = [];
+  audits: Array<{
+    action: string;
+    correlationId?: string;
+    outcome: string;
+    tenantId: string | null;
+  }> = [];
   refreshRecord: RefreshTokenRecord | null = null;
   replayRecord: RefreshTokenRecord | null = null;
 
@@ -59,9 +64,15 @@ class FakeTokenRepository implements AuthTokenRepository {
     return Promise.resolve();
   }
 
-  recordAuthAuditEvent(input: { action: string; outcome: string; tenantId?: string | null }) {
+  recordAuthAuditEvent(input: {
+    action: string;
+    correlationId?: string;
+    outcome: string;
+    tenantId?: string | null;
+  }) {
     this.audits.push({
       action: input.action,
+      correlationId: input.correlationId,
       outcome: input.outcome,
       tenantId: input.tenantId ?? null,
     });
@@ -138,13 +149,22 @@ describe("AuthTokenService", () => {
       () => new Date("2026-07-30T00:00:00.000Z"),
     );
 
-    const result = await service.refreshTokenPair({ refreshToken: rawRefreshToken });
+    const result = await service.refreshTokenPair({
+      correlationId: "corr-refresh",
+      refreshToken: rawRefreshToken,
+    });
 
     expect(result.status).toBe("refreshed");
     expect(repository.rotatedTokenId).toBe("old-token");
     expect(repository.createdRefresh[0]).toMatchObject({
       familyId: "55555555-5555-4555-8555-555555555555",
       parentTokenId: "old-token",
+    });
+    expect(repository.audits).toContainEqual({
+      action: "auth.refresh.succeeded",
+      correlationId: "corr-refresh",
+      outcome: "SUCCESS",
+      tenantId,
     });
     expect(result.status).toBe("refreshed");
 
@@ -237,8 +257,35 @@ describe("AuthTokenService", () => {
     expect(repository.revokedFamilyId).toBe("55555555-5555-4555-8555-555555555555");
     expect(repository.audits).toContainEqual({
       action: "auth.refresh_token.reuse_detected",
+      correlationId: undefined,
       outcome: "DENIED",
       tenantId,
     });
+  });
+
+  it("audits refresh requests denied before token lookup without storing the token", async () => {
+    const repository = new FakeTokenRepository();
+    const service = new AuthTokenService(repository, new SecureTokenService(16), {
+      accessTokenTtlMinutes: 15,
+      issuer: "supportdesk-test",
+      refreshTokenTtlMinutes: 60,
+      secret,
+    });
+
+    await expect(
+      service.refreshTokenPair({
+        correlationId: "corr-denied",
+        refreshToken: "unknown-raw-token",
+      }),
+    ).resolves.toEqual({
+      status: "denied",
+    });
+    expect(repository.audits).toContainEqual({
+      action: "auth.refresh.failed",
+      correlationId: "corr-denied",
+      outcome: "FAILURE",
+      tenantId: null,
+    });
+    expect(JSON.stringify(repository.audits)).not.toContain("unknown-raw-token");
   });
 });

@@ -71,7 +71,9 @@ class FakeSessionRepository implements AuthSessionRepository {
 
   findActiveSession(sessionId: string) {
     return Promise.resolve(
-      sessionId === "33333333-3333-4333-8333-333333333333"
+      ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"].includes(
+        sessionId,
+      )
         ? {
             expiresAt: new Date("2026-07-31T00:00:00.000Z"),
             id: sessionId,
@@ -178,7 +180,7 @@ describe("AuthSessionService", () => {
       userId,
     });
     expect(repository.audits).toContainEqual({
-      action: "auth.login.completed",
+      action: "auth.login.succeeded",
       outcome: "SUCCESS",
       tenantId,
     });
@@ -287,7 +289,7 @@ describe("AuthSessionService", () => {
     ).resolves.toEqual({ status: "denied" });
     expect(repository.createdSession).toBeNull();
     expect(repository.audits).toContainEqual({
-      action: "auth.login.rejected",
+      action: "auth.login.failed",
       outcome: "FAILURE",
       tenantId,
     });
@@ -376,8 +378,9 @@ describe("AuthSessionService", () => {
   });
 
   it("revokes the current session and lists active sessions for the current session owner", async () => {
+    const repository = new FakeSessionRepository();
     const service = new AuthSessionService(
-      new FakeSessionRepository(),
+      repository,
       new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
       fakeTokenService,
       () => new Date("2026-07-30T00:00:00.000Z"),
@@ -401,5 +404,22 @@ describe("AuthSessionService", () => {
     await expect(
       service.logout({ currentSessionId: "33333333-3333-4333-8333-333333333333" }),
     ).resolves.toEqual({ status: "accepted" });
+    expect(repository.audits).toContainEqual({
+      action: "auth.logout",
+      outcome: "SUCCESS",
+      tenantId,
+    });
+
+    await expect(
+      service.logout({
+        currentSessionId: "33333333-3333-4333-8333-333333333333",
+        targetSessionId: "44444444-4444-4444-8444-444444444444",
+      }),
+    ).resolves.toEqual({ status: "accepted" });
+    expect(repository.audits).toContainEqual({
+      action: "auth.session.revoked",
+      outcome: "SUCCESS",
+      tenantId,
+    });
   });
 });

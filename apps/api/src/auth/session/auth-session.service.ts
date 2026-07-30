@@ -114,11 +114,15 @@ export class AuthSessionService {
     await this.repository.recordAuthAuditEvent({
       action: passwordChangeRequired
         ? "auth.login.password_change_required"
-        : "auth.login.completed",
+        : "auth.login.succeeded",
       actorUserId: candidate.userId,
       correlationId: input.correlationId,
+      ipAddress: input.ipAddress,
       outcome: "SUCCESS",
+      targetId: session.id,
+      targetType: "session",
       tenantId,
+      userAgent: input.userAgent,
     });
 
     return {
@@ -154,11 +158,18 @@ export class AuthSessionService {
     ) {
       await this.repository.revokeSession(targetSession.id);
       await this.repository.recordAuthAuditEvent({
-        action: "auth.logout.completed",
+        action: targetSession.id === currentSession.id ? "auth.logout" : "auth.session.revoked",
         actorUserId: currentSession.userId,
         correlationId: input.correlationId,
+        ipAddress: input.ipAddress,
+        metadata: {
+          reason: targetSession.id === currentSession.id ? "logout" : "user_revoked",
+        },
         outcome: "SUCCESS",
+        targetId: targetSession.id,
+        targetType: "session",
         tenantId: currentSession.tenantId,
+        userAgent: input.userAgent,
       });
     }
 
@@ -206,15 +217,17 @@ export class AuthSessionService {
     actorUserId?: string,
   ): Promise<void> {
     await this.repository.recordAuthAuditEvent({
-      action: "auth.login.rejected",
+      action: "auth.login.failed",
       actorUserId,
       correlationId: input.correlationId,
+      ipAddress: input.ipAddress,
       metadata: {
         ...buildRiskMetadata(input),
         reason,
       },
       outcome: "FAILURE",
       tenantId,
+      userAgent: input.userAgent,
     });
   }
 
@@ -228,12 +241,14 @@ export class AuthSessionService {
       action: "auth.login.locked",
       actorUserId,
       correlationId: input.correlationId,
+      ipAddress: input.ipAddress,
       metadata: {
         ...buildRiskMetadata(input),
         reason,
       },
       outcome: "DENIED",
       tenantId,
+      userAgent: input.userAgent,
     });
   }
 }

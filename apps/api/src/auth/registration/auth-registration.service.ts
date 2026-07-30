@@ -5,7 +5,11 @@ import { PasswordHashingService } from "../security/password-hashing.service";
 import { SecureTokenService } from "../security/secure-token.service";
 import { PasswordPolicyService } from "../validation/password-policy.service";
 import { AuthNotificationService } from "./auth-notification.service";
-import { AuthRegistrationRepository, hashIdentifier } from "./auth-registration.repository";
+import {
+  type AuthAuditEventInput,
+  AuthRegistrationRepository,
+  hashIdentifier,
+} from "./auth-registration.repository";
 import type {
   AuthAcceptedResult,
   AuthRegistrationResult,
@@ -38,6 +42,14 @@ export class AuthRegistrationService {
     const password = typeof input.password === "string" ? input.password : "";
 
     if (!emailNormalized || !input.tenant) {
+      await this.recordAudit(input, {
+        action: "auth.registration.rejected",
+        metadata: {
+          reason: "request_invalid",
+        },
+        outcome: "FAILURE",
+      });
+
       return {
         errors: ["AUTH_REQUEST_INVALID"],
         status: "validation_failed",
@@ -49,6 +61,14 @@ export class AuthRegistrationService {
     });
 
     if (!passwordValidation.valid) {
+      await this.recordAudit(input, {
+        action: "auth.registration.rejected",
+        metadata: {
+          reason: "password_policy_rejected",
+        },
+        outcome: "DENIED",
+      });
+
       return {
         errors: passwordValidation.errors,
         status: "validation_failed",
@@ -58,7 +78,7 @@ export class AuthRegistrationService {
     const tenantResolution = await this.identityLookup.resolveTenant(input.tenant);
 
     if (tenantResolution.status !== "found") {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.registration.rejected",
         metadata: {
           emailHash: hashIdentifier(emailNormalized),
@@ -74,7 +94,7 @@ export class AuthRegistrationService {
     const emailHash = hashIdentifier(emailNormalized);
 
     if (!tenant.registrationEnabled) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.registration.rejected",
         metadata: {
           emailHash,
@@ -90,7 +110,7 @@ export class AuthRegistrationService {
     const existingUser = await this.repository.findTenantUserByEmail(tenant.id, emailNormalized);
 
     if (existingUser) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.registration.rejected",
         metadata: {
           emailHash,
@@ -137,7 +157,7 @@ export class AuthRegistrationService {
         token: verificationToken.token,
         userId: created.userId,
       });
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.registration.completed",
         actorUserId: created.userId,
         correlationId: input.correlationId,
@@ -148,7 +168,7 @@ export class AuthRegistrationService {
         tenantId: created.tenantId,
       });
     } catch {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.registration.rejected",
         metadata: {
           emailHash,
@@ -168,7 +188,7 @@ export class AuthRegistrationService {
     const token = normalizeOptionalString(input.token);
 
     if (!token) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.email_verification.rejected",
         metadata: {
           reason: "token_missing",
@@ -183,7 +203,7 @@ export class AuthRegistrationService {
     const tokenRecord = await this.repository.findActiveEmailVerificationToken(tokenHash);
 
     if (!tokenRecord) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.email_verification.rejected",
         metadata: {
           reason: "token_unavailable",
@@ -196,7 +216,7 @@ export class AuthRegistrationService {
 
     if (tokenRecord.expiresAt.getTime() <= this.now().getTime()) {
       await this.repository.markVerificationTokenExpired(tokenRecord.id);
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.email_verification.rejected",
         actorUserId: tokenRecord.userId,
         metadata: {
@@ -210,7 +230,7 @@ export class AuthRegistrationService {
     }
 
     const verified = await this.repository.completeEmailVerification(tokenRecord.id);
-    await this.repository.recordAuthAuditEvent({
+    await this.recordAudit(input, {
       action: "auth.email_verification.completed",
       actorUserId: verified.userId,
       correlationId: input.correlationId,
@@ -219,6 +239,18 @@ export class AuthRegistrationService {
     });
 
     return accepted;
+  }
+
+  private async recordAudit(
+    request: RegisterRequest | ConfirmEmailVerificationRequest,
+    event: AuthAuditEventInput,
+  ): Promise<void> {
+    await this.repository.recordAuthAuditEvent({
+      ...event,
+      correlationId: event.correlationId ?? request.correlationId,
+      ipAddress: request.ipAddress,
+      userAgent: request.userAgent,
+    });
   }
 }
 

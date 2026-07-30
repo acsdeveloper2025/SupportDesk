@@ -2,13 +2,15 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 
 import { PasswordHashingService } from "../security/password-hashing.service";
 import { PasswordPolicyService } from "../validation/password-policy.service";
-import { AuthPasswordRepository } from "./auth-password.repository";
+import { type AuthPasswordAuditInput, AuthPasswordRepository } from "./auth-password.repository";
 
 export interface ChangePasswordRequest {
   correlationId?: string;
   currentPassword?: string;
   currentSessionId?: string;
+  ipAddress?: string;
   newPassword?: string;
+  userAgent?: string;
 }
 
 export type ChangePasswordResult =
@@ -47,7 +49,7 @@ export class AuthPasswordService {
     const newPassword = typeof input.newPassword === "string" ? input.newPassword : "";
 
     if (!currentSessionId || !currentPassword) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_change.rejected",
         correlationId: input.correlationId,
         metadata: {
@@ -64,7 +66,7 @@ export class AuthPasswordService {
     const identity = await this.repository.findPasswordChangeIdentity(currentSessionId);
 
     if (!identity) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_change.rejected",
         correlationId: input.correlationId,
         metadata: {
@@ -84,7 +86,7 @@ export class AuthPasswordService {
     );
 
     if (!currentPasswordMatches) {
-      await this.repository.recordAuthAuditEvent({
+      await this.recordAudit(input, {
         action: "auth.password_change.rejected",
         actorUserId: identity.userId,
         correlationId: input.correlationId,
@@ -110,6 +112,16 @@ export class AuthPasswordService {
     });
 
     if (!validation.valid) {
+      await this.recordAudit(input, {
+        action: "auth.password_change.rejected",
+        actorUserId: identity.userId,
+        metadata: {
+          reason: "password_policy_rejected",
+        },
+        outcome: "DENIED",
+        tenantId: identity.tenantId,
+      });
+
       return {
         errors: validation.errors,
         status: "validation_failed",
@@ -129,7 +141,7 @@ export class AuthPasswordService {
       tenantId: identity.tenantId,
       userId: identity.userId,
     });
-    await this.repository.recordAuthAuditEvent({
+    await this.recordAudit(input, {
       action: "auth.password_change.completed",
       actorUserId: identity.userId,
       correlationId: input.correlationId,
@@ -140,6 +152,18 @@ export class AuthPasswordService {
     return {
       status: "changed",
     };
+  }
+
+  private async recordAudit(
+    request: ChangePasswordRequest,
+    event: AuthPasswordAuditInput,
+  ): Promise<void> {
+    await this.repository.recordAuthAuditEvent({
+      ...event,
+      correlationId: event.correlationId ?? request.correlationId,
+      ipAddress: request.ipAddress,
+      userAgent: request.userAgent,
+    });
   }
 }
 

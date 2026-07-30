@@ -5,6 +5,7 @@ import { SecureTokenService } from "../security/secure-token.service";
 import { PasswordPolicyService } from "../validation/password-policy.service";
 import type { AuthNotificationService } from "./auth-notification.service";
 import type {
+  AuthAuditEventInput,
   AuthRegistrationRepository,
   PendingUserRegistrationInput,
   VerificationTokenRecord,
@@ -41,7 +42,7 @@ class FakeIdentityLookup {
 }
 
 class FakeRegistrationRepository implements AuthRegistrationRepository {
-  audits: Array<{ action: string; outcome: string; tenantId: string | null }> = [];
+  audits: AuthAuditEventInput[] = [];
   createdRegistration: PendingUserRegistrationInput | null = null;
   duplicateUser = false;
   tokenRecord: VerificationTokenRecord | null = null;
@@ -80,11 +81,13 @@ class FakeRegistrationRepository implements AuthRegistrationRepository {
     });
   }
 
-  recordAuthAuditEvent(input: { action: string; outcome: string; tenantId?: string | null }) {
+  recordAuthAuditEvent(input: AuthAuditEventInput) {
     this.audits.push({
       action: input.action,
+      ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}),
       outcome: input.outcome,
       tenantId: input.tenantId ?? null,
+      ...(input.userAgent ? { userAgent: input.userAgent } : {}),
     });
 
     return Promise.resolve();
@@ -119,8 +122,10 @@ describe("AuthRegistrationService", () => {
       correlationId: "corr-1",
       displayName: "Acme Agent",
       email: " Agent@Acme.test ",
+      ipAddress: "203.0.113.10",
       password: "CorrectHorse9!Battery",
       tenant: { slug: "acme" },
+      userAgent: "Registration Test Browser",
     });
 
     expect(result).toEqual({ status: "accepted" });
@@ -132,11 +137,15 @@ describe("AuthRegistrationService", () => {
       notifications.deliveredToken,
     );
     expect(notifications.deliveredToken).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(repository.audits).toContainEqual({
-      action: "auth.registration.completed",
-      outcome: "SUCCESS",
-      tenantId,
-    });
+    expect(repository.audits).toContainEqual(
+      expect.objectContaining({
+        action: "auth.registration.completed",
+        ipAddress: "203.0.113.10",
+        outcome: "SUCCESS",
+        tenantId,
+        userAgent: "Registration Test Browser",
+      }),
+    );
   });
 
   it("does not create users when tenant registration is disabled and still returns accepted", async () => {
@@ -160,11 +169,13 @@ describe("AuthRegistrationService", () => {
       }),
     ).resolves.toEqual({ status: "accepted" });
     expect(repository.createdRegistration).toBeNull();
-    expect(repository.audits).toContainEqual({
-      action: "auth.registration.rejected",
-      outcome: "DENIED",
-      tenantId,
-    });
+    expect(repository.audits).toContainEqual(
+      expect.objectContaining({
+        action: "auth.registration.rejected",
+        outcome: "DENIED",
+        tenantId,
+      }),
+    );
   });
 
   it("does not disclose duplicate tenant identities", async () => {

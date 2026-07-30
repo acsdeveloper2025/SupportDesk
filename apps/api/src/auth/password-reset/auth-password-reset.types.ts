@@ -4,6 +4,7 @@ import type { PasswordPolicyErrorCode } from "../validation/password-policy.serv
 export interface PasswordResetRequest {
   correlationId?: string;
   email?: string;
+  ipAddress?: string;
   tenant?: TenantLookupInput;
   tenantId?: string;
   userAgent?: string;
@@ -11,6 +12,7 @@ export interface PasswordResetRequest {
 
 export interface ConfirmPasswordResetRequest {
   correlationId?: string;
+  ipAddress?: string;
   password?: string;
   token?: string;
   userAgent?: string;

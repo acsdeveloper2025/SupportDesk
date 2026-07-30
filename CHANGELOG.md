@@ -14,3 +14,4 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 - Tenant-aware authentication foundation with registration, email verification, login, session management, JWT access tokens, refresh-token rotation, secure password recovery, password changes, and password-expiration enforcement hooks.
 - Authentication abuse controls with configurable endpoint throttles, tenant-aware risk dimensions, persistent failed-login lockout, explicit unlock behavior, and redacted security audit events.
 - Deny-by-default RBAC foundation with framework permission seeds, tenant-scoped evaluation, authority-preserving role assignment, role-permission grants, and authorization audit events.
+- Central authentication audit envelopes with recursive secret redaction, hashed request identifiers, correlation/actor/target context, complete refresh and session-revocation events, and fail-closed persistence.

@@ -1,13 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
-import {
-  AuditOutcome,
-  Prisma,
-  SessionState,
-  TenantDomainState,
-  TenantState,
-  UserState,
-} from "@prisma/client";
+import { SessionState, TenantDomainState, TenantState, UserState } from "@prisma/client";
 
+import { type AuditEventInput, buildAuditEventData } from "../../audit/audit-event";
 import { PrismaService } from "../../database/prisma.service";
 import type { TenantLookupInput } from "../../identity/identity.types";
 import type { AuthSessionView } from "./auth-session.types";
@@ -53,14 +47,7 @@ export interface CreateSessionInput {
   userId: string;
 }
 
-export interface AuthSessionAuditInput {
-  action: string;
-  actorUserId?: string | null;
-  correlationId?: string;
-  metadata?: Record<string, unknown>;
-  outcome: keyof typeof AuditOutcome;
-  tenantId?: string | null;
-}
+export type AuthSessionAuditInput = AuditEventInput;
 
 export abstract class AuthSessionRepository {
   abstract resolveTenantId(input: TenantLookupInput | undefined): Promise<string | null>;
@@ -321,14 +308,7 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
 
   async recordAuthAuditEvent(input: AuthSessionAuditInput): Promise<void> {
     await this.prisma.auditEvent.create({
-      data: {
-        action: input.action,
-        actorUserId: input.actorUserId,
-        correlationId: input.correlationId,
-        metadata: input.metadata as Prisma.InputJsonValue | undefined,
-        outcome: AuditOutcome[input.outcome],
-        tenantId: input.tenantId,
-      },
+      data: buildAuditEventData(input),
     });
   }
 }

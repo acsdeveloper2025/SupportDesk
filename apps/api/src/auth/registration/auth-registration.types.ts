@@ -6,6 +6,7 @@ export interface RegisterRequest {
   displayName?: string;
   email?: string;
   firstName?: string;
+  ipAddress?: string;
   language?: string;
   lastName?: string;
   locale?: string;
@@ -17,6 +18,7 @@ export interface RegisterRequest {
 
 export interface ConfirmEmailVerificationRequest {
   correlationId?: string;
+  ipAddress?: string;
   token?: string;
   userAgent?: string;
 }

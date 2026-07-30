@@ -5,6 +5,7 @@ import { PasswordHashingService } from "../security/password-hashing.service";
 import { SecureTokenService } from "../security/secure-token.service";
 import { PasswordPolicyService } from "../validation/password-policy.service";
 import type {
+  AuthPasswordResetAuditInput,
   AuthPasswordResetRepository,
   CreatePasswordResetTokenInput,
   PasswordResetTokenRecord,
@@ -39,7 +40,7 @@ class FakeIdentityLookup {
 }
 
 class FakePasswordResetRepository implements AuthPasswordResetRepository {
-  audits: Array<{ action: string; outcome: string; tenantId: string | null }> = [];
+  audits: AuthPasswordResetAuditInput[] = [];
   candidate: { emailNormalized: string; id: string; tenantId: string } | null = null;
   createdToken: CreatePasswordResetTokenInput | null = null;
   expiredTokenId: string | null = null;
@@ -78,11 +79,13 @@ class FakePasswordResetRepository implements AuthPasswordResetRepository {
     return Promise.resolve();
   }
 
-  recordAuthAuditEvent(input: { action: string; outcome: string; tenantId?: string | null }) {
+  recordAuthAuditEvent(input: AuthPasswordResetAuditInput) {
     this.audits.push({
       action: input.action,
+      ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}),
       outcome: input.outcome,
       tenantId: input.tenantId ?? null,
+      ...(input.userAgent ? { userAgent: input.userAgent } : {}),
     });
 
     return Promise.resolve();
@@ -122,7 +125,9 @@ describe("AuthPasswordResetService", () => {
       service.requestPasswordReset({
         correlationId: "corr-1",
         email: " Agent@Acme.test ",
+        ipAddress: "203.0.113.11",
         tenant: { slug: "acme" },
+        userAgent: "Reset Test Browser",
       }),
     ).resolves.toEqual({ status: "accepted" });
 
@@ -136,11 +141,15 @@ describe("AuthPasswordResetService", () => {
     expect(createdToken?.tokenHash).toMatch(/^[a-f0-9]{64}$/);
     expect(createdToken?.tokenHash).not.toBe(notifications.deliveredToken);
     expect(notifications.deliveredToken).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(repository.audits).toContainEqual({
-      action: "auth.password_reset.requested",
-      outcome: "SUCCESS",
-      tenantId,
-    });
+    expect(repository.audits).toContainEqual(
+      expect.objectContaining({
+        action: "auth.password_reset.requested",
+        ipAddress: "203.0.113.11",
+        outcome: "SUCCESS",
+        tenantId,
+        userAgent: "Reset Test Browser",
+      }),
+    );
   });
 
   it("does not disclose missing users or tenants during reset requests", async () => {
