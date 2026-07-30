@@ -1,0 +1,25 @@
+INSERT INTO "permissions" ("id", "key", "description", "is_system", "created_at", "updated_at")
+VALUES
+  (gen_random_uuid(), 'tenant.read', 'Read tenant identity and configuration metadata.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'tenant.update', 'Update tenant identity and configuration metadata.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'settings.read', 'Read tenant settings.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'settings.update', 'Update general tenant settings.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'settings.security.update', 'Update tenant security settings.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'settings.email.update', 'Update tenant email settings.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'user.read', 'Read tenant identity records.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'user.invite', 'Invite a tenant user.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'user.membership.update', 'Update tenant membership state.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.read', 'Read tenant roles.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.create', 'Create tenant roles.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.update', 'Update tenant roles and grants.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.delete', 'Delete tenant roles.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.assign', 'Assign tenant roles.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'role.revoke', 'Revoke tenant roles.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'permission.read', 'Read framework permissions.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'audit.read', 'Read tenant authentication and authorization audit events.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'audit.export', 'Export tenant authentication and authorization audit events.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'platform.health.read', 'Read platform health metadata.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'platform.elevation.request', 'Request audited platform elevation.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'platform.elevation.approve', 'Approve audited platform elevation.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'platform.elevation.revoke', 'Revoke audited platform elevation.', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("key") DO NOTHING;

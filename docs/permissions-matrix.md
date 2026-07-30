@@ -88,3 +88,7 @@ Legend: `Y` allowed by default; `N` denied; `Scoped` limited by organization/gro
 - No user may remove the last active Tenant Admin.
 - Privileged elevation requires MFA, reason, time limit, audit event, and no self-approval.
 - UI hiding is never an authorization control.
+
+## Implementation status
+
+M2.10 seeds and evaluates only the framework permissions for tenant metadata, settings, users/memberships, roles, permission discovery, authentication/authorization audit access, platform health, and platform elevation. All other rows in this matrix remain future contracts and are not seeded or treated as implemented permissions.

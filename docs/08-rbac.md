@@ -17,3 +17,9 @@ Permissions follow `resource.action` (for example `ticket.read`, `ticket.assign`
 ## Acceptance criteria
 
 Every protected operation has positive and negative matrix tests across role, scope, status, and Tenant. Permission changes invalidate relevant sessions/caches within 60 seconds. Sensitive grants, revocations, impersonation/elevation, exports, and failed privileged actions create Audit Events. UI hiding is never the authorization control.
+
+## M2 implementation boundary
+
+M2.10 implements a reusable, deny-by-default evaluator over active tenant-scoped `UserRole` and `RolePermission` records. Code checks stable permission keys. Role assignment requires `role.assign`, same-tenant role and target membership ownership, and proof that the actor effectively holds every permission granted by the target role. Role-permission assignment requires `role.update`, same-tenant role ownership, a system framework permission, and proof that the actor already holds the permission being granted.
+
+The M2 data migration seeds only tenant, settings, identity, role, permission, audit, and platform-elevation framework keys. Ticket, comment, attachment, workflow, SLA, notification, report, export, search, and organization permissions remain documentation-only until their owning milestones implement them. Protected auth/session code can inject `RbacService` and call `can`; future endpoint guards must use the same evaluator rather than role names.
