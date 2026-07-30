@@ -20,7 +20,7 @@ services:
     image: node:24-alpine
     container_name: supportdesk-api
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @supportdesk/api dev"
+    command: sh -c "corepack enable && HUSKY=0 pnpm install --frozen-lockfile && pnpm --filter @supportdesk/api prisma:generate && pnpm --filter @supportdesk/api dev"
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,14 +34,14 @@ services:
       - "3001:3001"
     volumes:
       - ..:/workspace
-      - supportdesk-node-modules:/workspace/node_modules
-      - supportdesk-node-store:/root/.local/share/pnpm/store
+      - supportdesk-api-node-modules:/workspace/node_modules
+      - supportdesk-api-node-store:/root/.local/share/pnpm/store
 
   web:
     image: node:24-alpine
     container_name: supportdesk-web
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @supportdesk/web dev --hostname 0.0.0.0"
+    command: sh -c "corepack enable && HUSKY=0 pnpm install --frozen-lockfile && pnpm --filter @supportdesk/web dev --hostname 0.0.0.0"
     depends_on:
       - api
     environment:
@@ -52,10 +52,12 @@ services:
       - "3000:3000"
     volumes:
       - ..:/workspace
-      - supportdesk-node-modules:/workspace/node_modules
-      - supportdesk-node-store:/root/.local/share/pnpm/store
+      - supportdesk-web-node-modules:/workspace/node_modules
+      - supportdesk-web-node-store:/root/.local/share/pnpm/store
 
 volumes:
   supportdesk-postgres-data:
-  supportdesk-node-modules:
-  supportdesk-node-store:
+  supportdesk-api-node-modules:
+  supportdesk-api-node-store:
+  supportdesk-web-node-modules:
+  supportdesk-web-node-store:
