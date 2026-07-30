@@ -1,0 +1,14 @@
+# Roadmap and milestone exit criteria
+
+Milestones are capability gates, not date promises. A milestone exits only when its criteria and the repository Definition of Done pass.
+
+| Milestone | Scope | Exit criteria |
+|---|---|---|
+| M0 Foundation | Requirements, glossary, architecture, controls, decisions | All `PR-*` map to `FR-*`, tests, controls, and milestones; diagrams/link/term review passes; open decisions have owners. |
+| M1 Secure Tenant core | Tenant lifecycle, identity, membership, baseline RBAC, audit | TEN-01–TEN-08 and SEC-01–SEC-05 implemented; T-ISO/T-AUTH/T-AUDIT pass; privileged MFA/elevation and Tenant provisioning/suspension recovery demonstrated. |
+| M2 Ticketing alpha | Ticket, Comment, assignment, attachment quarantine, web/email foundation | J-01 passes; lifecycle/concurrency/idempotency tests pass; no internal Comment leakage; malware and provider failure drills pass; accessibility critical journey passes. |
+| M3 Automation beta | Workflows, SLA, notification preferences/templates, administration | T-WF/T-SLA/T-NOTIFY pass; deterministic replay and DST fixtures pass; published versions/audit evidence verified; faulty automation pause and backlog recovery demonstrated. |
+| M4 Enterprise readiness | Search, reports/exports, SSO target, observability, scale, recovery | T-SEARCH/T-PERF/T-DR pass at approved scale; SLO dashboards and runbooks complete; RPO/RTO drill passes; privacy/retention/export controls validated; external penetration findings resolved. |
+| M5 General availability | Production hardening and support readiness | 30-day SLO trial meets targets; rollback/canary and incident tabletop pass; capacity headroom ≥2× forecast; compliance target evidence reviewed; support/on-call/vendor processes staffed; no critical/high risk accepted. |
+
+Dependencies flow M0→M1→M2→M3→M4→M5, but discovery and test-fixture work may run earlier. Scope cannot advance around a failed isolation, authorization, audit, migration, accessibility, or recovery gate. Open questions affecting an exit must be resolved by accepted decision before that milestone begins its release candidate.
