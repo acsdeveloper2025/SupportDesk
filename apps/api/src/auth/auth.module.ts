@@ -17,6 +17,8 @@ import {
   PrismaAuthSessionRepository,
 } from "./session/auth-session.repository";
 import { AuthSessionService } from "./session/auth-session.service";
+import { AuthTokenRepository, PrismaAuthTokenRepository } from "./tokens/auth-token.repository";
+import { AuthTokenService } from "./tokens/auth-token.service";
 import { PasswordPolicyService } from "./validation/password-policy.service";
 
 @Module({
@@ -25,6 +27,7 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
     AuthNotificationService,
     AuthRegistrationService,
     AuthSessionService,
+    AuthTokenService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
@@ -34,6 +37,7 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
     AuthNotificationService,
     AuthRegistrationService,
     AuthSessionService,
+    AuthTokenService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
@@ -44,6 +48,10 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
     {
       provide: AuthSessionRepository,
       useClass: PrismaAuthSessionRepository,
+    },
+    {
+      provide: AuthTokenRepository,
+      useClass: PrismaAuthTokenRepository,
     },
     {
       provide: "IdentityLookupService",

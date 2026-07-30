@@ -82,6 +82,16 @@ class FakeSessionRepository implements AuthSessionRepository {
   }
 }
 
+const fakeTokenService = {
+  issueTokenPair: () =>
+    Promise.resolve({
+      accessToken: "access-token",
+      accessTokenExpiresAt: new Date("2026-07-30T00:15:00.000Z"),
+      refreshToken: "refresh-token",
+      refreshTokenExpiresAt: new Date("2026-07-31T00:00:00.000Z"),
+    }),
+};
+
 describe("AuthSessionService", () => {
   it("creates a tenant-scoped session for a verified user with a matching password", async () => {
     const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
@@ -97,6 +107,7 @@ describe("AuthSessionService", () => {
     const service = new AuthSessionService(
       repository,
       hashing,
+      fakeTokenService,
       () => new Date("2026-07-30T00:00:00.000Z"),
     );
 
@@ -118,6 +129,12 @@ describe("AuthSessionService", () => {
         state: "ACTIVE",
       },
       status: "authenticated",
+      tokens: {
+        accessToken: "access-token",
+        accessTokenExpiresAt: new Date("2026-07-30T00:15:00.000Z"),
+        refreshToken: "refresh-token",
+        refreshTokenExpiresAt: new Date("2026-07-31T00:00:00.000Z"),
+      },
     });
     expect(repository.createdSession).toMatchObject({
       rememberMe: false,
@@ -145,6 +162,7 @@ describe("AuthSessionService", () => {
     const service = new AuthSessionService(
       repository,
       hashing,
+      fakeTokenService,
       () => new Date("2026-07-30T00:00:00.000Z"),
     );
 
@@ -169,7 +187,7 @@ describe("AuthSessionService", () => {
       tenantId,
       userId,
     };
-    const service = new AuthSessionService(repository, hashing);
+    const service = new AuthSessionService(repository, hashing, fakeTokenService);
 
     await expect(
       service.login({
@@ -197,7 +215,7 @@ describe("AuthSessionService", () => {
       tenantId,
       userId,
     };
-    const service = new AuthSessionService(repository, hashing);
+    const service = new AuthSessionService(repository, hashing, fakeTokenService);
 
     await expect(
       service.login({
@@ -213,6 +231,7 @@ describe("AuthSessionService", () => {
     const service = new AuthSessionService(
       new FakeSessionRepository(),
       new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      fakeTokenService,
       () => new Date("2026-07-30T00:00:00.000Z"),
     );
 

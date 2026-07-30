@@ -28,6 +28,7 @@ import type {
 } from "./registration/auth-registration.types";
 import { AuthSessionService } from "./session/auth-session.service";
 import type { LoginRequest } from "./session/auth-session.types";
+import { AuthTokenService } from "./tokens/auth-token.service";
 
 @ApiTags("authentication")
 @Controller("api/v1/auth")
@@ -35,6 +36,7 @@ export class AuthController {
   constructor(
     @Inject(AuthRegistrationService) private readonly registration: AuthRegistrationService,
     @Inject(AuthSessionService) private readonly sessions: AuthSessionService,
+    @Inject(AuthTokenService) private readonly tokens: AuthTokenService,
   ) {}
 
   @Post("register")
@@ -142,5 +144,25 @@ export class AuthController {
       currentSessionId: sessionHeader,
       targetSessionId: sessionId,
     });
+  }
+
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: "Refresh token rotated and new token pair issued.",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Refresh denied without token validity disclosure.",
+  })
+  async refresh(@Body() body: { refreshToken?: string }) {
+    const result = await this.tokens.refreshTokenPair({
+      refreshToken: body.refreshToken,
+    });
+
+    if (result.status !== "refreshed") {
+      throw new UnauthorizedException();
+    }
+
+    return result;
   }
 }

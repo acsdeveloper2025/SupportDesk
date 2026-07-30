@@ -1,6 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 
 import { PasswordHashingService } from "../security/password-hashing.service";
+import { AuthTokenService } from "../tokens/auth-token.service";
 import { AuthSessionRepository, isActiveUserState } from "./auth-session.repository";
 import type {
   ListSessionsRequest,
@@ -21,11 +22,18 @@ const denied = {
 
 @Injectable()
 export class AuthSessionService {
+  private readonly now: () => Date;
+
   constructor(
     @Inject(AuthSessionRepository) private readonly repository: AuthSessionRepository,
+    @Inject(PasswordHashingService)
     private readonly passwordHashing: PasswordHashingService,
-    private readonly now: () => Date = () => new Date(),
-  ) {}
+    @Inject(AuthTokenService)
+    private readonly tokenService: Pick<AuthTokenService, "issueTokenPair">,
+    @Optional() @Inject("AuthSessionClock") now?: () => Date,
+  ) {
+    this.now = now ?? (() => new Date());
+  }
 
   async login(input: LoginRequest): Promise<LoginResult> {
     const emailNormalized = normalizeEmail(input.email);
@@ -89,6 +97,12 @@ export class AuthSessionService {
     return {
       session,
       status: "authenticated",
+      tokens: await this.tokenService.issueTokenPair({
+        rememberMe: input.rememberMe ?? false,
+        sessionId: session.id,
+        tenantId,
+        userId: candidate.userId,
+      }),
     };
   }
 

@@ -21,6 +21,7 @@
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.13.0",
     "helmet": "^8.1.0",
+    "jose": "^6.2.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "swagger-ui-express": "^5.0.1"

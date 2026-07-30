@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AuthController } from "./auth.controller";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import { AuthSessionService } from "./session/auth-session.service";
+import { AuthTokenService } from "./tokens/auth-token.service";
 
 describe("AuthController registration API", () => {
   let app: INestApplication;
@@ -51,8 +52,27 @@ describe("AuthController registration API", () => {
                   state: "ACTIVE",
                 },
                 status: "authenticated",
+                tokens: {
+                  accessToken: "access-token",
+                  accessTokenExpiresAt: new Date("2026-07-30T00:15:00.000Z"),
+                  refreshToken: "refresh-token",
+                  refreshTokenExpiresAt: new Date("2026-07-31T00:00:00.000Z"),
+                },
               }),
             logout: () => Promise.resolve({ status: "accepted" }),
+          },
+        },
+        {
+          provide: AuthTokenService,
+          useValue: {
+            refreshTokenPair: () =>
+              Promise.resolve({
+                accessToken: "next-access-token",
+                accessTokenExpiresAt: new Date("2026-07-30T00:15:00.000Z"),
+                refreshToken: "next-refresh-token",
+                refreshTokenExpiresAt: new Date("2026-07-31T00:00:00.000Z"),
+                status: "refreshed",
+              }),
           },
         },
       ],
@@ -119,6 +139,28 @@ describe("AuthController registration API", () => {
         state: "ACTIVE",
       },
       status: "authenticated",
+      tokens: {
+        accessToken: "access-token",
+        accessTokenExpiresAt: "2026-07-30T00:15:00.000Z",
+        refreshToken: "refresh-token",
+        refreshTokenExpiresAt: "2026-07-31T00:00:00.000Z",
+      },
+    });
+  });
+
+  it("rotates refresh tokens", async () => {
+    const server = app.getHttpServer() as Server;
+    const response = await request(server)
+      .post("/api/v1/auth/refresh")
+      .send({
+        refreshToken: "refresh-token",
+      })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      accessToken: "next-access-token",
+      refreshToken: "next-refresh-token",
+      status: "refreshed",
     });
   });
 

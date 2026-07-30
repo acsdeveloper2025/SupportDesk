@@ -1,4 +1,5 @@
 import type { TenantLookupInput } from "../../identity/identity.types";
+import type { TokenPair } from "../tokens/auth-token.service";
 
 export interface LoginRequest {
   correlationId?: string;
@@ -34,6 +35,7 @@ export type LoginResult =
   | {
       session: AuthSessionView;
       status: "authenticated";
+      tokens: TokenPair;
     }
   | {
       status: "denied";
