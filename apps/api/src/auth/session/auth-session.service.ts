@@ -85,9 +85,14 @@ export class AuthSessionService {
       userAgent: input.userAgent,
       userId: candidate.userId,
     });
+    const passwordChangeRequired =
+      candidate.passwordExpiresAt !== null &&
+      candidate.passwordExpiresAt.getTime() <= this.now().getTime();
 
     await this.repository.recordAuthAuditEvent({
-      action: "auth.login.completed",
+      action: passwordChangeRequired
+        ? "auth.login.password_change_required"
+        : "auth.login.completed",
       actorUserId: candidate.userId,
       correlationId: input.correlationId,
       outcome: "SUCCESS",
@@ -96,8 +101,9 @@ export class AuthSessionService {
 
     return {
       session,
-      status: "authenticated",
+      status: passwordChangeRequired ? "password_change_required" : "authenticated",
       tokens: await this.tokenService.issueTokenPair({
+        passwordChangeRequired,
         rememberMe: input.rememberMe ?? false,
         sessionId: session.id,
         tenantId,

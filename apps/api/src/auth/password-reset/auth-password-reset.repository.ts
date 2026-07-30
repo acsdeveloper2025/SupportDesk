@@ -31,6 +31,7 @@ export interface PasswordResetTokenRecord {
   emailNormalized: string;
   expiresAt: Date;
   id: string;
+  passwordExpiresDays: number | null;
   passwordHash: string;
   state: string;
   tenantId: string;
@@ -39,6 +40,8 @@ export interface PasswordResetTokenRecord {
 }
 
 export interface CompletePasswordResetInput {
+  passwordChangedAt: Date;
+  passwordExpiresAt: Date | null;
   passwordHash: string;
   tenantId: string;
   tokenId: string;
@@ -141,6 +144,11 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
         expiresAt: true,
         id: true,
         state: true,
+        tenant: {
+          select: {
+            passwordExpiresDays: true,
+          },
+        },
         tenantId: true,
         user: {
           select: {
@@ -162,6 +170,7 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
           emailNormalized: token.user.emailNormalized,
           expiresAt: token.expiresAt,
           id: token.id,
+          passwordExpiresDays: token.tenant.passwordExpiresDays,
           passwordHash: token.user.passwordHash,
           state: token.state,
           tenantId: token.tenantId,
@@ -184,12 +193,10 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
 
   async completePasswordReset(input: CompletePasswordResetInput): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const now = new Date();
-
       await tx.authToken.update({
         data: {
           state: AuthTokenState.USED,
-          usedAt: now,
+          usedAt: input.passwordChangedAt,
         },
         where: {
           id: input.tokenId,
@@ -200,7 +207,8 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
           failedLoginCount: 0,
           failedLoginWindowStartedAt: null,
           lockedUntil: null,
-          passwordChangedAt: now,
+          passwordChangedAt: input.passwordChangedAt,
+          passwordExpiresAt: input.passwordExpiresAt,
           passwordHash: input.passwordHash,
         },
         where: {
@@ -210,7 +218,7 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
       await tx.session.updateMany({
         data: {
           revokeReason: "password_reset",
-          revokedAt: now,
+          revokedAt: input.passwordChangedAt,
           state: SessionState.REVOKED,
         },
         where: {
@@ -222,7 +230,7 @@ export class PrismaAuthPasswordResetRepository implements AuthPasswordResetRepos
       await tx.refreshToken.updateMany({
         data: {
           revokeReason: "password_reset",
-          revokedAt: now,
+          revokedAt: input.passwordChangedAt,
           state: RefreshTokenState.REVOKED,
         },
         where: {

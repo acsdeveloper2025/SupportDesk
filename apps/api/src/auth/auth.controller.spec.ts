@@ -6,6 +6,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AuthController } from "./auth.controller";
+import { AuthPasswordService } from "./password/auth-password.service";
 import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import { AuthSessionService } from "./session/auth-session.service";
@@ -18,6 +19,17 @@ describe("AuthController registration API", () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+        {
+          provide: AuthPasswordService,
+          useValue: {
+            changePassword: (input: { currentPassword?: string }) =>
+              Promise.resolve(
+                input.currentPassword === "CorrectHorse9!Battery"
+                  ? { status: "changed" }
+                  : { status: "denied" },
+              ),
+          },
+        },
         {
           provide: AuthRegistrationService,
           useValue: {
@@ -49,7 +61,7 @@ describe("AuthController registration API", () => {
                 ],
                 status: "ok",
               }),
-            login: () =>
+            login: (input: { email?: string }) =>
               Promise.resolve({
                 session: {
                   deviceName: "Browser",
@@ -59,7 +71,10 @@ describe("AuthController registration API", () => {
                   rememberMe: false,
                   state: "ACTIVE",
                 },
-                status: "authenticated",
+                status:
+                  input.email === "expired@acme.test"
+                    ? "password_change_required"
+                    : "authenticated",
                 tokens: {
                   accessToken: "access-token",
                   accessTokenExpiresAt: new Date("2026-07-30T00:15:00.000Z"),
@@ -170,6 +185,47 @@ describe("AuthController registration API", () => {
       refreshToken: "next-refresh-token",
       status: "refreshed",
     });
+  });
+
+  it("returns an explicit password-change-required login response", async () => {
+    const server = app.getHttpServer() as Server;
+    const response = await request(server)
+      .post("/api/v1/auth/login")
+      .send({
+        email: "expired@acme.test",
+        password: "CorrectHorse9!Battery",
+        tenantId: "11111111-1111-4111-8111-111111111111",
+      })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      status: "password_change_required",
+    });
+  });
+
+  it("changes an authenticated password and rejects a wrong current password", async () => {
+    const server = app.getHttpServer() as Server;
+
+    await request(server)
+      .post("/api/v1/auth/password/change")
+      .set("x-session-id", "33333333-3333-4333-8333-333333333333")
+      .send({
+        currentPassword: "CorrectHorse9!Battery",
+        newPassword: "NewCorrectHorse9!Battery",
+      })
+      .expect(200)
+      .expect({
+        status: "changed",
+      });
+
+    await request(server)
+      .post("/api/v1/auth/password/change")
+      .set("x-session-id", "33333333-3333-4333-8333-333333333333")
+      .send({
+        currentPassword: "WrongHorse9!Battery",
+        newPassword: "NewCorrectHorse9!Battery",
+      })
+      .expect(401);
   });
 
   it("accepts password reset request and confirmation without exposing identity or token validity", async () => {

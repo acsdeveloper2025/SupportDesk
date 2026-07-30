@@ -81,6 +81,7 @@ describe("AuthTokenService", () => {
     });
 
     const result = await service.issueTokenPair({
+      passwordChangeRequired: true,
       rememberMe: false,
       sessionId,
       tenantId,
@@ -99,6 +100,7 @@ describe("AuthTokenService", () => {
       sub: userId,
       tid: tenantId,
       typ: "access",
+      pwd_change_required: true,
     });
   });
 
@@ -113,6 +115,7 @@ describe("AuthTokenService", () => {
       session: {
         expiresAt: new Date("2026-07-31T00:00:00.000Z"),
         id: sessionId,
+        passwordExpiresAt: new Date("2026-07-29T00:00:00.000Z"),
         rememberMe: false,
         revokedAt: null,
         tenantId,
@@ -143,6 +146,16 @@ describe("AuthTokenService", () => {
       familyId: "55555555-5555-4555-8555-555555555555",
       parentTokenId: "old-token",
     });
+    expect(result.status).toBe("refreshed");
+
+    if (result.status === "refreshed") {
+      const verified = await jwtVerify(result.accessToken, new TextEncoder().encode(secret), {
+        currentDate: new Date("2026-07-30T00:00:00.000Z"),
+        issuer: "supportdesk-test",
+      });
+
+      expect(verified.payload["pwd_change_required"]).toBe(true);
+    }
   });
 
   it("preserves remember-me refresh token lifetime during rotation", async () => {
@@ -156,6 +169,7 @@ describe("AuthTokenService", () => {
       session: {
         expiresAt: new Date("2026-08-29T00:00:00.000Z"),
         id: sessionId,
+        passwordExpiresAt: null,
         rememberMe: true,
         revokedAt: null,
         tenantId,
@@ -199,6 +213,7 @@ describe("AuthTokenService", () => {
       session: {
         expiresAt: new Date("2026-07-31T00:00:00.000Z"),
         id: sessionId,
+        passwordExpiresAt: null,
         rememberMe: false,
         revokedAt: null,
         tenantId,

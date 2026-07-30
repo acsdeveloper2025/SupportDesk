@@ -43,6 +43,7 @@ class FakePasswordResetRepository implements AuthPasswordResetRepository {
   candidate: { emailNormalized: string; id: string; tenantId: string } | null = null;
   createdToken: CreatePasswordResetTokenInput | null = null;
   expiredTokenId: string | null = null;
+  passwordExpiresAt: Date | null | undefined;
   resetPasswordHash: string | null = null;
   revokedRefreshTokens = false;
   revokedSessions = false;
@@ -68,7 +69,8 @@ class FakePasswordResetRepository implements AuthPasswordResetRepository {
     return Promise.resolve();
   }
 
-  completePasswordReset(input: { passwordHash: string }) {
+  completePasswordReset(input: { passwordExpiresAt: Date | null; passwordHash: string }) {
+    this.passwordExpiresAt = input.passwordExpiresAt;
     this.resetPasswordHash = input.passwordHash;
     this.revokedRefreshTokens = true;
     this.revokedSessions = true;
@@ -177,6 +179,7 @@ describe("AuthPasswordResetService", () => {
       emailNormalized: "agent@acme.test",
       expiresAt: new Date("2026-07-30T01:00:00.000Z"),
       id: "token-1",
+      passwordExpiresDays: 90,
       passwordHash: oldHash,
       state: "ACTIVE",
       tenantId,
@@ -203,6 +206,7 @@ describe("AuthPasswordResetService", () => {
     expect(repository.resetPasswordHash).toMatch(/^\$argon2id\$/);
     expect(repository.resetPasswordHash).not.toContain("NewCorrectHorse9!Battery");
     expect(repository.resetPasswordHash).not.toBe(oldHash);
+    expect(repository.passwordExpiresAt).toEqual(new Date("2026-10-28T00:00:00.000Z"));
     expect(repository.revokedSessions).toBe(true);
     expect(repository.revokedRefreshTokens).toBe(true);
     expect(repository.audits).toContainEqual({
@@ -218,6 +222,7 @@ describe("AuthPasswordResetService", () => {
       emailNormalized: "agent@acme.test",
       expiresAt: new Date("2026-07-29T00:00:00.000Z"),
       id: "token-1",
+      passwordExpiresDays: 90,
       passwordHash: "old-hash",
       state: "ACTIVE",
       tenantId,
@@ -256,6 +261,7 @@ describe("AuthPasswordResetService", () => {
       emailNormalized: "agent@acme.test",
       expiresAt: new Date("2026-07-31T00:00:00.000Z"),
       id: "token-1",
+      passwordExpiresDays: 90,
       passwordHash: "old-hash",
       state: "USED",
       tenantId,

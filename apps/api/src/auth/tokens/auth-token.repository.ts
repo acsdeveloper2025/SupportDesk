@@ -8,6 +8,7 @@ import { PrismaService } from "../../database/prisma.service";
 export interface RefreshTokenSessionRecord {
   expiresAt: Date;
   id: string;
+  passwordExpiresAt: Date | null;
   rememberMe: boolean;
   revokedAt: Date | null;
   tenantId: string;
@@ -86,7 +87,7 @@ export class PrismaAuthTokenRepository implements AuthTokenRepository {
   }
 
   async findRefreshTokenByHash(tokenHash: string): Promise<RefreshTokenRecord | null> {
-    return this.prisma.refreshToken.findUnique({
+    const token = await this.prisma.refreshToken.findUnique({
       include: {
         session: {
           select: {
@@ -95,6 +96,11 @@ export class PrismaAuthTokenRepository implements AuthTokenRepository {
             rememberMe: true,
             revokedAt: true,
             tenantId: true,
+            user: {
+              select: {
+                passwordExpiresAt: true,
+              },
+            },
             userId: true,
           },
         },
@@ -103,6 +109,16 @@ export class PrismaAuthTokenRepository implements AuthTokenRepository {
         tokenHash,
       },
     });
+
+    return token
+      ? {
+          ...token,
+          session: {
+            ...token.session,
+            passwordExpiresAt: token.session.user.passwordExpiresAt,
+          },
+        }
+      : null;
   }
 
   async markRefreshTokenRotated(tokenId: string): Promise<void> {

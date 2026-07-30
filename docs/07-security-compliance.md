@@ -32,3 +32,5 @@ Local credential support uses Argon2id with environment-driven cost parameters, 
 Session creation is tenant-scoped, revocable, and separates server-side session lifetime from JWT/refresh-token transport. Remember-me uses a longer configurable server-session lifetime and must remain auditable.
 
 JWT access tokens must carry only minimal identity, tenant, and session claims. Refresh tokens are opaque, randomly generated, stored only as hashes, rotated on every use, and treated as replayed when a rotated or revoked token appears again.
+
+Tenant password-expiration policy is enforced during login through an explicit `password_change_required` state. Password change requires an active tenant session and the current password, rejects current-password reuse, records the next expiration timestamp, revokes all sessions and refresh tokens for that tenant/user identity, and requires reauthentication. Password-reset completion applies the same expiration calculation.

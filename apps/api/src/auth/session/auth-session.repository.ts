@@ -15,6 +15,7 @@ import type { AuthSessionView } from "./auth-session.types";
 export interface LoginCandidate {
   emailVerified: boolean;
   lockedUntil: Date | null;
+  passwordExpiresAt: Date | null;
   passwordHash: string;
   state: string;
   tenantId: string;
@@ -124,6 +125,7 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
         emailVerifiedAt: true,
         id: true,
         lockedUntil: true,
+        passwordExpiresAt: true,
         passwordHash: true,
         state: true,
       },
@@ -146,6 +148,7 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
       ? {
           emailVerified: user.emailVerifiedAt !== null,
           lockedUntil: user.lockedUntil,
+          passwordExpiresAt: user.passwordExpiresAt,
           passwordHash: user.passwordHash,
           state: user.state,
           tenantId,

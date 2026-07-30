@@ -15,6 +15,7 @@ export interface AuthTokenConfig {
 }
 
 export interface IssueTokenPairInput {
+  passwordChangeRequired: boolean;
   rememberMe: boolean;
   sessionId: string;
   tenantId: string;
@@ -153,6 +154,9 @@ export class AuthTokenService {
     return {
       accessToken: await this.signAccessToken(
         {
+          passwordChangeRequired:
+            storedToken.session.passwordExpiresAt !== null &&
+            storedToken.session.passwordExpiresAt.getTime() <= this.now().getTime(),
           rememberMe: storedToken.session.rememberMe,
           sessionId: storedToken.session.id,
           tenantId: storedToken.tenantId,
@@ -173,6 +177,7 @@ export class AuthTokenService {
     }
 
     return new SignJWT({
+      pwd_change_required: input.passwordChangeRequired,
       sid: input.sessionId,
       tid: input.tenantId,
       typ: "access",

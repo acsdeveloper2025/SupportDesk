@@ -239,7 +239,14 @@ export class AuthPasswordResetService {
       };
     }
 
+    const passwordChangedAt = this.now();
+
     await this.repository.completePasswordReset({
+      passwordChangedAt,
+      passwordExpiresAt:
+        tokenRecord.passwordExpiresDays === null
+          ? null
+          : addDays(passwordChangedAt, tokenRecord.passwordExpiresDays),
       passwordHash: await this.passwordHashing.hashPassword(password),
       tenantId: tokenRecord.tenantId,
       tokenId: tokenRecord.id,
@@ -271,6 +278,10 @@ function normalizeOptionalString(value: string | undefined): string | null {
 
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60_000);
 }
 
 function readPositiveInteger(name: string, fallback: number): number {

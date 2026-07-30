@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,6 +15,8 @@ import {
 } from "@nestjs/common";
 import {
   ApiAcceptedResponse,
+  ApiBadRequestResponse,
+  ApiBody,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -21,6 +24,7 @@ import {
 import type { Request } from "express";
 
 import { getCorrelationId } from "../common/logging/correlation-id";
+import { AuthPasswordService } from "./password/auth-password.service";
 import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import type {
   ConfirmPasswordResetRequest,
@@ -39,6 +43,7 @@ import { AuthTokenService } from "./tokens/auth-token.service";
 @Controller("api/v1/auth")
 export class AuthController {
   constructor(
+    @Inject(AuthPasswordService) private readonly password: AuthPasswordService,
     @Inject(AuthPasswordResetService) private readonly passwordReset: AuthPasswordResetService,
     @Inject(AuthRegistrationService) private readonly registration: AuthRegistrationService,
     @Inject(AuthSessionService) private readonly sessions: AuthSessionService,
@@ -106,10 +111,82 @@ export class AuthController {
     });
   }
 
+  @Post("password/change")
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    schema: {
+      properties: {
+        currentPassword: { format: "password", type: "string" },
+        newPassword: { format: "password", type: "string" },
+      },
+      required: ["currentPassword", "newPassword"],
+      type: "object",
+    },
+  })
+  @ApiOkResponse({
+    description: "Password changed; existing sessions and refresh tokens were revoked.",
+    schema: {
+      properties: {
+        status: { enum: ["changed"], type: "string" },
+      },
+      required: ["status"],
+      type: "object",
+    },
+  })
+  @ApiBadRequestResponse({
+    description: "The new password does not satisfy the password policy.",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Password change denied without credential detail disclosure.",
+  })
+  async changePassword(
+    @Body() body: { currentPassword?: string; newPassword?: string },
+    @Headers("x-session-id") sessionHeader: string | undefined,
+    @Req() request: Request,
+  ) {
+    const result = await this.password.changePassword({
+      ...body,
+      correlationId: getCorrelationId(request),
+      currentSessionId: sessionHeader,
+    });
+
+    if (result.status === "denied") {
+      throw new UnauthorizedException();
+    }
+
+    if (result.status === "validation_failed") {
+      throw new BadRequestException(result);
+    }
+
+    return result;
+  }
+
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: "Login succeeded and created a tenant-scoped session.",
+    schema: {
+      oneOf: [
+        {
+          properties: {
+            session: { type: "object" },
+            status: { enum: ["authenticated"], type: "string" },
+            tokens: { type: "object" },
+          },
+          required: ["session", "status", "tokens"],
+          type: "object",
+        },
+        {
+          properties: {
+            session: { type: "object" },
+            status: { enum: ["password_change_required"], type: "string" },
+            tokens: { type: "object" },
+          },
+          required: ["session", "status", "tokens"],
+          type: "object",
+        },
+      ],
+    },
   })
   @ApiUnauthorizedResponse({
     description: "Login denied without revealing which credential failed.",
@@ -121,7 +198,7 @@ export class AuthController {
       userAgent: request.header("user-agent"),
     });
 
-    if (result.status !== "authenticated") {
+    if (result.status === "denied") {
       throw new UnauthorizedException();
     }
 

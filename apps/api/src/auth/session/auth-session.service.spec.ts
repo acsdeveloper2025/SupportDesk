@@ -99,6 +99,7 @@ describe("AuthSessionService", () => {
     repository.candidate = {
       emailVerified: true,
       lockedUntil: null,
+      passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
@@ -154,6 +155,7 @@ describe("AuthSessionService", () => {
     repository.candidate = {
       emailVerified: true,
       lockedUntil: null,
+      passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
@@ -176,12 +178,49 @@ describe("AuthSessionService", () => {
     expect(repository.createdSession?.expiresAt).toEqual(new Date("2026-08-29T00:00:00.000Z"));
   });
 
+  it("requires a password change when the tenant credential has expired", async () => {
+    const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
+    const repository = new FakeSessionRepository();
+    repository.candidate = {
+      emailVerified: true,
+      lockedUntil: null,
+      passwordExpiresAt: new Date("2026-07-29T23:59:59.000Z"),
+      passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
+      state: "ACTIVE",
+      tenantId,
+      userId,
+    };
+    const service = new AuthSessionService(
+      repository,
+      hashing,
+      fakeTokenService,
+      () => new Date("2026-07-30T00:00:00.000Z"),
+    );
+
+    const result = await service.login({
+      email: "agent@acme.test",
+      password: "CorrectHorse9!Battery",
+      tenantId,
+    });
+
+    expect(result).toMatchObject({
+      status: "password_change_required",
+    });
+    expect(repository.createdSession).not.toBeNull();
+    expect(repository.audits).toContainEqual({
+      action: "auth.login.password_change_required",
+      outcome: "SUCCESS",
+      tenantId,
+    });
+  });
+
   it("denies invalid passwords without revealing which credential failed", async () => {
     const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
     const repository = new FakeSessionRepository();
     repository.candidate = {
       emailVerified: true,
       lockedUntil: null,
+      passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
@@ -210,6 +249,7 @@ describe("AuthSessionService", () => {
     repository.candidate = {
       emailVerified: false,
       lockedUntil: null,
+      passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,

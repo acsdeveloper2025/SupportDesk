@@ -38,6 +38,11 @@ export type LoginResult =
       tokens: TokenPair;
     }
   | {
+      session: AuthSessionView;
+      status: "password_change_required";
+      tokens: TokenPair;
+    }
+  | {
       status: "denied";
     };
 
