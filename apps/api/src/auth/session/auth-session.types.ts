@@ -5,6 +5,7 @@ export interface LoginRequest {
   correlationId?: string;
   deviceName?: string;
   email?: string;
+  ipAddress?: string;
   password?: string;
   rememberMe?: boolean;
   tenant?: TenantLookupInput;

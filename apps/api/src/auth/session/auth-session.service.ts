@@ -1,5 +1,6 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 
+import { hashIdentifier } from "../registration/auth-registration.repository";
 import { PasswordHashingService } from "../security/password-hashing.service";
 import { AuthTokenService } from "../tokens/auth-token.service";
 import { AuthSessionRepository, isActiveUserState } from "./auth-session.repository";
@@ -41,7 +42,7 @@ export class AuthSessionService {
     const tenantId = await this.resolveTenantId(input);
 
     if (!emailNormalized || !password || !tenantId) {
-      await this.auditRejectedLogin(null, input.correlationId, "request_invalid");
+      await this.auditRejectedLogin(null, input, "request_invalid");
 
       return denied;
     }
@@ -49,7 +50,13 @@ export class AuthSessionService {
     const candidate = await this.repository.findLoginCandidate(tenantId, emailNormalized);
 
     if (!candidate) {
-      await this.auditRejectedLogin(tenantId, input.correlationId, "candidate_unavailable");
+      await this.auditRejectedLogin(tenantId, input, "candidate_unavailable");
+
+      return denied;
+    }
+
+    if (candidate.lockedUntil !== null && candidate.lockedUntil.getTime() > this.now().getTime()) {
+      await this.auditLockedLogin(candidate.userId, tenantId, input, "lockout_active");
 
       return denied;
     }
@@ -59,16 +66,31 @@ export class AuthSessionService {
       password,
     );
 
-    if (
-      !passwordMatches ||
-      !candidate.emailVerified ||
-      !isActiveUserState(candidate.state) ||
-      (candidate.lockedUntil !== null && candidate.lockedUntil.getTime() > this.now().getTime())
-    ) {
-      await this.auditRejectedLogin(tenantId, input.correlationId, "credentials_denied");
+    if (!passwordMatches) {
+      const attempt = await this.repository.recordFailedLoginAttempt({
+        failedLoginWindowMinutes: candidate.failedLoginWindowMinutes,
+        lockoutDurationMinutes: candidate.lockoutDurationMinutes,
+        lockoutThreshold: candidate.lockoutThreshold,
+        now: this.now(),
+        userId: candidate.userId,
+      });
+
+      if (attempt.justLocked) {
+        await this.auditLockedLogin(candidate.userId, tenantId, input, "threshold_reached");
+      } else {
+        await this.auditRejectedLogin(tenantId, input, "credentials_denied", candidate.userId);
+      }
 
       return denied;
     }
+
+    if (!candidate.emailVerified || !isActiveUserState(candidate.state)) {
+      await this.auditRejectedLogin(tenantId, input, "credentials_denied", candidate.userId);
+
+      return denied;
+    }
+
+    await this.repository.clearFailedLoginAttempts(candidate.userId);
 
     const expiresAt = addMinutes(
       this.now(),
@@ -179,19 +201,48 @@ export class AuthSessionService {
 
   private async auditRejectedLogin(
     tenantId: string | null,
-    correlationId: string | undefined,
+    input: LoginRequest,
     reason: string,
+    actorUserId?: string,
   ): Promise<void> {
     await this.repository.recordAuthAuditEvent({
       action: "auth.login.rejected",
-      correlationId,
+      actorUserId,
+      correlationId: input.correlationId,
       metadata: {
+        ...buildRiskMetadata(input),
         reason,
       },
       outcome: "FAILURE",
       tenantId,
     });
   }
+
+  private async auditLockedLogin(
+    actorUserId: string,
+    tenantId: string,
+    input: LoginRequest,
+    reason: string,
+  ): Promise<void> {
+    await this.repository.recordAuthAuditEvent({
+      action: "auth.login.locked",
+      actorUserId,
+      correlationId: input.correlationId,
+      metadata: {
+        ...buildRiskMetadata(input),
+        reason,
+      },
+      outcome: "DENIED",
+      tenantId,
+    });
+  }
+}
+
+function buildRiskMetadata(input: LoginRequest): Record<string, string> {
+  return {
+    deviceHash: hashIdentifier(input.userAgent ?? "unknown"),
+    ipHash: hashIdentifier(input.ipAddress ?? "unknown"),
+  };
 }
 
 function normalizeEmail(email: string | undefined): string | null {

@@ -12,3 +12,4 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 - Complete engineering backlog, implementation order, sprint plan, milestones, issue templates, and release plan.
 - Production project bootstrap with Next.js web app, NestJS API, shared packages, Prisma configuration, health checks, Swagger setup, logging infrastructure, CI workflows, development Docker Compose, and baseline tests.
 - Tenant-aware authentication foundation with registration, email verification, login, session management, JWT access tokens, refresh-token rotation, secure password recovery, password changes, and password-expiration enforcement hooks.
+- Authentication abuse controls with configurable endpoint throttles, tenant-aware risk dimensions, persistent failed-login lockout, explicit unlock behavior, and redacted security audit events.

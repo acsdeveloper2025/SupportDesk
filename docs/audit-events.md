@@ -46,6 +46,8 @@ Payloads must exclude secrets, tokens, raw attachment content, unnecessary perso
 | `auth.login.password_change_required` | Authentication | User                           | Session              | Tenant selected, expiry state           | Optional security notice.           |
 | `auth.password_change.rejected`       | Authentication | Anonymous/user candidate       | User/session         | Safe reason class                       | Security alert threshold.           |
 | `auth.password_change.completed`      | Authentication | User                           | User                 | Tenant, credential revocation summary   | Security notice.                    |
+| `auth.login.locked`                   | Authentication | User candidate                 | User                 | Safe reason class, IP/device hashes     | Security alert.                     |
+| `auth.rate_limit.exceeded`            | Authentication | Anonymous/user candidate       | Request bucket       | Scope, retry delay                      | Security alert threshold.           |
 | `tenant.created`                      | Tenant         | Super Admin/system             | Tenant               | Slug, plan/entitlement, owner           | Welcome/admin notice.               |
 | `tenant.updated`                      | Tenant         | Tenant Admin/elevated operator | Tenant settings      | Namespace, safe before/after            | Config change notice if sensitive.  |
 | `tenant.suspended`                    | Tenant         | Super Admin                    | Tenant               | Reason, effective time                  | Admin notice.                       |

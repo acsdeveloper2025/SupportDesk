@@ -25,8 +25,12 @@ Authentication uses local credentials initially, with future OIDC/SAML/SCIM rema
 
 Authentication errors must not disclose account, tenant, or membership existence. Privileged actions require step-up authentication or phishing-resistant MFA once policy is finalized.
 
+All public credential and token mutations use a 60-second fixed window by default. Default limits are login 5, registration 5, verification 10, reset request 5, reset confirmation 10, password change 5, and refresh 20. Limits are keyed by endpoint scope plus hashed tenant, identifier, token, session, device, and IP dimensions. A rejected bucket returns HTTP 429 with `Retry-After` and records `auth.rate_limit.exceeded`.
+
 M2.06 issues signed JWT access tokens with minimal user, tenant, and session claims, and stores only hashed refresh tokens. Refresh tokens rotate on every refresh; replay of a rotated/revoked token revokes the token family and related session. Local session-management endpoints may still pass the current session with `x-session-id` until bearer/cookie guards replace that development transport in the guard issue.
 
 M2.07 stores only SHA-256 hashes of cryptographically random password-reset tokens. Reset requests always return an accepted response, tokens are purpose-scoped, single-use, and expire after `PASSWORD_RESET_TOKEN_TTL_MINUTES` (60 by default). A successful reset applies the password policy, replaces the Argon2id hash, and revokes all active sessions and refresh tokens for that tenant/user identity.
 
 M2.08 returns `password_change_required` after valid login when `passwordExpiresAt` has elapsed and sets `pwd_change_required=true` in both initial and rotated access tokens. The restricted session exists only to permit credential recovery until authorization guards enforce the claim across protected business routes. Authenticated password changes verify the current password, reject current-password reuse, calculate the next expiry from `tenant.passwordExpiresDays`, revoke all tenant-scoped sessions and refresh tokens, and require reauthentication.
+
+M2.09 tracks failed passwords against the user identity using the selected tenant's lockout threshold, failure window, and lock duration. Lockout and invalid-credential responses remain identical to callers. Successful login after lock expiry clears failed-attempt state. Audit metadata contains only hashed IP and device identifiers.

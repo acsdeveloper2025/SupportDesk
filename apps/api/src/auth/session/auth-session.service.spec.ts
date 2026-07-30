@@ -17,6 +17,7 @@ class FakeSessionRepository implements AuthSessionRepository {
     expiresAt: Date;
   } | null = null;
   revokedSessionId: string | null = null;
+  failedAttempts = 0;
 
   resolveTenantId() {
     return Promise.resolve(tenantId);
@@ -24,6 +25,35 @@ class FakeSessionRepository implements AuthSessionRepository {
 
   findLoginCandidate() {
     return Promise.resolve(this.candidate);
+  }
+
+  recordFailedLoginAttempt(input: {
+    lockoutDurationMinutes: number;
+    lockoutThreshold: number;
+    now: Date;
+  }) {
+    this.failedAttempts += 1;
+
+    if (this.candidate && this.failedAttempts >= input.lockoutThreshold) {
+      this.candidate.lockedUntil = new Date(
+        input.now.getTime() + input.lockoutDurationMinutes * 60_000,
+      );
+    }
+
+    return Promise.resolve({
+      justLocked: this.failedAttempts === input.lockoutThreshold,
+      lockedUntil: this.candidate?.lockedUntil ?? null,
+    });
+  }
+
+  clearFailedLoginAttempts() {
+    this.failedAttempts = 0;
+
+    if (this.candidate) {
+      this.candidate.lockedUntil = null;
+    }
+
+    return Promise.resolve();
   }
 
   createSession(input: { rememberMe: boolean; userId: string; tenantId: string; expiresAt: Date }) {
@@ -98,12 +128,17 @@ describe("AuthSessionService", () => {
     const repository = new FakeSessionRepository();
     repository.candidate = {
       emailVerified: true,
+      failedLoginCount: 0,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 5,
       lockedUntil: null,
       passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
       userId,
+      failedLoginWindowMinutes: 15,
     };
     const service = new AuthSessionService(
       repository,
@@ -154,12 +189,17 @@ describe("AuthSessionService", () => {
     const repository = new FakeSessionRepository();
     repository.candidate = {
       emailVerified: true,
+      failedLoginCount: 0,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 5,
       lockedUntil: null,
       passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
       userId,
+      failedLoginWindowMinutes: 15,
     };
     const service = new AuthSessionService(
       repository,
@@ -183,12 +223,17 @@ describe("AuthSessionService", () => {
     const repository = new FakeSessionRepository();
     repository.candidate = {
       emailVerified: true,
+      failedLoginCount: 0,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 5,
       lockedUntil: null,
       passwordExpiresAt: new Date("2026-07-29T23:59:59.000Z"),
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
       userId,
+      failedLoginWindowMinutes: 15,
     };
     const service = new AuthSessionService(
       repository,
@@ -219,12 +264,17 @@ describe("AuthSessionService", () => {
     const repository = new FakeSessionRepository();
     repository.candidate = {
       emailVerified: true,
+      failedLoginCount: 0,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 5,
       lockedUntil: null,
       passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
       userId,
+      failedLoginWindowMinutes: 15,
     };
     const service = new AuthSessionService(repository, hashing, fakeTokenService);
 
@@ -243,17 +293,75 @@ describe("AuthSessionService", () => {
     });
   });
 
-  it("denies unverified or locked accounts", async () => {
+  it("locks an account at the tenant threshold and unlocks after the configured duration", async () => {
+    let now = new Date("2026-07-30T00:00:00.000Z");
     const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
     const repository = new FakeSessionRepository();
     repository.candidate = {
-      emailVerified: false,
+      emailVerified: true,
+      failedLoginCount: 0,
+      failedLoginWindowMinutes: 15,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 2,
       lockedUntil: null,
       passwordExpiresAt: null,
       passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
       state: "ACTIVE",
       tenantId,
       userId,
+    };
+    const service = new AuthSessionService(repository, hashing, fakeTokenService, () => now);
+    const request = {
+      email: "agent@acme.test",
+      password: "WrongHorse9!Battery",
+      tenantId,
+    };
+
+    await expect(service.login(request)).resolves.toEqual({ status: "denied" });
+    await expect(service.login(request)).resolves.toEqual({ status: "denied" });
+    expect(repository.candidate.lockedUntil).toEqual(new Date("2026-07-30T00:30:00.000Z"));
+    expect(repository.audits).toContainEqual({
+      action: "auth.login.locked",
+      outcome: "DENIED",
+      tenantId,
+    });
+
+    await expect(
+      service.login({
+        ...request,
+        password: "CorrectHorse9!Battery",
+      }),
+    ).resolves.toEqual({ status: "denied" });
+
+    now = new Date("2026-07-30T00:31:00.000Z");
+    await expect(
+      service.login({
+        ...request,
+        password: "CorrectHorse9!Battery",
+      }),
+    ).resolves.toMatchObject({
+      status: "authenticated",
+    });
+    expect(repository.failedAttempts).toBe(0);
+  });
+
+  it("denies unverified or locked accounts", async () => {
+    const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
+    const repository = new FakeSessionRepository();
+    repository.candidate = {
+      emailVerified: false,
+      failedLoginCount: 0,
+      failedLoginWindowStartedAt: null,
+      lockoutDurationMinutes: 30,
+      lockoutThreshold: 5,
+      lockedUntil: null,
+      passwordExpiresAt: null,
+      passwordHash: await hashing.hashPassword("CorrectHorse9!Battery"),
+      state: "ACTIVE",
+      tenantId,
+      userId,
+      failedLoginWindowMinutes: 15,
     };
     const service = new AuthSessionService(repository, hashing, fakeTokenService);
 

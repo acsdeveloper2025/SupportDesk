@@ -14,11 +14,24 @@ import type { AuthSessionView } from "./auth-session.types";
 
 export interface LoginCandidate {
   emailVerified: boolean;
+  failedLoginCount: number;
+  failedLoginWindowMinutes: number;
+  failedLoginWindowStartedAt: Date | null;
+  lockoutDurationMinutes: number;
+  lockoutThreshold: number;
   lockedUntil: Date | null;
   passwordExpiresAt: Date | null;
   passwordHash: string;
   state: string;
   tenantId: string;
+  userId: string;
+}
+
+export interface FailedLoginAttemptInput {
+  failedLoginWindowMinutes: number;
+  lockoutDurationMinutes: number;
+  lockoutThreshold: number;
+  now: Date;
   userId: string;
 }
 
@@ -58,6 +71,12 @@ export abstract class AuthSessionRepository {
   ): Promise<LoginCandidate | null>;
 
   abstract createSession(input: CreateSessionInput): Promise<AuthSessionView>;
+
+  abstract recordFailedLoginAttempt(
+    input: FailedLoginAttemptInput,
+  ): Promise<{ justLocked: boolean; lockedUntil: Date | null }>;
+
+  abstract clearFailedLoginAttempts(userId: string): Promise<void>;
 
   abstract findActiveSession(sessionId: string): Promise<ActiveSessionRecord | null>;
 
@@ -123,11 +142,29 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
     const user = await this.prisma.user.findFirst({
       select: {
         emailVerifiedAt: true,
+        failedLoginCount: true,
+        failedLoginWindowStartedAt: true,
         id: true,
         lockedUntil: true,
         passwordExpiresAt: true,
         passwordHash: true,
         state: true,
+        roles: {
+          select: {
+            tenant: {
+              select: {
+                failedLoginLockoutThreshold: true,
+                failedLoginWindowMinutes: true,
+                lockoutDurationMinutes: true,
+              },
+            },
+          },
+          take: 1,
+          where: {
+            revokedAt: null,
+            tenantId,
+          },
+        },
       },
       where: {
         deletedAt: null,
@@ -147,6 +184,11 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
     return user
       ? {
           emailVerified: user.emailVerifiedAt !== null,
+          failedLoginCount: user.failedLoginCount,
+          failedLoginWindowMinutes: user.roles[0]?.tenant.failedLoginWindowMinutes ?? 15,
+          failedLoginWindowStartedAt: user.failedLoginWindowStartedAt,
+          lockoutDurationMinutes: user.roles[0]?.tenant.lockoutDurationMinutes ?? 30,
+          lockoutThreshold: user.roles[0]?.tenant.failedLoginLockoutThreshold ?? 5,
           lockedUntil: user.lockedUntil,
           passwordExpiresAt: user.passwordExpiresAt,
           passwordHash: user.passwordHash,
@@ -155,6 +197,65 @@ export class PrismaAuthSessionRepository implements AuthSessionRepository {
           userId: user.id,
         }
       : null;
+  }
+
+  async recordFailedLoginAttempt(
+    input: FailedLoginAttemptInput,
+  ): Promise<{ justLocked: boolean; lockedUntil: Date | null }> {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({
+        select: {
+          failedLoginCount: true,
+          failedLoginWindowStartedAt: true,
+          lockedUntil: true,
+        },
+        where: {
+          id: input.userId,
+        },
+      });
+      const windowStartedAt =
+        user.failedLoginWindowStartedAt === null ||
+        user.failedLoginWindowStartedAt.getTime() <=
+          input.now.getTime() - input.failedLoginWindowMinutes * 60_000
+          ? input.now
+          : user.failedLoginWindowStartedAt;
+      const failedLoginCount = windowStartedAt === input.now ? 1 : user.failedLoginCount + 1;
+      const justLocked =
+        failedLoginCount >= input.lockoutThreshold &&
+        (user.lockedUntil === null || user.lockedUntil.getTime() <= input.now.getTime());
+      const lockedUntil = justLocked
+        ? new Date(input.now.getTime() + input.lockoutDurationMinutes * 60_000)
+        : user.lockedUntil;
+
+      await tx.user.update({
+        data: {
+          failedLoginCount,
+          failedLoginWindowStartedAt: windowStartedAt,
+          lockedUntil,
+        },
+        where: {
+          id: input.userId,
+        },
+      });
+
+      return {
+        justLocked,
+        lockedUntil,
+      };
+    });
+  }
+
+  async clearFailedLoginAttempts(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      data: {
+        failedLoginCount: 0,
+        failedLoginWindowStartedAt: null,
+        lockedUntil: null,
+      },
+      where: {
+        id: userId,
+      },
+    });
   }
 
   async createSession(input: CreateSessionInput): Promise<AuthSessionView> {

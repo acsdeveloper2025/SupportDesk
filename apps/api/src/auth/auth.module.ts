@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 
 import { DatabaseModule } from "../database/database.module";
 import { IdentityModule } from "../identity/identity.module";
@@ -14,6 +15,13 @@ import {
   PrismaAuthPasswordResetRepository,
 } from "./password-reset/auth-password-reset.repository";
 import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
+import { AuthRateLimitGuard } from "./rate-limit/auth-rate-limit.guard";
+import {
+  AuthRateLimitService,
+  AuthRateLimitStore,
+  InMemoryAuthRateLimitStore,
+} from "./rate-limit/auth-rate-limit.service";
+import { AuthRateLimitAuditService } from "./rate-limit/auth-rate-limit-audit.service";
 import { AuthNotificationService } from "./registration/auth-notification.service";
 import {
   AuthRegistrationRepository,
@@ -37,6 +45,7 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
     AuthNotificationService,
     AuthPasswordService,
     AuthPasswordResetService,
+    AuthRateLimitService,
     AuthRegistrationService,
     AuthSessionService,
     AuthTokenService,
@@ -49,12 +58,23 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
     AuthNotificationService,
     AuthPasswordService,
     AuthPasswordResetService,
+    AuthRateLimitAuditService,
+    AuthRateLimitService,
     AuthRegistrationService,
     AuthSessionService,
     AuthTokenService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
+    InMemoryAuthRateLimitStore,
+    {
+      provide: APP_GUARD,
+      useClass: AuthRateLimitGuard,
+    },
+    {
+      provide: AuthRateLimitStore,
+      useExisting: InMemoryAuthRateLimitStore,
+    },
     {
       provide: AuthPasswordRepository,
       useClass: PrismaAuthPasswordRepository,

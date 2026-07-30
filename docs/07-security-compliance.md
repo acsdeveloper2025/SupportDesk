@@ -34,3 +34,7 @@ Session creation is tenant-scoped, revocable, and separates server-side session 
 JWT access tokens must carry only minimal identity, tenant, and session claims. Refresh tokens are opaque, randomly generated, stored only as hashes, rotated on every use, and treated as replayed when a rotated or revoked token appears again.
 
 Tenant password-expiration policy is enforced during login through an explicit `password_change_required` state. Password change requires an active tenant session and the current password, rejects current-password reuse, records the next expiration timestamp, revokes all sessions and refresh tokens for that tenant/user identity, and requires reauthentication. Password-reset completion applies the same expiration calculation.
+
+Authentication-sensitive endpoints are protected by endpoint-scoped fixed-window throttles partitioned by hashed tenant, identifier, token, session, device, and IP dimensions. Exceeded buckets return HTTP 429 with retry guidance and create a redacted audit event. Login failures update persistent user lockout state according to the selected tenant's threshold, window, and duration; callers receive the same denial for wrong credentials and active lockouts.
+
+The initial rate-limit store is process-local and intentionally isolated behind `AuthRateLimitStore`. A shared atomic store such as Redis is required before horizontally scaling the API; production readiness must block multi-replica deployment until that adapter is configured.

@@ -30,6 +30,7 @@ import type {
   ConfirmPasswordResetRequest,
   PasswordResetRequest,
 } from "./password-reset/auth-password-reset.types";
+import { AuthRateLimit } from "./rate-limit/auth-rate-limit.guard";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import type {
   ConfirmEmailVerificationRequest,
@@ -51,6 +52,7 @@ export class AuthController {
   ) {}
 
   @Post("register")
+  @AuthRateLimit("register")
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
     description: "Registration request accepted without account enumeration.",
@@ -66,6 +68,7 @@ export class AuthController {
   }
 
   @Post("email-verification/confirm")
+  @AuthRateLimit("email-verification")
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
     description: "Email verification confirmation accepted without token enumeration.",
@@ -86,6 +89,7 @@ export class AuthController {
   }
 
   @Post("password-reset/request")
+  @AuthRateLimit("password-reset-request")
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
     description: "Password reset request accepted without account enumeration.",
@@ -99,6 +103,7 @@ export class AuthController {
   }
 
   @Post("password-reset/confirm")
+  @AuthRateLimit("password-reset-confirm")
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
     description: "Password reset confirmation accepted without token enumeration.",
@@ -112,6 +117,7 @@ export class AuthController {
   }
 
   @Post("password/change")
+  @AuthRateLimit("password-change")
   @HttpCode(HttpStatus.OK)
   @ApiBody({
     schema: {
@@ -162,6 +168,7 @@ export class AuthController {
   }
 
   @Post("login")
+  @AuthRateLimit("login")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: "Login succeeded and created a tenant-scoped session.",
@@ -195,6 +202,7 @@ export class AuthController {
     const result = await this.sessions.login({
       ...body,
       correlationId: getCorrelationId(request),
+      ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
 
@@ -256,6 +264,7 @@ export class AuthController {
   }
 
   @Post("refresh")
+  @AuthRateLimit("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: "Refresh token rotated and new token pair issued.",
