@@ -1,6 +1,8 @@
 # Decision log
 
-Status meanings: **Accepted** is a binding architectural decision; **Accepted assumption** is a reversible baseline needed for coherent planning and must be validated; **Open** is unresolved and must not be presented as committed.
+Status meanings: **Accepted** is a binding architectural decision; **Accepted assumption** is a reversible baseline needed for coherent planning and must be validated; **Open** is unresolved and must not be presented as committed. Detailed implementation-driving ADR files live in [adr/](adr/README.md); this document remains the summary register and open-question tracker.
+
+Numbering note: this summary log uses the initial `ADR-001` sequence. The detailed ADR folder uses `ADR-0001` file names for the final architecture foundation records and is linked rather than renumbered to preserve history.
 
 ## ADR-001 — Begin as a modular monolith
 
@@ -53,21 +55,21 @@ Status meanings: **Accepted** is a binding architectural decision; **Accepted as
 
 ## Open questions
 
-| ID | Question | Owner | Resolve by |
-|---|---|---|---|
-| OQ-01 | Which initial compliance targets (for example SOC 2, ISO 27001, GDPR contractual readiness, HIPAA) and audit dates apply? | Security/Legal | M1 planning |
-| OQ-02 | Which data-residency regions and Tenant placement/mobility guarantees are required? | Legal/Architecture | M1 planning |
-| OQ-03 | Which identity providers and protocols (OIDC, SAML, SCIM), MFA, and domain-discovery behaviors are supported? | Product/Security | M1 |
-| OQ-04 | What are launch Tenant counts, largest Tenant/users/Tickets, ingestion bursts, and growth forecasts? | Product/Capacity | M1 |
-| OQ-05 | What availability objectives, maintenance exclusions, support tiers, and contractual remedies are offered? | Product/Operations | M3 |
-| OQ-06 | What retention, deletion, legal-hold, audit, backup, and subject-request periods apply by data class/region? | Privacy/Legal | M1 |
-| OQ-07 | What attachment size/count/type limits, aggregate quotas, and scan/archive requirements apply? | Product/Security | M2 |
-| OQ-08 | Which SLA calendars, time zones, holiday sources, pause/reopen policies, and contractual semantics are supported? | Product | M3 |
-| OQ-09 | Which inbound/outbound email providers, regions, dedicated domains/IPs, webhook guarantees, and failover strategy apply? | Architecture/Operations | M2 |
-| OQ-10 | Which notification deliverability, localization, branding, unsubscribe, and provider portability requirements apply? | Product/Legal | M2 |
-| OQ-11 | Which search technology, languages, analyzers, encryption, residency, deletion latency, and relevance controls are required? | Architecture/Product | M4 |
-| OQ-12 | Which deployment cloud, regions, managed services, Kubernetes/serverless constraints, and portability goals apply? | Architecture/Operations | M1 |
-| OQ-13 | Is MIT the approved project and future product-source license; are commercial/third-party notices required? | Legal | Before distribution |
-| OQ-14 | What contractual RPO/RTO apply per failure mode, region, and service tier? | Product/Operations | M4 |
+| ID    | Question                                                                                                                     | Owner                   | Resolve by          |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------- |
+| OQ-01 | Which initial compliance targets (for example SOC 2, ISO 27001, GDPR contractual readiness, HIPAA) and audit dates apply?    | Security/Legal          | M1 planning         |
+| OQ-02 | Which data-residency regions and Tenant placement/mobility guarantees are required?                                          | Legal/Architecture      | M1 planning         |
+| OQ-03 | Which identity providers and protocols (OIDC, SAML, SCIM), MFA, and domain-discovery behaviors are supported?                | Product/Security        | M1                  |
+| OQ-04 | What are launch Tenant counts, largest Tenant/users/Tickets, ingestion bursts, and growth forecasts?                         | Product/Capacity        | M1                  |
+| OQ-05 | What availability objectives, maintenance exclusions, support tiers, and contractual remedies are offered?                   | Product/Operations      | M3                  |
+| OQ-06 | What retention, deletion, legal-hold, audit, backup, and subject-request periods apply by data class/region?                 | Privacy/Legal           | M1                  |
+| OQ-07 | What attachment size/count/type limits, aggregate quotas, and scan/archive requirements apply?                               | Product/Security        | M2                  |
+| OQ-08 | Which SLA calendars, time zones, holiday sources, pause/reopen policies, and contractual semantics are supported?            | Product                 | M3                  |
+| OQ-09 | Which inbound/outbound email providers, regions, dedicated domains/IPs, webhook guarantees, and failover strategy apply?     | Architecture/Operations | M2                  |
+| OQ-10 | Which notification deliverability, localization, branding, unsubscribe, and provider portability requirements apply?         | Product/Legal           | M2                  |
+| OQ-11 | Which search technology, languages, analyzers, encryption, residency, deletion latency, and relevance controls are required? | Architecture/Product    | M4                  |
+| OQ-12 | Which deployment cloud, regions, managed services, Kubernetes/serverless constraints, and portability goals apply?           | Architecture/Operations | M1                  |
+| OQ-13 | Is MIT the approved project and future product-source license; are commercial/third-party notices required?                  | Legal                   | Before distribution |
+| OQ-14 | What contractual RPO/RTO apply per failure mode, region, and service tier?                                                   | Product/Operations      | M4                  |
 
 Resolution requires evidence, decision owner approval, an ADR entry (accepted or rejected alternatives), updates to affected requirements/controls/tests/milestones, and removal of any superseded assumption.

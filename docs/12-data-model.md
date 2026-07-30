@@ -1,6 +1,6 @@
 # Conceptual data model
 
-This document defines entities and invariants, not SQL, migrations, or vendor types.
+This document defines entities and invariants, not SQL, migrations, or vendor types. The expanded database blueprint is in [database/](database/README.md).
 
 ```mermaid
 erDiagram

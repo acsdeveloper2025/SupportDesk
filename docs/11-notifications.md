@@ -1,6 +1,6 @@
 # Notifications
 
-Notifications originate from committed Domain Events through an outbox. Channels initially are email and in-product web. Templates are Tenant-scoped, versioned, locale-aware, escaped by default, and previewed with synthetic data.
+Notifications originate from committed Domain Events through an outbox. Channels initially are email and in-product web. Templates are Tenant-scoped, versioned, locale-aware, escaped by default, and previewed with synthetic data. Event routing is specified in [notification-events.md](notification-events.md), and transactional email templates are specified in [email-templates.md](email-templates.md).
 
 ## Rules
 

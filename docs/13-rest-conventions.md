@@ -1,6 +1,6 @@
 # REST conventions
 
-This is a style contract, not a list of implemented endpoints.
+This is a style contract. The endpoint inventory and resource-specific contracts are in [api/](api/README.md); the shared error catalogue is [errors.md](errors.md).
 
 - HTTPS only; resource-oriented plural nouns; JSON UTF-8; explicit media types; no verbs in paths. Version breaking contracts in the media type or a documented major path, not ad hoc query parameters.
 - Authenticate every non-public request. Tenant context derives from trusted routing plus Tenant Membership and is verified against every resource.

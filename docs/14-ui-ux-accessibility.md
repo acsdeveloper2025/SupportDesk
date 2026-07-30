@@ -4,6 +4,8 @@
 
 All critical journeys must conform to WCAG 2.2 AA. Use semantic structure, complete keyboard access, visible focus, logical focus order, skip navigation, text alternatives, programmatic labels/instructions/errors, sufficient contrast, 200% zoom and reflow, reduced-motion preference, and non-color status cues. Dynamic updates announce appropriately without stealing focus. Automated checks supplement, never replace, screen-reader and keyboard testing.
 
+Reusable component behavior is specified in [ui-components.md](ui-components.md).
+
 ## Interaction rules
 
 - Maintain an always-visible Tenant switcher and unmistakable active Tenant; switching clears Tenant-derived caches and drafts only after warning.

@@ -1,5 +1,7 @@
 # Ticket lifecycle and workflows
 
+The detailed transition, approval, SLA, automation, and notification contract is [workflow-matrix.md](workflow-matrix.md).
+
 ## Status model
 
 ```mermaid

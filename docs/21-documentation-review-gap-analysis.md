@@ -4,6 +4,8 @@ Review date: 2026-07-30
 Reviewer stance: Principal Software Architect, pre-implementation design review
 Scope: `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and every document in `docs/`
 
+Status: superseded by the final architecture foundation in [22-architecture-foundation-completion-report.md](22-architecture-foundation-completion-report.md). This report is retained as review history; resolved findings are noted where the final documentation pass addressed them.
+
 ## Executive summary
 
 Overall readiness score: **72 / 100**
@@ -30,15 +32,15 @@ Product:
 - Requester experience is limited to submission/following by web and email; there is no requester portal navigation, email verification, unauthenticated ticket lookup policy, satisfaction survey, or requester notification preference flow.
 - Agent workflow lacks queue definitions, collision/ownership handling, internal collaboration model, macro/canned response policy, escalation rules, priority definitions, and bulk-edit behavior.
 - Tenant administration lacks concrete requirements for branding, email domain verification, business schedule management, workflow publishing UX, SLA policy lifecycle, custom fields, roles/groups, audit export, and configuration rollback.
-- Reporting is listed as in scope, but no report catalog, dashboard KPIs, export formats, freshness expectations by report, or access model is defined.
+- Reporting was listed as in scope but originally lacked report catalog, dashboard KPI, export format, freshness, and access-model detail; the final foundation adds report/export API contracts and implementation-plan issues.
 - Entitlement is in the glossary, but billing execution is out of scope and no interim entitlement/quota model is specified.
 - No customer-support operating model exists for the SaaS provider: support tiers, support access approval, tenant break-glass process, customer communications, and contractual remedies are unresolved.
 
 Architecture:
 
-- Component boundaries are named but not defined as module contracts. Each bounded context needs responsibilities, owned entities, incoming commands/events, emitted events, and forbidden dependencies.
+- Component boundaries were originally named without module-contract detail; [05-architecture.md](05-architecture.md) now adds bounded context responsibilities.
 - The context diagram does not include cache, admin UI, requester portal boundary, identity/session store, email inbound parsing path, malware scanning service, or provider webhooks.
-- The architecture states transactional state is authoritative and search/caches are projections, but does not define projection rebuild, lag handling, poison-message isolation, or event schema compatibility.
+- The architecture states transactional state is authoritative and search/caches are projections; the final foundation adds projection, indexing, and planning coverage, while detailed rebuild/poison-message implementation remains milestone work.
 - Queue/backpressure rules exist but no partitioning strategy, per-tenant fairness model, dead-letter ownership, replay controls, or capacity limits are documented.
 - No deployment topology, regional architecture, environment strategy, or managed-service assumptions are accepted.
 
@@ -47,13 +49,13 @@ Multi-tenant design:
 - Tenant isolation controls are strong, but tenant configuration is not modeled: branding, domains, email sender identities, locale/time zone defaults, quotas, retention policy, feature flags, and support access policy.
 - Data-residency and tenant placement are open, yet they affect database, object storage, search, backups, telemetry, and email provider selection.
 - Shared infrastructure is accepted, but no per-tenant encryption-key strategy or key hierarchy is specified.
-- Storage strategy is incomplete: object key shape, bucket/container partitioning, lifecycle/archive, malware scan result retention, signed URL revocation, and quota enforcement are not defined.
+- Storage strategy was originally incomplete; the final foundation adds attachment, scan, quota, lifecycle, and storage-strategy requirements, while vendor-specific object key and bucket partitioning decisions remain tied to OQ-02/OQ-12.
 - Data leakage risk remains around telemetry/product analytics because only pseudonymous tenant keys are mentioned; event taxonomy and privacy classification are absent.
 
 Database design:
 
 - Missing entities likely required: Organization, Queue/View, Tag, Custom Field Definition/Value, Ticket Link, Ticket Watcher/Subscriber, Ticket Assignment History, Workflow Execution, Workflow Action Attempt, Notification Intent, Notification Template Version, Notification Preference, Email Message, Email Address, Business Schedule Version, SLA Evaluation Evidence, File Scan Result, Export Job, Retention Policy, Legal Hold, Operator Elevation, Session, API Token, Idempotency Key, and Webhook/Event Delivery.
-- Index strategy is not defined for tenant-scoped lookups, queues, ticket references, status/priority/due dates, assignment, full-text search, outbox claiming, audit filtering, export jobs, and retention scans.
+- Index strategy was originally absent; [database/INDEXING.md](database/INDEXING.md) now covers tenant-scoped lookups, queues, ticket references, status/priority/due dates, assignment, search projection, outbox claiming, audit filtering, export jobs, and retention scans.
 - Foreign-key and tenant-consistency strategy is only conceptual; it should define composite tenant-aware constraints or equivalent enforcement.
 - Audit fields are not standardized across mutable entities. The docs mention timestamps/versioning but not created/updated/deleted actor, reason, source, or correlation metadata requirements.
 - Soft deletion and legal hold are too vague. The docs say deletion uses retention state, but do not define lifecycle states, anonymization, restore windows, or audit-preserving deletion behavior.
@@ -103,18 +105,18 @@ Testing:
 
 ### Inconsistencies
 
-- `docs/04-functional-requirements.md` references `ARC-04` and `ARC-05`, but no `ARC-*` controls are defined in `docs/05-architecture.md` or elsewhere. This breaks traceability.
+- Resolved in the final architecture foundation: `docs/05-architecture.md` now defines `ARC-01` through `ARC-05`, and `docs/04-functional-requirements.md` links `ARC-04` and `ARC-05`.
 - The roadmap says M0 exits when open decisions have owners, but implementation milestones still depend on open M1 questions. The docs should distinguish "owner assigned" from "decision resolved".
 - `docs/00-vision.md` includes reporting and administration in initial scope, but functional requirements only provide broad `FR-10`, `FR-11`, and `FR-12` coverage without workflow-level acceptance.
-- `docs/12-data-model.md` references Organization, Business Schedule, template, and notification attempt, but the ERD omits Organization and several configuration/version entities.
-- `docs/13-rest-conventions.md` defers endpoint design, while `docs/20-roadmap.md` starts implementation at M1/M2. A resource inventory is needed before those milestones can be estimated or assigned.
-- NFR-03 states 10 million Tickets per Tenant and 1,000 Agents per Tenant, but no database/search/reporting/archive design supports this commitment yet.
+- Resolved in the final architecture foundation: `docs/database/ERD.md` and `docs/database/TABLES.md` now include Organization, Business Schedule, templates, notification attempts, and related configuration/version entities.
+- Resolved in the final architecture foundation: `docs/api/` now provides a resource inventory and endpoint family contracts for implementation planning.
+- Partially mitigated in the final architecture foundation: `docs/database/INDEXING.md`, `docs/database/MIGRATION-STRATEGY.md`, and `docs/github-project-plan.md` now define scale-planning work, but OQ-04 still needs business approval.
 
 ### Ambiguities
 
-- "Trusted routing" for tenant context is not defined: subdomain, path, header, selected membership, custom domain, or email route.
+- "Trusted routing" for tenant context still needs a concrete implementation choice: subdomain, path, selected membership, custom domain, or email route.
 - "Complete Ticket and Comment lifecycle" is not precise enough for merging, linking, reopening windows, satisfaction, spam, requester identity changes, and inbound email threading.
-- "Operational reports" is undefined: operational, compliance, SLA, agent performance, audit, and export reports may have different latency and authorization models.
+- "Operational reports" now have initial API/planning coverage, but specific report catalog decisions still need business prioritization.
 - "Tenant Administrator can configure access, workflows, schedules, and reporting" does not say which settings are self-service, approval-gated, versioned, or reversible.
 - "Platform Operator" elevation does not define approvers, duration, scope, content access, dual control, or customer visibility.
 - "Business Schedule-aware SLA Targets" does not define multiple calendars per tenant, holiday source authority, tenant locale, or schedule ownership.
@@ -137,30 +139,30 @@ Testing:
 
 ## Risk register
 
-| Risk | Impact | Likelihood | Recommended mitigation |
-|---|---|---:|---|
-| M1 begins before compliance, residency, identity, retention, scale, and deployment decisions are resolved. | Rework in auth, data model, hosting, and security controls. | High | Resolve OQ-01 to OQ-06 and OQ-12 before M1 implementation planning. |
-| Undefined `ARC-*` references break traceability. | Reviewers cannot verify PR-to-control coverage. | High | Add architecture control IDs or replace `ARC-*` references with existing ADR/control references. |
-| Missing API/resource inventory. | Teams implement inconsistent endpoints and authorization boundaries. | High | Add a resource inventory and initial OpenAPI outline without implementation code. |
-| Thin data model omits core entities. | Migrations and module boundaries will churn early. | High | Expand conceptual model and entity invariants before schema design. |
-| Tenant configuration is not fully specified. | Branding, domains, quotas, retention, and email settings may leak or drift across tenants. | Medium-high | Add tenant settings/configuration document with ownership and versioning rules. |
-| Scale targets are unvalidated. | Architecture may fail for large tenants or reporting/search workloads. | Medium-high | Create capacity model, data-volume assumptions, and performance test profiles. |
-| Search/reporting design is deferred too far. | Authorization leakage or unacceptable dashboard/report latency. | High | Define search indexing, report aggregation, export authorization, and freshness contracts before M4 design starts. |
-| File upload security lacks edge-case handling. | Malware, data leakage, storage exhaustion, or unsafe previews. | Medium-high | Add upload threat model, limits, scan flow, preview policy, and quota/lifecycle rules. |
-| Authentication/session rules are under-specified. | Inconsistent security posture across web/email/API/SSO. | Medium-high | Define auth/session policy, MFA/step-up, token rotation, recovery, and service account rules. |
-| Operator elevation is underspecified. | Insider-risk and support-access controls may fail audit. | Medium | Define JIT elevation workflow, dual approval, scope, customer visibility, logging, and expiry. |
-| Product journeys are too sparse. | Acceptance criteria will be invented during implementation. | High | Add journeys for requester portal, inbound email, triage, admin config, notifications, search/reporting, audit export, and incident recovery. |
-| Reporting/export requirements are broad. | Privacy, performance, and access-control requirements may conflict. | Medium | Add report catalog, export formats, row limits, async export flow, and audit rules. |
-| Retention/legal hold unresolved. | Deletion, backups, audit, search, and exports may violate policy. | High | Resolve OQ-06 before data model and storage design. |
-| Email provider/domain decisions are unresolved. | Inbound routing, sender identity, deliverability, and webhook security may rework communications architecture. | Medium-high | Resolve OQ-09/OQ-10 before M2 email foundation. |
-| Accessibility standards lack concrete target matrix. | Passing criteria may be subjective. | Medium | Define supported browsers/AT pairs and manual scripts. |
+| Risk                                                                                                       | Impact                                                                                                         |  Likelihood | Recommended mitigation                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------: | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 begins before compliance, residency, identity, retention, scale, and deployment decisions are resolved. | Rework in auth, data model, hosting, and security controls.                                                    |        High | Resolve OQ-01 to OQ-06 and OQ-12 before M1 implementation planning.                                                                           |
+| Unresolved scale and platform assumptions remain after traceability fixes.                                 | Teams may overbuild or underbuild storage, search, reporting, and recovery paths.                              | Medium-high | Resolve OQ-04, OQ-11, OQ-12, and validate NFR-03/NFR-05 with performance profiles.                                                            |
+| Missing API/resource inventory.                                                                            | Teams implement inconsistent endpoints and authorization boundaries.                                           |        High | Add a resource inventory and initial OpenAPI outline without implementation code.                                                             |
+| Thin data model omits core entities.                                                                       | Migrations and module boundaries will churn early.                                                             |        High | Expand conceptual model and entity invariants before schema design.                                                                           |
+| Tenant configuration is not fully specified.                                                               | Branding, domains, quotas, retention, and email settings may leak or drift across tenants.                     | Medium-high | Add tenant settings/configuration document with ownership and versioning rules.                                                               |
+| Scale targets are unvalidated.                                                                             | Architecture may fail for large tenants or reporting/search workloads.                                         | Medium-high | Create capacity model, data-volume assumptions, and performance test profiles.                                                                |
+| Search/reporting design is deferred too far.                                                               | Authorization leakage or unacceptable dashboard/report latency.                                                |        High | Define search indexing, report aggregation, export authorization, and freshness contracts before M4 design starts.                            |
+| File upload security lacks edge-case handling.                                                             | Malware, data leakage, storage exhaustion, or unsafe previews.                                                 | Medium-high | Add upload threat model, limits, scan flow, preview policy, and quota/lifecycle rules.                                                        |
+| Authentication/session rules are under-specified.                                                          | Inconsistent security posture across web/email/API/SSO.                                                        | Medium-high | Define auth/session policy, MFA/step-up, token rotation, recovery, and service account rules.                                                 |
+| Operator elevation is underspecified.                                                                      | Insider-risk and support-access controls may fail audit.                                                       |      Medium | Define JIT elevation workflow, dual approval, scope, customer visibility, logging, and expiry.                                                |
+| Product journeys are too sparse.                                                                           | Acceptance criteria will be invented during implementation.                                                    |        High | Add journeys for requester portal, inbound email, triage, admin config, notifications, search/reporting, audit export, and incident recovery. |
+| Reporting/export requirements are broad.                                                                   | Privacy, performance, and access-control requirements may conflict.                                            |      Medium | Add report catalog, export formats, row limits, async export flow, and audit rules.                                                           |
+| Retention/legal hold unresolved.                                                                           | Deletion, backups, audit, search, and exports may violate policy.                                              |        High | Resolve OQ-06 before data model and storage design.                                                                                           |
+| Email provider/domain decisions are unresolved.                                                            | Inbound routing, sender identity, deliverability, and webhook security may rework communications architecture. | Medium-high | Resolve OQ-09/OQ-10 before M2 email foundation.                                                                                               |
+| Accessibility standards lack concrete target matrix.                                                       | Passing criteria may be subjective.                                                                            |      Medium | Define supported browsers/AT pairs and manual scripts.                                                                                        |
 
 ## Improvement recommendations
 
 ### Critical
 
 - Resolve M1 blockers: compliance targets, data residency, identity protocols, launch scale, retention/legal hold, and deployment cloud.
-- Fix traceability by defining or removing `ARC-04` and `ARC-05`.
+- Keep architecture controls synchronized as implementation evolves; `ARC-04` and `ARC-05` are now defined.
 - Add a resource/API inventory with endpoint families, ownership, auth scope, pagination/filtering/sorting needs, and expected async operation resources.
 - Expand the conceptual data model to include all referenced domain/configuration/security/operations entities and tenant-aware constraints.
 
@@ -194,7 +196,7 @@ The project is **not ready to begin implementation** beyond discovery, prototype
 Before implementation starts, complete these first:
 
 1. Resolve or baseline the M1 open questions that affect architecture: OQ-01 through OQ-06 and OQ-12.
-2. Correct traceability gaps, especially the undefined `ARC-*` references.
+2. Keep the newly added architecture controls, API inventory, and database blueprint current during implementation planning.
 3. Expand product journeys and acceptance criteria so each initial workflow has a testable definition of done.
 4. Produce a resource/API inventory and module ownership map.
 5. Expand the conceptual data model, tenant configuration model, and security/session model.

@@ -21,6 +21,7 @@ These rules apply to the entire repository.
 
 - A behavior change must update its product requirement (`PR-*`), functional requirement (`FR-*`), acceptance criteria, traceability row, tests, and relevant architecture/security/operations documentation in the same pull request.
 - Data, authorization, workflow, SLA, event, deployment, or recovery changes must update documents 05–19 and the decision log where the decision is durable.
+- Database, API, permission, workflow, audit, notification, email, error, UI, or coding-standard changes must update the expanded architecture foundation documents under `docs/database/`, `docs/api/`, `docs/permissions-matrix.md`, `docs/workflow-matrix.md`, `docs/audit-events.md`, `docs/notification-events.md`, `docs/email-templates.md`, `docs/errors.md`, `docs/ui-components.md`, and `docs/coding-standards.md`.
 - New terminology must be added to `docs/glossary.md`; do not create near-synonyms. Cross-references must remain valid.
 - Accepted decisions belong in an ADR-style entry; uncertain items remain under Open Questions and must not be represented as final.
 

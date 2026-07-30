@@ -1,27 +1,104 @@
 # SupportDesk
 
-SupportDesk is the documentation-first foundation for an enterprise, multi-tenant ticketing SaaS. This repository intentionally contains no application implementation. The documents define the product contract, architectural guardrails, operational controls, and delivery sequence that implementation must follow.
+SupportDesk is the documentation-first foundation for an enterprise, multi-tenant ticketing SaaS. The repository now includes a production-ready monorepo bootstrap for future implementation, while intentionally excluding authentication, users, organizations, tickets, RBAC, workflows, SLA, notifications, reports, search, and other business features.
+
+## Project foundation
+
+- `apps/web` — Next.js App Router, React, TypeScript, Tailwind CSS, shadcn-compatible UI wiring, Vitest, and Playwright.
+- `apps/api` — NestJS, TypeScript, Prisma, PostgreSQL connection configuration, Swagger/OpenAPI, structured logging, correlation IDs, global exception handling, and health probes.
+- `packages/ui` — shared UI primitives.
+- `packages/config` — shared public configuration helpers.
+- `packages/types` — shared TypeScript contracts.
+- `packages/utils` — shared utility helpers.
+- `packages/eslint-config` and `packages/tsconfig` — shared engineering configuration.
+- `docs` — product, architecture, API, database, backlog, sprint, release, and governance documentation.
+- `.github/workflows` — CI, lint, build, unit test, type check, security scan, and dependency audit workflows.
+- `docker` — development-only Docker Compose configuration.
+
+## Requirements
+
+- Node.js `>=22`
+- pnpm `>=10`
+- Docker Desktop, for the development PostgreSQL and containerized dev environment
+
+## Installation
+
+```bash
+pnpm install
+```
+
+Copy `.env.example` to `.env` for local development and adjust values as needed. Never commit real secrets.
+
+## Development
+
+```bash
+pnpm dev
+```
+
+Default local URLs:
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001`
+- Swagger: `http://localhost:3001/docs`
+- Health: `http://localhost:3001/health`
+- Readiness: `http://localhost:3001/ready`
+- Liveness: `http://localhost:3001/live`
+
+## Docker Development
+
+```bash
+pnpm docker:dev
+pnpm docker:dev:down
+```
+
+Docker is development-only at this stage. Production infrastructure belongs to a later milestone.
+
+## Quality Gates
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:e2e
+pnpm build
+pnpm security:scan
+pnpm audit:deps
+pnpm run ci
+```
+
+The root CI script runs linting, type checking, unit tests, build, and security audit. GitHub Actions mirror those gates for pull requests.
+
+## Development Workflow
+
+1. Keep changes inside the milestone scope.
+2. Do not add business features before the matching backlog issue is approved.
+3. Run `pnpm run ci` before opening a pull request.
+4. Run `pnpm test:e2e` when frontend behavior changes.
+5. Update documentation when architecture, APIs, environment variables, or workflow expectations change.
 
 ## Start here
 
 1. [Vision](docs/00-vision.md) — outcomes, scope, and success measures.
 2. [Product requirements](docs/03-product-requirements.md) and [functional requirements](docs/04-functional-requirements.md) — traceable requirements and acceptance criteria.
 3. [Architecture](docs/05-architecture.md), [tenant isolation](docs/06-tenant-isolation.md), and [security](docs/07-security-compliance.md) — system boundaries and controls.
-4. [Data model](docs/12-data-model.md), [REST conventions](docs/13-rest-conventions.md), and [UX standards](docs/14-ui-ux-accessibility.md) — implementation contracts without implementation.
-5. [Testing](docs/16-testing-quality.md), [deployment](docs/18-deployment-cicd.md), and [operations](docs/19-operations-recovery.md) — release and runtime expectations.
-6. [Roadmap](docs/20-roadmap.md) and [decision log](docs/decision-log.md) — delivery gates and architectural decisions.
+4. [Database design](docs/database/README.md), [API specification](docs/api/README.md), and [permissions matrix](docs/permissions-matrix.md) — implementation-ready contracts without implementation.
+5. [Workflow](docs/workflow-matrix.md), [audit](docs/audit-events.md), [notifications](docs/notification-events.md), [email templates](docs/email-templates.md), and [errors](docs/errors.md) — operational catalogues.
+6. [Testing](docs/16-testing-quality.md), [deployment](docs/18-deployment-cicd.md), [operations](docs/19-operations-recovery.md), [GitHub backlog](docs/github-backlog.md), [implementation order](docs/implementation-order.md), and [sprint plan](docs/sprint-plan.md) — release and delivery expectations.
+7. [Roadmap](docs/20-roadmap.md), [decision log](docs/decision-log.md), and [ADRs](docs/adr/README.md) — delivery gates and architectural decisions.
 
 Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must”, “should”, and “may” carry their RFC 2119 meanings. Requirement IDs are stable and are linked through the [traceability matrix](docs/04-functional-requirements.md#traceability-matrix).
 
 ## Documentation map
 
-| Area | Documents |
-|---|---|
-| Product | [00](docs/00-vision.md), [01](docs/01-principles-scope.md), [02](docs/02-personas-journeys.md), [03](docs/03-product-requirements.md), [04](docs/04-functional-requirements.md) |
-| Design | [05](docs/05-architecture.md)–[15](docs/15-non-functional-requirements.md) |
-| Delivery and operations | [16](docs/16-testing-quality.md)–[20](docs/20-roadmap.md) |
-| Governance | [Glossary](docs/glossary.md), [Decision log](docs/decision-log.md), [Contributing](CONTRIBUTING.md), [Agent instructions](AGENTS.md) |
+| Area                    | Documents                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product                 | [00](docs/00-vision.md), [01](docs/01-principles-scope.md), [02](docs/02-personas-journeys.md), [03](docs/03-product-requirements.md), [04](docs/04-functional-requirements.md)                                                                                                                                                                          |
+| Design                  | [05](docs/05-architecture.md)–[15](docs/15-non-functional-requirements.md), [Database](docs/database/README.md), [API](docs/api/README.md), [UI components](docs/ui-components.md), [Coding standards](docs/coding-standards.md)                                                                                                                         |
+| Catalogues              | [Permissions](docs/permissions-matrix.md), [Workflow](docs/workflow-matrix.md), [Audit events](docs/audit-events.md), [Notifications](docs/notification-events.md), [Email templates](docs/email-templates.md), [Errors](docs/errors.md)                                                                                                                 |
+| Delivery and operations | [16](docs/16-testing-quality.md)–[20](docs/20-roadmap.md), [Milestones](docs/milestones.md), [Sprint plan](docs/sprint-plan.md), [Release plan](docs/release-plan.md)                                                                                                                                                                                    |
+| Planning and governance | [GitHub plan](docs/github-project-plan.md), [GitHub backlog](docs/github-backlog.md), [Implementation order](docs/implementation-order.md), [Issue templates](docs/issue-templates.md), [Glossary](docs/glossary.md), [Decision log](docs/decision-log.md), [ADRs](docs/adr/README.md), [Contributing](CONTRIBUTING.md), [Agent instructions](AGENTS.md) |
 
 ## Status
 
-This is a baseline specification. Accepted assumptions are explicitly labeled in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
+This is a baseline specification expanded into a final architecture foundation. See the [completion report](docs/22-architecture-foundation-completion-report.md) for readiness, remaining open questions, and the implementation recommendation. Accepted assumptions are explicitly labeled in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).

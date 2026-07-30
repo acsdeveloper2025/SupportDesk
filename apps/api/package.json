@@ -1,0 +1,37 @@
+{
+  "name": "@supportdesk/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "TS_NODE_PROJECT=tsconfig.json node --watch -r ts-node/register -r tsconfig-paths/register src/main.ts",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run src/**/*.spec.ts",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.5",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.5",
+    "@nestjs/platform-express": "^11.1.5",
+    "@nestjs/swagger": "^11.2.0",
+    "@prisma/client": "^6.13.0",
+    "helmet": "^8.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.5",
+    "@supportdesk/tsconfig": "workspace:*",
+    "@types/express": "^5.0.3",
+    "@types/supertest": "^6.0.3",
+    "prisma": "^6.13.0",
+    "supertest": "^7.1.4",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
