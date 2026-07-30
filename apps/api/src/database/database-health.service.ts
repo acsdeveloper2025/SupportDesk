@@ -1,8 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+
+import { PrismaService } from "./prisma.service";
 
 @Injectable()
 export class DatabaseHealthService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async check(): Promise<{ status: "ok" | "not_configured" | "error"; message: string }> {
     const databaseUrl = process.env.DATABASE_URL;
 
@@ -13,10 +16,8 @@ export class DatabaseHealthService {
       };
     }
 
-    const prisma = new PrismaClient();
-
     try {
-      await prisma.$connect();
+      await this.prisma.$queryRaw`SELECT 1`;
 
       return {
         message: "Database connection verified.",
@@ -27,8 +28,6 @@ export class DatabaseHealthService {
         message: "Database connection failed.",
         status: "error",
       };
-    } finally {
-      await prisma.$disconnect();
     }
   }
 }

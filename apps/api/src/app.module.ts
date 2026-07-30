@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { DatabaseModule } from "./database/database.module";
 import { HealthModule } from "./health/health.module";
+import { IdentityModule } from "./identity/identity.module";
 
 @Module({
   controllers: [AppController],
@@ -13,6 +14,7 @@ import { HealthModule } from "./health/health.module";
     }),
     DatabaseModule,
     HealthModule,
+    IdentityModule,
   ],
 })
 export class AppModule {}
