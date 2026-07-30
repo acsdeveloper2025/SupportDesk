@@ -12,6 +12,11 @@ import {
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import { PasswordHashingService } from "./security/password-hashing.service";
 import { SecureTokenService } from "./security/secure-token.service";
+import {
+  AuthSessionRepository,
+  PrismaAuthSessionRepository,
+} from "./session/auth-session.repository";
+import { AuthSessionService } from "./session/auth-session.service";
 import { PasswordPolicyService } from "./validation/password-policy.service";
 
 @Module({
@@ -19,6 +24,7 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
   exports: [
     AuthNotificationService,
     AuthRegistrationService,
+    AuthSessionService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
@@ -27,12 +33,17 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
   providers: [
     AuthNotificationService,
     AuthRegistrationService,
+    AuthSessionService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
     {
       provide: AuthRegistrationRepository,
       useClass: PrismaAuthRegistrationRepository,
+    },
+    {
+      provide: AuthSessionRepository,
+      useClass: PrismaAuthSessionRepository,
     },
     {
       provide: "IdentityLookupService",

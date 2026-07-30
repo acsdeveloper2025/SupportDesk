@@ -26,3 +26,5 @@ No critical or high exploitable finding may ship. Critical patches are remediate
 ## M2 password and token baseline
 
 Local credential support uses Argon2id with environment-driven cost parameters, secure random one-time tokens, SHA-256 token hashes for storage, and configurable email-verification expiry. Password validation returns safe policy error codes only; raw passwords and raw recovery or verification tokens must never be logged, persisted, returned from helpers, or included in audit metadata.
+
+Session creation is tenant-scoped, revocable, and separates server-side session lifetime from JWT/refresh-token transport. Remember-me uses a longer configurable server-session lifetime and must remain auditable.
