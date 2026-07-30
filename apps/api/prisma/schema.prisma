@@ -7,5 +7,326 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// No application models are defined in the bootstrap phase.
-// Future business tables must be introduced by milestone-specific migrations.
+enum TenantState {
+  ACTIVE    @map("active")
+  SUSPENDED @map("suspended")
+  DELETED   @map("deleted")
+
+  @@map("tenant_state")
+}
+
+enum TenantDomainState {
+  PENDING  @map("pending")
+  VERIFIED @map("verified")
+  REVOKED  @map("revoked")
+
+  @@map("tenant_domain_state")
+}
+
+enum UserState {
+  ACTIVE    @map("active")
+  INVITED   @map("invited")
+  LOCKED    @map("locked")
+  SUSPENDED @map("suspended")
+  DELETED   @map("deleted")
+
+  @@map("user_state")
+}
+
+enum RoleScope {
+  OWN          @map("own")
+  ORGANIZATION @map("organization")
+  GROUP        @map("group")
+  TENANT       @map("tenant")
+  PLATFORM     @map("platform")
+
+  @@map("role_scope")
+}
+
+enum SessionState {
+  ACTIVE  @map("active")
+  EXPIRED @map("expired")
+  REVOKED @map("revoked")
+
+  @@map("session_state")
+}
+
+enum RefreshTokenState {
+  ACTIVE  @map("active")
+  ROTATED @map("rotated")
+  REVOKED @map("revoked")
+  EXPIRED @map("expired")
+  REUSED  @map("reused")
+
+  @@map("refresh_token_state")
+}
+
+enum AuditOutcome {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
+  DENIED  @map("denied")
+
+  @@map("audit_outcome")
+}
+
+model Tenant {
+  id                          String           @id(map: "pk_tenants") @default(uuid()) @db.Uuid
+  publicId                    String           @unique(map: "uq_tenants__public_id") @default(uuid()) @map("public_id") @db.Uuid
+  slug                        String           @unique(map: "uq_tenants__slug") @db.VarChar(100)
+  name                        String           @db.VarChar(200)
+  state                       TenantState      @default(ACTIVE)
+  defaultLocale               String           @default("en-US") @map("default_locale") @db.VarChar(20)
+  defaultTimeZone             String           @default("UTC") @map("default_time_zone") @db.VarChar(100)
+  registrationEnabled         Boolean          @default(false) @map("registration_enabled")
+  failedLoginLockoutThreshold Int              @default(5) @map("failed_login_lockout_threshold")
+  failedLoginWindowMinutes    Int              @default(15) @map("failed_login_window_minutes")
+  lockoutDurationMinutes      Int              @default(30) @map("lockout_duration_minutes")
+  passwordExpiresDays         Int?             @map("password_expires_days")
+  createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?        @map("deleted_at") @db.Timestamptz(3)
+  version                     Int              @default(1)
+  settings                    TenantSetting[]
+  domains                     TenantDomain[]
+  roles                       Role[]
+  userRoles                   UserRole[]
+  rolePermissions             RolePermission[]
+  sessions                    Session[]
+  refreshTokens               RefreshToken[]
+  auditEvents                 AuditEvent[]
+
+  @@index([state], map: "idx_tenants__state")
+  @@map("tenants")
+}
+
+model TenantSetting {
+  id        String   @id(map: "pk_tenant_settings") @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  namespace String   @db.VarChar(100)
+  version   Int      @default(1)
+  isActive  Boolean  @default(true) @map("is_active")
+  settings  Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_tenant_settings__tenants__tenant_id")
+
+  @@unique([tenantId, namespace, version], map: "uq_tenant_settings__tenant_id_namespace_version")
+  @@index([tenantId, namespace, isActive], map: "idx_tenant_settings__tenant_id_namespace_active")
+  @@map("tenant_settings")
+}
+
+model TenantDomain {
+  id                    String            @id(map: "pk_tenant_domains") @default(uuid()) @db.Uuid
+  tenantId              String            @map("tenant_id") @db.Uuid
+  domain                String            @unique(map: "uq_tenant_domains__domain") @db.VarChar(255)
+  state                 TenantDomainState @default(PENDING)
+  verifiedAt            DateTime?         @map("verified_at") @db.Timestamptz(3)
+  verificationTokenHash String?           @map("verification_token_hash") @db.VarChar(255)
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_tenant_domains__tenants__tenant_id")
+
+  @@index([tenantId, state], map: "idx_tenant_domains__tenant_id_state")
+  @@map("tenant_domains")
+}
+
+model User {
+  id                         String          @id(map: "pk_users") @default(uuid()) @db.Uuid
+  publicId                   String          @unique(map: "uq_users__public_id") @default(uuid()) @map("public_id") @db.Uuid
+  email                      String          @db.VarChar(320)
+  emailNormalized            String          @unique(map: "uq_users__email_normalized") @map("email_normalized") @db.VarChar(320)
+  emailVerifiedAt            DateTime?       @map("email_verified_at") @db.Timestamptz(3)
+  passwordHash               String          @map("password_hash") @db.VarChar(255)
+  passwordChangedAt          DateTime?       @map("password_changed_at") @db.Timestamptz(3)
+  passwordExpiresAt          DateTime?       @map("password_expires_at") @db.Timestamptz(3)
+  failedLoginCount           Int             @default(0) @map("failed_login_count")
+  failedLoginWindowStartedAt DateTime?       @map("failed_login_window_started_at") @db.Timestamptz(3)
+  lockedUntil                DateTime?       @map("locked_until") @db.Timestamptz(3)
+  state                      UserState       @default(INVITED)
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
+  version                    Int             @default(1)
+  profile                    UserProfile?
+  preferences                UserPreference?
+  roles                      UserRole[]
+  sessions                   Session[]
+  refreshTokens              RefreshToken[]
+  auditEvents                AuditEvent[]    @relation("AuditActorUser")
+
+  @@index([state], map: "idx_users__state")
+  @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
+  @@map("users")
+}
+
+model UserProfile {
+  id                        String   @id(map: "pk_user_profiles") @default(uuid()) @db.Uuid
+  userId                    String   @unique(map: "uq_user_profiles__user_id") @map("user_id") @db.Uuid
+  displayName               String?  @map("display_name") @db.VarChar(200)
+  firstName                 String?  @map("first_name") @db.VarChar(100)
+  lastName                  String?  @map("last_name") @db.VarChar(100)
+  profilePicturePlaceholder String?  @map("profile_picture_placeholder") @db.VarChar(100)
+  timeZone                  String   @default("UTC") @map("time_zone") @db.VarChar(100)
+  language                  String   @default("en") @db.VarChar(20)
+  locale                    String   @default("en-US") @db.VarChar(20)
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_profiles__users__user_id")
+
+  @@map("user_profiles")
+}
+
+model UserPreference {
+  id          String   @id(map: "pk_user_preferences") @default(uuid()) @db.Uuid
+  userId      String   @unique(map: "uq_user_preferences__user_id") @map("user_id") @db.Uuid
+  preferences Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_preferences__users__user_id")
+
+  @@map("user_preferences")
+}
+
+model Role {
+  id              String           @id(map: "pk_roles") @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  key             String           @db.VarChar(100)
+  name            String           @db.VarChar(150)
+  description     String?          @db.VarChar(500)
+  isSystem        Boolean          @default(false) @map("is_system")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(3)
+  version         Int              @default(1)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_roles__tenants__tenant_id")
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([id, tenantId], map: "uq_roles__id_tenant_id")
+  @@unique([tenantId, key], map: "uq_roles__tenant_id_key")
+  @@unique([tenantId, name], map: "uq_roles__tenant_id_name")
+  @@index([tenantId, deletedAt], map: "idx_roles__tenant_id_deleted_at")
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id(map: "pk_permissions") @default(uuid()) @db.Uuid
+  key             String           @unique(map: "uq_permissions__key") @db.VarChar(150)
+  description     String?          @db.VarChar(500)
+  isSystem        Boolean          @default(true) @map("is_system")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id         String    @id(map: "pk_user_roles") @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  roleId     String    @map("role_id") @db.Uuid
+  assignedAt DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  assignedBy String?   @map("assigned_by") @db.Uuid
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_user_roles__tenants__tenant_id")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_user_roles__users__user_id")
+  role       Role      @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "fk_user_roles__roles__role_id_tenant_id")
+
+  @@unique([tenantId, userId, roleId], map: "uq_user_roles__tenant_id_user_id_role_id")
+  @@index([tenantId, userId, revokedAt], map: "idx_user_roles__tenant_id_user_id_revoked_at")
+  @@index([tenantId, roleId], map: "idx_user_roles__tenant_id_role_id")
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String     @id(map: "pk_role_permissions") @default(uuid()) @db.Uuid
+  tenantId     String     @map("tenant_id") @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  scope        RoleScope  @default(TENANT)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_role_permissions__tenants__tenant_id")
+  role         Role       @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "fk_role_permissions__roles__role_id_tenant_id")
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, map: "fk_role_permissions__permissions__permission_id")
+
+  @@unique([tenantId, roleId, permissionId, scope], map: "uq_role_permissions__tenant_id_role_id_permission_id_scope")
+  @@index([tenantId, permissionId], map: "idx_role_permissions__tenant_id_permission_id")
+  @@map("role_permissions")
+}
+
+model Session {
+  id            String         @id(map: "pk_sessions") @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  state         SessionState   @default(ACTIVE)
+  rememberMe    Boolean        @default(false) @map("remember_me")
+  deviceName    String?        @map("device_name") @db.VarChar(150)
+  userAgent     String?        @map("user_agent") @db.Text
+  ipAddress     String?        @map("ip_address") @db.Inet
+  correlationId String?        @map("correlation_id") @db.VarChar(100)
+  lastSeenAt    DateTime?      @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt     DateTime       @map("expires_at") @db.Timestamptz(3)
+  revokedAt     DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  revokeReason  String?        @map("revoke_reason") @db.VarChar(255)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sessions__tenants__tenant_id")
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_sessions__users__user_id")
+  refreshTokens RefreshToken[]
+
+  @@index([userId, state], map: "idx_sessions__user_id_state")
+  @@index([tenantId, userId, state], map: "idx_sessions__tenant_id_user_id_state")
+  @@index([expiresAt], map: "idx_sessions__expires_at")
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id            String            @id(map: "pk_refresh_tokens") @default(uuid()) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  sessionId     String            @map("session_id") @db.Uuid
+  tokenHash     String            @unique(map: "uq_refresh_tokens__token_hash") @map("token_hash") @db.VarChar(255)
+  familyId      String            @map("family_id") @db.Uuid
+  parentTokenId String?           @map("parent_token_id") @db.Uuid
+  state         RefreshTokenState @default(ACTIVE)
+  expiresAt     DateTime          @map("expires_at") @db.Timestamptz(3)
+  usedAt        DateTime?         @map("used_at") @db.Timestamptz(3)
+  rotatedAt     DateTime?         @map("rotated_at") @db.Timestamptz(3)
+  revokedAt     DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  revokeReason  String?           @map("revoke_reason") @db.VarChar(255)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_refresh_tokens__tenants__tenant_id")
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_refresh_tokens__users__user_id")
+  session       Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade, map: "fk_refresh_tokens__sessions__session_id")
+  parentToken   RefreshToken?     @relation("RefreshTokenRotation", fields: [parentTokenId], references: [id], onDelete: SetNull, map: "fk_refresh_tokens__refresh_tokens__parent_token_id")
+  childTokens   RefreshToken[]    @relation("RefreshTokenRotation")
+
+  @@index([sessionId, state], map: "idx_refresh_tokens__session_id_state")
+  @@index([familyId, state], map: "idx_refresh_tokens__family_id_state")
+  @@index([expiresAt], map: "idx_refresh_tokens__expires_at")
+  @@map("refresh_tokens")
+}
+
+model AuditEvent {
+  id            String       @id(map: "pk_audit_events") @default(uuid()) @db.Uuid
+  tenantId      String?      @map("tenant_id") @db.Uuid
+  actorUserId   String?      @map("actor_user_id") @db.Uuid
+  action        String       @db.VarChar(150)
+  outcome       AuditOutcome
+  targetType    String?      @map("target_type") @db.VarChar(100)
+  targetId      String?      @map("target_id") @db.Uuid
+  ipAddress     String?      @map("ip_address") @db.Inet
+  userAgent     String?      @map("user_agent") @db.Text
+  correlationId String?      @map("correlation_id") @db.VarChar(100)
+  metadata      Json?
+  occurredAt    DateTime     @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  recordedAt    DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  tenant        Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull, map: "fk_audit_events__tenants__tenant_id")
+  actorUser     User?        @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_audit_events__users__actor_user_id")
+
+  @@index([tenantId, occurredAt], map: "idx_audit_events__tenant_id_occurred_at")
+  @@index([actorUserId, occurredAt], map: "idx_audit_events__actor_user_id_occurred_at")
+  @@index([action, outcome], map: "idx_audit_events__action_outcome")
+  @@map("audit_events")
+}

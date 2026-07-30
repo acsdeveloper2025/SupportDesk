@@ -11,6 +11,7 @@ The original decision log uses `ADR-001` style IDs from the first documentation 
 | [ADR-0001](ADR-0001.md) | Multi-tenancy approach  |
 | [ADR-0002](ADR-0002.md) | Authentication strategy |
 | [ADR-0003](ADR-0003.md) | Database strategy       |
+| [ADR-0004](ADR-0004.md) | M2 RBAC foundation      |
 
 ## Status values
 

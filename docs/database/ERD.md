@@ -7,11 +7,15 @@ erDiagram
   TENANT ||--o{ TENANT_SETTING : configures
   TENANT ||--o{ TENANT_DOMAIN : owns
   TENANT ||--o{ ORGANIZATION : groups
-  TENANT ||--o{ TENANT_MEMBERSHIP : grants
-  USER ||--o{ TENANT_MEMBERSHIP : holds
-  TENANT_MEMBERSHIP }o--o{ ROLE : receives
+  TENANT ||--o{ USER_ROLE : grants_M2
+  USER ||--o{ USER_ROLE : receives_M2
+  USER_ROLE }o--|| ROLE : assigns_M2
   TENANT ||--o{ ROLE : defines
   ROLE }o--o{ PERMISSION : grants
+  USER ||--o{ USER_PROFILE : has
+  USER ||--o{ USER_PREFERENCE : stores
+  USER ||--o{ SESSION : opens
+  SESSION ||--o{ REFRESH_TOKEN : rotates
   TENANT ||--o{ GROUP : defines
   GROUP }o--o{ TENANT_MEMBERSHIP : includes
 
@@ -52,19 +56,19 @@ erDiagram
   TENANT ||--o{ RETENTION_POLICY : governs
   TENANT ||--o{ LEGAL_HOLD : preserves
   TENANT ||--o{ API_TOKEN : authorizes
-  USER ||--o{ SESSION : opens
   TENANT ||--o{ OPERATOR_ELEVATION : permits
 ```
 
 ## Ownership boundaries
 
 - Tenant-owned: settings, domains, organizations, memberships, roles, groups, tickets, comments, attachments, workflows, schedules, SLA policies, notification configuration, audit events, outbox events, exports, retention policies, legal holds, and API tokens.
-- Global but access-controlled: user identity, permissions catalogue, platform sessions, and platform operator identities.
+- Global but access-controlled: user identity, permissions catalogue, and platform operator identities. Authentication sessions and refresh tokens are tenant-scoped for M2 tenant-aware login.
 - Derived/projection data: search indexes, report aggregates, notification attempts, and analytics. Projections must be rebuildable from authoritative tables and events.
 
 ## Relationship invariants
 
 - A ticket requester may be a global user, but ticket access is granted only through tenant membership or verified requester ownership.
+- M2 role assignments and role-permission grants must reference roles in the same tenant through composite role/tenant constraints.
 - Assignment references must resolve to active membership/group records in the same tenant.
 - Comments, attachments, SLA targets, field values, links, watchers, and notification intents must reference tickets in the same tenant.
 - Published configuration versions are immutable. Historical evaluations reference the exact version used.
