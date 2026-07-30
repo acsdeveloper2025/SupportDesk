@@ -4,7 +4,7 @@ Related: [../07-security-compliance.md](../07-security-compliance.md), [../08-rb
 
 ## Policy
 
-Authentication supports local credentials initially plus future OIDC/SAML/SCIM after OQ-03 resolution. Password, MFA, recovery, and session policies must be finalized before implementation.
+Authentication uses local credentials initially, with future OIDC/SAML/SCIM remaining outside this milestone. Tenant-aware registration, email verification, login, logout, session management, access/refresh tokens, and password recovery are implemented incrementally through the M2 issue series.
 
 | Method / URI                                   | Authentication                  | Authorization                        | Request                                                         | Response                                                      | Validation                                                              | Errors                                            | Page/filter/sort                               | Rate limit                     | Example                    |
 | ---------------------------------------------- | ------------------------------- | ------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- | ------------------------------ | -------------------------- |
@@ -25,3 +25,5 @@ Authentication supports local credentials initially plus future OIDC/SAML/SCIM a
 Authentication errors must not disclose account, tenant, or membership existence. Privileged actions require step-up authentication or phishing-resistant MFA once policy is finalized.
 
 M2.06 issues signed JWT access tokens with minimal user, tenant, and session claims, and stores only hashed refresh tokens. Refresh tokens rotate on every refresh; replay of a rotated/revoked token revokes the token family and related session. Local session-management endpoints may still pass the current session with `x-session-id` until bearer/cookie guards replace that development transport in the guard issue.
+
+M2.07 stores only SHA-256 hashes of cryptographically random password-reset tokens. Reset requests always return an accepted response, tokens are purpose-scoped, single-use, and expire after `PASSWORD_RESET_TOKEN_TTL_MINUTES` (60 by default). A successful reset applies the password policy, replaces the Argon2id hash, and revokes all active sessions and refresh tokens for that tenant/user identity.

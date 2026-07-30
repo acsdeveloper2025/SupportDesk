@@ -46,7 +46,7 @@ Default local URLs:
 
 ## Environment
 
-`.env.example` documents every local environment variable. Authentication security settings currently cover Argon2id hashing cost, secure token entropy, and password policy requirements. Never commit real secrets or tenant-specific production values.
+`.env.example` documents every local environment variable. Authentication security settings currently cover Argon2id hashing cost, secure token entropy, token lifetimes, and password policy requirements. Never commit real secrets or tenant-specific production values.
 
 ## Docker Development
 

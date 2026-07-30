@@ -23,6 +23,8 @@ Personal data is classified and inventoried before collection. Production conten
 
 No critical or high exploitable finding may ship. Critical patches are remediated or mitigated within 24 hours, high within 7 days, medium within 30 days, with approved time-limited exceptions. Authentication and isolation failures page on-call. Threat models are updated for new trust boundaries, sensitive flows, and external integrations.
 
+Password-recovery responses do not reveal whether a tenant, membership, user, or token exists. Recovery tokens are generated with a cryptographically secure random source, stored only as hashes, purpose-scoped, time-bounded, and consumed once. Successful password resets revoke active sessions and refresh-token families for the affected tenant/user identity, and request, rejection, expiry, replay, and completion events are audited without recording raw tokens or passwords.
+
 ## M2 password and token baseline
 
 Local credential support uses Argon2id with environment-driven cost parameters, secure random one-time tokens, SHA-256 token hashes for storage, and configurable email-verification expiry. Password validation returns safe policy error codes only; raw passwords and raw recovery or verification tokens must never be logged, persisted, returned from helpers, or included in audit metadata.

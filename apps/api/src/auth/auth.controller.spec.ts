@@ -6,6 +6,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AuthController } from "./auth.controller";
+import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import { AuthSessionService } from "./session/auth-session.service";
 import { AuthTokenService } from "./tokens/auth-token.service";
@@ -22,6 +23,13 @@ describe("AuthController registration API", () => {
           useValue: {
             confirmEmailVerification: () => Promise.resolve({ status: "accepted" }),
             register: () => Promise.resolve({ status: "accepted" }),
+          },
+        },
+        {
+          provide: AuthPasswordResetService,
+          useValue: {
+            confirmPasswordReset: () => Promise.resolve({ status: "accepted" }),
+            requestPasswordReset: () => Promise.resolve({ status: "accepted" }),
           },
         },
         {
@@ -162,6 +170,34 @@ describe("AuthController registration API", () => {
       refreshToken: "next-refresh-token",
       status: "refreshed",
     });
+  });
+
+  it("accepts password reset request and confirmation without exposing identity or token validity", async () => {
+    const server = app.getHttpServer() as Server;
+
+    await request(server)
+      .post("/api/v1/auth/password-reset/request")
+      .send({
+        email: "agent@acme.test",
+        tenant: {
+          slug: "acme",
+        },
+      })
+      .expect(202)
+      .expect({
+        status: "accepted",
+      });
+
+    await request(server)
+      .post("/api/v1/auth/password-reset/confirm")
+      .send({
+        password: "NewCorrectHorse9!Battery",
+        token: "password-reset-token",
+      })
+      .expect(202)
+      .expect({
+        status: "accepted",
+      });
   });
 
   it("accepts logout and session management requests for the current session", async () => {

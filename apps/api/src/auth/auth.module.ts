@@ -4,6 +4,11 @@ import { DatabaseModule } from "../database/database.module";
 import { IdentityModule } from "../identity/identity.module";
 import { IdentityLookupService } from "../identity/identity-lookup.service";
 import { AuthController } from "./auth.controller";
+import {
+  AuthPasswordResetRepository,
+  PrismaAuthPasswordResetRepository,
+} from "./password-reset/auth-password-reset.repository";
+import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import { AuthNotificationService } from "./registration/auth-notification.service";
 import {
   AuthRegistrationRepository,
@@ -25,6 +30,7 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
   controllers: [AuthController],
   exports: [
     AuthNotificationService,
+    AuthPasswordResetService,
     AuthRegistrationService,
     AuthSessionService,
     AuthTokenService,
@@ -35,12 +41,17 @@ import { PasswordPolicyService } from "./validation/password-policy.service";
   imports: [DatabaseModule, IdentityModule],
   providers: [
     AuthNotificationService,
+    AuthPasswordResetService,
     AuthRegistrationService,
     AuthSessionService,
     AuthTokenService,
     PasswordHashingService,
     PasswordPolicyService,
     SecureTokenService,
+    {
+      provide: AuthPasswordResetRepository,
+      useClass: PrismaAuthPasswordResetRepository,
+    },
     {
       provide: AuthRegistrationRepository,
       useClass: PrismaAuthRegistrationRepository,

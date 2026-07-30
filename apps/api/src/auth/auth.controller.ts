@@ -21,6 +21,11 @@ import {
 import type { Request } from "express";
 
 import { getCorrelationId } from "../common/logging/correlation-id";
+import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
+import type {
+  ConfirmPasswordResetRequest,
+  PasswordResetRequest,
+} from "./password-reset/auth-password-reset.types";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
 import type {
   ConfirmEmailVerificationRequest,
@@ -34,6 +39,7 @@ import { AuthTokenService } from "./tokens/auth-token.service";
 @Controller("api/v1/auth")
 export class AuthController {
   constructor(
+    @Inject(AuthPasswordResetService) private readonly passwordReset: AuthPasswordResetService,
     @Inject(AuthRegistrationService) private readonly registration: AuthRegistrationService,
     @Inject(AuthSessionService) private readonly sessions: AuthSessionService,
     @Inject(AuthTokenService) private readonly tokens: AuthTokenService,
@@ -72,6 +78,32 @@ export class AuthController {
     return {
       status: "accepted",
     };
+  }
+
+  @Post("password-reset/request")
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiAcceptedResponse({
+    description: "Password reset request accepted without account enumeration.",
+  })
+  async requestPasswordReset(@Body() body: PasswordResetRequest, @Req() request: Request) {
+    return this.passwordReset.requestPasswordReset({
+      ...body,
+      correlationId: getCorrelationId(request),
+      userAgent: request.header("user-agent"),
+    });
+  }
+
+  @Post("password-reset/confirm")
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiAcceptedResponse({
+    description: "Password reset confirmation accepted without token enumeration.",
+  })
+  async confirmPasswordReset(@Body() body: ConfirmPasswordResetRequest, @Req() request: Request) {
+    return this.passwordReset.confirmPasswordReset({
+      ...body,
+      correlationId: getCorrelationId(request),
+      userAgent: request.header("user-agent"),
+    });
   }
 
   @Post("login")
