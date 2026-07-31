@@ -48,6 +48,8 @@ Default local URLs:
 
 `.env.example` documents every local environment variable. Authentication security settings currently cover Argon2id hashing cost, secure token entropy, token lifetimes, and password policy requirements. Never commit real secrets or tenant-specific production values.
 
+Browser authentication uses same-origin Next.js route handlers under `/api/auth/*`. Those handlers call the NestJS API through server-only `SUPPORTDESK_API_URL`, store access/refresh material in `HttpOnly` cookies, and require CSRF tokens for cookie-authenticated mutations. Frontend components must not store auth tokens in `localStorage`, `sessionStorage`, or other browser-readable storage.
+
 ## Docker Development
 
 ```bash
