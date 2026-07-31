@@ -12,10 +12,12 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from "@nestjs/common";
 import {
   ApiAcceptedResponse,
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiOkResponse,
   ApiTags,
@@ -24,6 +26,9 @@ import {
 import type { Request } from "express";
 
 import { getCorrelationId } from "../common/logging/correlation-id";
+import { AuthAccessTokenGuard } from "./guards/auth-access-token.guard";
+import { AuthAccessTokenService } from "./guards/auth-access-token.service";
+import { getAuthenticatedRequestContext } from "./guards/auth-context";
 import { AuthPasswordService } from "./password/auth-password.service";
 import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import type {
@@ -44,6 +49,7 @@ import { AuthTokenService } from "./tokens/auth-token.service";
 @Controller("api/v1/auth")
 export class AuthController {
   constructor(
+    @Inject(AuthAccessTokenService) private readonly accessTokens: AuthAccessTokenService,
     @Inject(AuthPasswordService) private readonly password: AuthPasswordService,
     @Inject(AuthPasswordResetService) private readonly passwordReset: AuthPasswordResetService,
     @Inject(AuthRegistrationService) private readonly registration: AuthRegistrationService,
@@ -157,7 +163,7 @@ export class AuthController {
     const result = await this.password.changePassword({
       ...body,
       correlationId: getCorrelationId(request),
-      currentSessionId: sessionHeader,
+      currentSessionId: await this.resolveCurrentSessionId(request, sessionHeader),
       ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
@@ -219,6 +225,25 @@ export class AuthController {
     return result;
   }
 
+  @Get("me")
+  @UseGuards(AuthAccessTokenGuard)
+  @ApiBearerAuth()
+  @ApiOkResponse({
+    description: "Current authenticated tenant identity.",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Authentication is required.",
+  })
+  me(@Req() request: Request) {
+    const context = getAuthenticatedRequestContext(request);
+
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    return context;
+  }
+
   @Post("logout")
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
@@ -232,7 +257,8 @@ export class AuthController {
     return this.sessions.logout({
       ...body,
       correlationId: getCorrelationId(request),
-      currentSessionId: body.currentSessionId ?? sessionHeader,
+      currentSessionId:
+        body.currentSessionId ?? (await this.resolveCurrentSessionId(request, sessionHeader)),
       ipAddress: request.ip,
       userAgent: request.header("user-agent"),
     });
@@ -242,9 +268,12 @@ export class AuthController {
   @ApiOkResponse({
     description: "Current user's active sessions.",
   })
-  async listSessions(@Headers("x-session-id") sessionHeader: string | undefined) {
+  async listSessions(
+    @Headers("x-session-id") sessionHeader: string | undefined,
+    @Req() request: Request,
+  ) {
     const result = await this.sessions.listSessions({
-      currentSessionId: sessionHeader,
+      currentSessionId: await this.resolveCurrentSessionId(request, sessionHeader),
     });
 
     if (result.status !== "ok") {
@@ -266,7 +295,7 @@ export class AuthController {
   ) {
     return this.sessions.logout({
       correlationId: getCorrelationId(request),
-      currentSessionId: sessionHeader,
+      currentSessionId: await this.resolveCurrentSessionId(request, sessionHeader),
       ipAddress: request.ip,
       targetSessionId: sessionId,
       userAgent: request.header("user-agent"),
@@ -295,5 +324,24 @@ export class AuthController {
     }
 
     return result;
+  }
+
+  private async resolveCurrentSessionId(
+    request: Request,
+    sessionHeader: string | undefined,
+  ): Promise<string | undefined> {
+    const authorizationHeader = request.header("authorization");
+
+    if (!authorizationHeader) {
+      return sessionHeader;
+    }
+
+    const result = await this.accessTokens.authenticateBearer(authorizationHeader);
+
+    if (result.status !== "authenticated") {
+      throw new UnauthorizedException();
+    }
+
+    return result.context.sessionId;
   }
 }

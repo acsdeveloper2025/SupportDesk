@@ -41,4 +41,6 @@ Authentication audit metadata is constructed through a shared recursive redactio
 
 Browser authentication uses the same-origin Next.js Backend-for-Frontend selected in [adr/ADR-0005.md](adr/ADR-0005.md). Browser session material must be stored only in `HttpOnly`, `Secure`, `SameSite=Lax` cookies, with `Secure` relaxed only for local `http://localhost` development. Refresh tokens and session identifiers must never be exposed to browser JavaScript. The BFF must validate CSRF tokens on cookie-authenticated mutations before forwarding requests to the API.
 
+Bearer-authenticated API requests must pass through the access-token guard. The guard accepts only signed `typ=access` JWTs from the configured issuer, validates expiry, requires the persisted session to remain active, compares token tenant/user claims with session ownership, and reloads tenant-scoped identity before protected controllers use the request context.
+
 The initial rate-limit store is process-local and intentionally isolated behind `AuthRateLimitStore`. A shared atomic store such as Redis is required before horizontally scaling the API; production readiness must block multi-replica deployment until that adapter is configured.

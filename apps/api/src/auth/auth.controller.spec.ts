@@ -6,6 +6,8 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AuthController } from "./auth.controller";
+import { AuthAccessTokenGuard } from "./guards/auth-access-token.guard";
+import { AuthAccessTokenService } from "./guards/auth-access-token.service";
 import { AuthPasswordService } from "./password/auth-password.service";
 import { AuthPasswordResetService } from "./password-reset/auth-password-reset.service";
 import { AuthRegistrationService } from "./registration/auth-registration.service";
@@ -47,20 +49,26 @@ describe("AuthController registration API", () => {
         {
           provide: AuthSessionService,
           useValue: {
-            listSessions: () =>
-              Promise.resolve({
-                sessions: [
-                  {
-                    deviceName: "Browser",
-                    expiresAt: new Date("2026-07-31T00:00:00.000Z"),
-                    id: "33333333-3333-4333-8333-333333333333",
-                    lastSeenAt: null,
-                    rememberMe: false,
-                    state: "ACTIVE",
-                  },
-                ],
-                status: "ok",
-              }),
+            listSessions: (input: { currentSessionId?: string }) =>
+              Promise.resolve(
+                input.currentSessionId === "33333333-3333-4333-8333-333333333333"
+                  ? {
+                      sessions: [
+                        {
+                          deviceName: "Browser",
+                          expiresAt: new Date("2026-07-31T00:00:00.000Z"),
+                          id: "33333333-3333-4333-8333-333333333333",
+                          lastSeenAt: null,
+                          rememberMe: false,
+                          state: "ACTIVE",
+                        },
+                      ],
+                      status: "ok",
+                    }
+                  : {
+                      status: "denied",
+                    },
+              ),
             login: (input: { email?: string }) =>
               Promise.resolve({
                 session: {
@@ -96,6 +104,58 @@ describe("AuthController registration API", () => {
                 refreshTokenExpiresAt: new Date("2026-07-31T00:00:00.000Z"),
                 status: "refreshed",
               }),
+          },
+        },
+        AuthAccessTokenGuard,
+        {
+          provide: AuthAccessTokenService,
+          useValue: {
+            authenticateBearer: (header: string | undefined) =>
+              Promise.resolve(
+                header === "Bearer access-token"
+                  ? {
+                      context: {
+                        email: "agent@acme.test",
+                        emailNormalized: "agent@acme.test",
+                        emailVerified: true,
+                        passwordChangeRequired: false,
+                        permissions: [
+                          {
+                            key: "auth.session.read",
+                            scope: "tenant",
+                          },
+                        ],
+                        preferences: {
+                          density: "compact",
+                        },
+                        profile: {
+                          displayName: "Acme Agent",
+                          firstName: "Acme",
+                          language: "en",
+                          lastName: "Agent",
+                          locale: "en-US",
+                          profilePicturePlaceholder: "AA",
+                          timeZone: "America/New_York",
+                        },
+                        publicId: "44444444-4444-4444-8444-444444444444",
+                        roles: [
+                          {
+                            id: "55555555-5555-4555-8555-555555555555",
+                            key: "agent",
+                            name: "Agent",
+                          },
+                        ],
+                        sessionId: "33333333-3333-4333-8333-333333333333",
+                        tenantId: "11111111-1111-4111-8111-111111111111",
+                        userId: "22222222-2222-4222-8222-222222222222",
+                      },
+                      status: "authenticated",
+                    }
+                  : {
+                      reason: "token_missing",
+                      status: "denied",
+                    },
+              ),
           },
         },
       ],
@@ -277,5 +337,68 @@ describe("AuthController registration API", () => {
       .delete("/api/v1/auth/sessions/33333333-3333-4333-8333-333333333333")
       .set("x-session-id", "33333333-3333-4333-8333-333333333333")
       .expect(202);
+  });
+
+  it("accepts bearer-authenticated session management requests", async () => {
+    const server = app.getHttpServer() as Server;
+
+    const sessions = await request(server)
+      .get("/api/v1/auth/sessions")
+      .set("authorization", "Bearer access-token")
+      .expect(200);
+    const sessionsBody = sessions.body as Record<string, unknown>;
+
+    expect(sessionsBody["status"]).toBe("ok");
+  });
+
+  it("returns the authenticated current identity from an access token", async () => {
+    const server = app.getHttpServer() as Server;
+
+    const response = await request(server)
+      .get("/api/v1/auth/me")
+      .set("authorization", "Bearer access-token")
+      .expect(200);
+
+    expect(response.body).toEqual({
+      email: "agent@acme.test",
+      emailNormalized: "agent@acme.test",
+      emailVerified: true,
+      passwordChangeRequired: false,
+      permissions: [
+        {
+          key: "auth.session.read",
+          scope: "tenant",
+        },
+      ],
+      preferences: {
+        density: "compact",
+      },
+      profile: {
+        displayName: "Acme Agent",
+        firstName: "Acme",
+        language: "en",
+        lastName: "Agent",
+        locale: "en-US",
+        profilePicturePlaceholder: "AA",
+        timeZone: "America/New_York",
+      },
+      publicId: "44444444-4444-4444-8444-444444444444",
+      roles: [
+        {
+          id: "55555555-5555-4555-8555-555555555555",
+          key: "agent",
+          name: "Agent",
+        },
+      ],
+      sessionId: "33333333-3333-4333-8333-333333333333",
+      tenantId: "11111111-1111-4111-8111-111111111111",
+      userId: "22222222-2222-4222-8222-222222222222",
+    });
+  });
+
+  it("rejects current identity requests without an accepted access token", async () => {
+    const server = app.getHttpServer() as Server;
+
+    await request(server).get("/api/v1/auth/me").expect(401);
   });
 });
