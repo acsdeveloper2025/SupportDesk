@@ -113,6 +113,7 @@ model Tenant {
   auditEvents                 AuditEvent[]
   tickets                     Ticket[]
   comments                    Comment[]
+  attachments                 Attachment[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -176,6 +177,7 @@ model User {
   requestedTickets           Ticket[]        @relation("TicketRequester")
   assignedTickets            Ticket[]        @relation("TicketAssignee")
   authoredComments           Comment[]       @relation("CommentAuthor")
+  uploadedAttachments        Attachment[]    @relation("AttachmentUploader")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -438,6 +440,7 @@ model Ticket {
   requesterUser   User           @relation("TicketRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, map: "fk_tickets__users__requester_user_id")
   assigneeUser    User?          @relation("TicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, map: "fk_tickets__users__assignee_user_id")
   comments        Comment[]
+  attachments     Attachment[]
 
   @@unique([tenantId, publicRef], map: "uq_tickets__tenant_id_public_ref")
   @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
@@ -473,4 +476,39 @@ model Comment {
   @@index([tenantId, ticketId, createdAt], map: "idx_comments__tenant_id_ticket_id_created_at")
   @@index([tenantId, deletedAt], map: "idx_comments__tenant_id_deleted_at")
   @@map("comments")
+}
+
+enum VirusScanStatus {
+  PENDING  @map("pending")
+  CLEAN    @map("clean")
+  INFECTED @map("infected")
+
+  @@map("virus_scan_status")
+}
+
+model Attachment {
+  id               String          @id(map: "pk_attachments") @default(uuid()) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  ticketId         String          @map("ticket_id") @db.Uuid
+  originalFilename String          @map("original_filename") @db.VarChar(255)
+  storedFilename   String          @map("stored_filename") @db.VarChar(100)
+  storagePath      String          @map("storage_path") @db.VarChar(500)
+  mimeType         String          @map("mime_type") @db.VarChar(150)
+  extension        String          @db.VarChar(20)
+  fileSize         Int             @map("file_size")
+  sha256           String          @db.VarChar(64)
+  uploadedBy       String          @map("uploaded_by") @db.Uuid
+  virusScanStatus  VirusScanStatus @default(PENDING) @map("virus_scan_status")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.Timestamptz(3)
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_attachments__tenants__tenant_id")
+  ticket           Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_attachments__tickets__ticket_id")
+  uploader         User            @relation("AttachmentUploader", fields: [uploadedBy], references: [id], onDelete: Restrict, map: "fk_attachments__users__uploaded_by")
+
+  @@index([tenantId, ticketId, sha256], map: "idx_attachments__tenant_id_ticket_id_sha256")
+  @@index([tenantId, ticketId, createdAt], map: "idx_attachments__tenant_id_ticket_id_created_at")
+  @@index([tenantId, virusScanStatus], map: "idx_attachments__tenant_id_virus_scan_status")
+  @@map("attachments")
 }

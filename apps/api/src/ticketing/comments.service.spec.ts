@@ -31,10 +31,12 @@ describe("CommentsService", () => {
   beforeEach(() => {
     commentsRepository = {
       create: vi.fn(),
+      createWithAudit: vi.fn((entity, _audit) => Promise.resolve(entity)),
       findById: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       update: vi.fn(),
+      updateWithAudit: vi.fn((entity) => Promise.resolve(entity)),
       recordAuditEvent: vi.fn(),
     };
 
@@ -74,12 +76,11 @@ describe("CommentsService", () => {
     it("creates a comment successfully", async () => {
       ticketsRepository.findById!.mockResolvedValue(sampleTicket);
       rbacService.can!.mockResolvedValue(true);
-      commentsRepository.create!.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.createComment(tenantA, ticketId, { body: "Test" }, userA);
 
       expect(result.body).toBe("Test");
-      expect(commentsRepository.recordAuditEvent).toHaveBeenCalled();
+      expect(commentsRepository.createWithAudit).toHaveBeenCalled();
     });
   });
 

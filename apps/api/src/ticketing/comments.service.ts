@@ -49,21 +49,23 @@ export class CommentsService {
 
     const visibility = dto.visibility ?? CommentVisibility.PUBLIC;
 
-    const canCreateAny = await this.rbacService.can({
+    const permissionKey =
+      visibility === CommentVisibility.INTERNAL
+        ? "ticket.comment.internal.create"
+        : "ticket.comment.public.create";
+
+    const canCreate = await this.rbacService.can({
       userId: actorUserId,
       tenantId,
-      permissionKey: "ticket.comment.create",
-    });
-    const canCreateVisibility = await this.rbacService.can({
-      userId: actorUserId,
-      tenantId,
-      permissionKey:
-        visibility === CommentVisibility.INTERNAL
-          ? "ticket.comment.internal.create"
-          : "ticket.comment.public.create",
+      permissionKey,
+      resource: {
+        assigneeUserId: ticket.assigneeUserId,
+        groupId: ticket.assignedGroupId,
+        ownerUserId: ticket.requesterUserId,
+      },
     });
 
-    if (!canCreateAny && !canCreateVisibility) {
+    if (!canCreate) {
       throw new ForbiddenException(`You do not have permission to create ${visibility} comments`);
     }
 
@@ -80,9 +82,7 @@ export class CommentsService {
       updatedAt: new Date(),
     });
 
-    const created = await this.commentsRepository.create(entity);
-
-    await this.commentsRepository.recordAuditEvent({
+    return this.commentsRepository.createWithAudit(entity, {
       action: "ticket.comment.created",
       actorUserId,
       metadata: {
@@ -94,8 +94,6 @@ export class CommentsService {
       outcome: "SUCCESS",
       tenantId,
     });
-
-    return created;
   }
 
   async getComment(
@@ -225,21 +223,17 @@ export class CommentsService {
     }
 
     comment.updateBody(dto.body, dto.expectedVersion);
-    const updated = await this.commentsRepository.update(comment, dto.expectedVersion);
-
-    await this.commentsRepository.recordAuditEvent({
+    return this.commentsRepository.updateWithAudit(comment, dto.expectedVersion, {
       action: "ticket.comment.updated",
       actorUserId,
       metadata: {
-        ticketId: updated.ticketId,
+        ticketId: comment.ticketId,
       },
       targetId: commentId,
       targetType: "Comment",
       outcome: "SUCCESS",
       tenantId,
     });
-
-    return updated;
   }
 
   async softDeleteComment(
@@ -268,9 +262,7 @@ export class CommentsService {
     }
 
     comment.softDelete(expectedVersion);
-    await this.commentsRepository.update(comment, expectedVersion);
-
-    await this.commentsRepository.recordAuditEvent({
+    await this.commentsRepository.updateWithAudit(comment, expectedVersion, {
       action: "ticket.comment.deleted",
       actorUserId,
       metadata: {

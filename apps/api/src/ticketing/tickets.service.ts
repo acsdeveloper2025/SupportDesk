@@ -154,29 +154,25 @@ export class TicketsService {
       type: dto.type,
     });
 
-    const created = await this.repository.create(aggregate);
-
-    await this.repository.recordAuditEvent({
+    return this.repository.createWithAudit(aggregate, {
       action: "ticket.created",
       actorUserId: dto.requesterUserId,
       correlationId: dto.correlationId,
       ipAddress: dto.ipAddress,
       metadata: {
-        channel: created.channel,
-        priority: created.priority,
-        publicRef: created.publicRef,
-        status: created.status,
-        title: created.title,
-        type: created.type,
+        channel: aggregate.channel,
+        priority: aggregate.priority,
+        publicRef: aggregate.publicRef,
+        status: aggregate.status,
+        title: aggregate.title,
+        type: aggregate.type,
       },
       outcome: "SUCCESS",
-      targetId: created.id,
+      targetId: aggregate.id,
       targetType: "ticket",
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
-
-    return created;
   }
 
   async getTicketById(tenantId: string, id: string): Promise<TicketAggregate> {
@@ -250,26 +246,22 @@ export class TicketsService {
       dto.expectedVersion,
     );
 
-    const updated = await this.repository.update(ticket, dto.expectedVersion);
-
-    await this.repository.recordAuditEvent({
+    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: "ticket.updated",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
       ipAddress: dto.ipAddress,
       metadata: {
-        newVersion: updated.version,
+        newVersion: ticket.version,
         previousVersion: dto.expectedVersion,
-        publicRef: updated.publicRef,
+        publicRef: ticket.publicRef,
       },
       outcome: "SUCCESS",
-      targetId: updated.id,
+      targetId: ticket.id,
       targetType: "ticket",
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
-
-    return updated;
   }
 
   async transitionStatus(dto: TransitionTicketStatusDto): Promise<TicketAggregate> {
@@ -278,27 +270,23 @@ export class TicketsService {
     const previousStatus = ticket.status;
     ticket.transitionTo(dto.newStatus, dto.expectedVersion);
 
-    const updated = await this.repository.update(ticket, dto.expectedVersion);
-
-    await this.repository.recordAuditEvent({
+    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: "ticket.status_changed",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
       ipAddress: dto.ipAddress,
       metadata: {
         fromStatus: previousStatus,
-        newVersion: updated.version,
-        publicRef: updated.publicRef,
-        toStatus: updated.status,
+        newVersion: ticket.version,
+        publicRef: ticket.publicRef,
+        toStatus: ticket.status,
       },
       outcome: "SUCCESS",
-      targetId: updated.id,
+      targetId: ticket.id,
       targetType: "ticket",
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
-
-    return updated;
   }
 
   async assignTicket(dto: AssignTicketDto): Promise<TicketAggregate> {
@@ -338,30 +326,26 @@ export class TicketsService {
       dto.expectedVersion,
     );
 
-    const updated = await this.repository.update(ticket, dto.expectedVersion);
-
-    await this.repository.recordAuditEvent({
+    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: isReassign ? "ticket.reassigned" : "ticket.assigned",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
       ipAddress: dto.ipAddress,
       metadata: {
-        newAssignedGroupId: updated.assignedGroupId ?? null,
-        newAssigneeUserId: updated.assigneeUserId ?? null,
-        newVersion: updated.version,
+        newAssignedGroupId: ticket.assignedGroupId ?? null,
+        newAssigneeUserId: ticket.assigneeUserId ?? null,
+        newVersion: ticket.version,
         previousAssignedGroupId: previousAssignedGroupId ?? null,
         previousAssigneeUserId: previousAssigneeUserId ?? null,
         previousVersion: dto.expectedVersion,
-        publicRef: updated.publicRef,
+        publicRef: ticket.publicRef,
       },
       outcome: "SUCCESS",
-      targetId: updated.id,
+      targetId: ticket.id,
       targetType: "ticket",
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
-
-    return updated;
   }
 
   async unassignTicket(dto: UnassignTicketDto): Promise<TicketAggregate> {
@@ -371,28 +355,24 @@ export class TicketsService {
       dto.expectedVersion,
     );
 
-    const updated = await this.repository.update(ticket, dto.expectedVersion);
-
-    await this.repository.recordAuditEvent({
+    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: "ticket.unassigned",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
       ipAddress: dto.ipAddress,
       metadata: {
-        newVersion: updated.version,
+        newVersion: ticket.version,
         previousAssignedGroupId: previousAssignedGroupId ?? null,
         previousAssigneeUserId: previousAssigneeUserId ?? null,
         previousVersion: dto.expectedVersion,
-        publicRef: updated.publicRef,
+        publicRef: ticket.publicRef,
       },
       outcome: "SUCCESS",
-      targetId: updated.id,
+      targetId: ticket.id,
       targetType: "ticket",
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
-
-    return updated;
   }
 
   async getTicketTimeline(dto: GetTicketTimelineDto): Promise<GetTicketTimelineResult> {

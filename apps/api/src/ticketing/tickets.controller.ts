@@ -265,6 +265,16 @@ export class TicketsController {
     }
 
     const ticket = await this.ticketsService.getTicketById(context.tenantId, id);
+    const canReadScoped = await this.rbacService.can({
+      permissionKey: "ticket.read",
+      resource: ticketResource(ticket),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canReadScoped) {
+      throw new ForbiddenException("Lacks required ticket.read permission for this ticket");
+    }
+
     return TicketResponseDto.fromDomain(ticket);
   }
 
@@ -304,6 +314,16 @@ export class TicketsController {
     }
 
     const ticket = await this.ticketsService.getTicketByPublicRef(context.tenantId, publicRef);
+    const canReadScoped = await this.rbacService.can({
+      permissionKey: "ticket.read",
+      resource: ticketResource(ticket),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canReadScoped) {
+      throw new ForbiddenException("Lacks required ticket.read permission for this ticket");
+    }
+
     return TicketResponseDto.fromDomain(ticket);
   }
 
@@ -353,6 +373,17 @@ export class TicketsController {
 
     if (!canUpdate) {
       throw new ForbiddenException("Lacks required ticket.update permission");
+    }
+
+    const existing = await this.ticketsService.getTicketById(context.tenantId, id);
+    const canUpdateScoped = await this.rbacService.can({
+      permissionKey: "ticket.update",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canUpdateScoped) {
+      throw new ForbiddenException("Lacks required ticket.update permission for this ticket");
     }
 
     const updated = await this.ticketsService.updateTicket({
@@ -425,6 +456,15 @@ export class TicketsController {
     }
 
     const existing = await this.ticketsService.getTicketByPublicRef(context.tenantId, publicRef);
+    const canUpdateScoped = await this.rbacService.can({
+      permissionKey: "ticket.update",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canUpdateScoped) {
+      throw new ForbiddenException("Lacks required ticket.update permission for this ticket");
+    }
 
     const updated = await this.ticketsService.updateTicket({
       actorUserId: context.userId,
@@ -470,7 +510,7 @@ export class TicketsController {
     description: "Authentication token missing, invalid, or expired.",
   })
   @ApiForbiddenResponse({
-    description: "User lacks the ticket.status_change permission in the current tenant.",
+    description: "User lacks the ticket.transition permission in the current tenant.",
   })
   @ApiNotFoundResponse({
     description: "Ticket not found within the authenticated tenant.",
@@ -491,13 +531,24 @@ export class TicketsController {
     }
 
     const canTransition = await this.rbacService.can({
-      permissionKey: "ticket.status_change",
+      permissionKey: "ticket.transition",
       tenantId: context.tenantId,
       userId: context.userId,
     });
 
     if (!canTransition) {
-      throw new ForbiddenException("Lacks required ticket.status_change permission");
+      throw new ForbiddenException("Lacks required ticket.transition permission");
+    }
+
+    const existing = await this.ticketsService.getTicketById(context.tenantId, id);
+    const canTransitionScoped = await this.rbacService.can({
+      permissionKey: "ticket.transition",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canTransitionScoped) {
+      throw new ForbiddenException("Lacks required ticket.transition permission for this ticket");
     }
 
     const updated = await this.ticketsService.transitionStatus({
@@ -535,7 +586,7 @@ export class TicketsController {
     description: "Authentication token missing, invalid, or expired.",
   })
   @ApiForbiddenResponse({
-    description: "User lacks the ticket.status_change permission in the current tenant.",
+    description: "User lacks the ticket.transition permission in the current tenant.",
   })
   @ApiNotFoundResponse({
     description: "Ticket not found within the authenticated tenant.",
@@ -556,16 +607,25 @@ export class TicketsController {
     }
 
     const canTransition = await this.rbacService.can({
-      permissionKey: "ticket.status_change",
+      permissionKey: "ticket.transition",
       tenantId: context.tenantId,
       userId: context.userId,
     });
 
     if (!canTransition) {
-      throw new ForbiddenException("Lacks required ticket.status_change permission");
+      throw new ForbiddenException("Lacks required ticket.transition permission");
     }
 
     const existing = await this.ticketsService.getTicketByPublicRef(context.tenantId, publicRef);
+    const canTransitionScoped = await this.rbacService.can({
+      permissionKey: "ticket.transition",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canTransitionScoped) {
+      throw new ForbiddenException("Lacks required ticket.transition permission for this ticket");
+    }
 
     const updated = await this.ticketsService.transitionStatus({
       actorUserId: context.userId,
@@ -622,6 +682,17 @@ export class TicketsController {
     });
     if (!canAssign) {
       throw new ForbiddenException("Lacks required ticket.assign permission");
+    }
+
+    const existing = await this.ticketsService.getTicketById(context.tenantId, id);
+    const canAssignScoped = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssignScoped) {
+      throw new ForbiddenException("Lacks required ticket.assign permission for this ticket");
     }
 
     const updated = await this.ticketsService.assignTicket({
@@ -681,6 +752,15 @@ export class TicketsController {
     }
 
     const existing = await this.ticketsService.getTicketByPublicRef(context.tenantId, publicRef);
+    const canAssignScoped = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssignScoped) {
+      throw new ForbiddenException("Lacks required ticket.assign permission for this ticket");
+    }
 
     const updated = await this.ticketsService.assignTicket({
       actorUserId: context.userId,
@@ -734,6 +814,17 @@ export class TicketsController {
     });
     if (!canAssign) {
       throw new ForbiddenException("Lacks required ticket.assign permission");
+    }
+
+    const existing = await this.ticketsService.getTicketById(context.tenantId, id);
+    const canAssignScoped = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      resource: ticketResource(existing),
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssignScoped) {
+      throw new ForbiddenException("Lacks required ticket.assign permission for this ticket");
     }
 
     const updated = await this.ticketsService.unassignTicket({
@@ -798,4 +889,16 @@ export class TicketsController {
 
     return result;
   }
+}
+
+function ticketResource(ticket: {
+  assignedGroupId?: string | null;
+  assigneeUserId?: string | null;
+  requesterUserId: string;
+}) {
+  return {
+    assigneeUserId: ticket.assigneeUserId,
+    groupId: ticket.assignedGroupId,
+    ownerUserId: ticket.requesterUserId,
+  };
 }

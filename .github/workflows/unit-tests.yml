@@ -10,6 +10,22 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: supportdesk_test
+          POSTGRES_USER: supportdesk
+          POSTGRES_PASSWORD: supportdesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U supportdesk -d supportdesk_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://supportdesk:supportdesk@localhost:5432/supportdesk_test?schema=public
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -20,4 +36,5 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @supportdesk/api exec prisma migrate deploy
       - run: pnpm test

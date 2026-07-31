@@ -1,11 +1,27 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { RoleScope } from "@prisma/client";
 
 import { RbacRepository } from "./rbac.repository";
+
+export type PermissionScope = "own" | "group" | "tenant" | "organization" | "platform";
+
+export interface ResourceScopeContext {
+  /** Resource owner / requester user id (OWN scope). */
+  ownerUserId?: string | null;
+  /** Assigned agent user id (OWN scope for assignee). */
+  assigneeUserId?: string | null;
+  /** Assigned group id (GROUP scope). */
+  groupId?: string | null;
+  /** Actor group memberships used for GROUP scope evaluation. */
+  actorGroupIds?: readonly string[];
+}
 
 export interface PermissionCheck {
   permissionKey: string;
   tenantId: string;
   userId: string;
+  /** When provided, grant scopes are evaluated against the resource. */
+  resource?: ResourceScopeContext;
 }
 
 export interface AssignRoleRequest {
@@ -20,6 +36,7 @@ export interface GrantRolePermissionRequest {
   permissionKey: string;
   roleId: string;
   tenantId: string;
+  scope?: RoleScope;
 }
 
 @Injectable()
@@ -35,7 +52,68 @@ export class RbacService {
       return false;
     }
 
-    return this.repository.hasPermission(input.tenantId, input.userId, input.permissionKey);
+    const scopes = await this.repository.getPermissionScopes(
+      input.tenantId,
+      input.userId,
+      input.permissionKey,
+    );
+
+    if (scopes.length === 0) {
+      return false;
+    }
+
+    if (!input.resource) {
+      return true;
+    }
+
+    return scopes.some((scope) => this.scopeAllows(scope, input.userId, input.resource!));
+  }
+
+  /**
+   * Returns the broadest ticket-list filter implied by the actor's scopes for a permission.
+   * `null` means tenant-wide access; otherwise callers should apply the returned filter.
+   */
+  async resolveListScopeFilter(
+    input: Omit<PermissionCheck, "resource">,
+  ): Promise<{ requesterOrAssigneeUserId?: string; assignedGroupIds?: string[] } | null | false> {
+    if (
+      !uuidPattern.test(input.tenantId) ||
+      !uuidPattern.test(input.userId) ||
+      !permissionKeyPattern.test(input.permissionKey)
+    ) {
+      return false;
+    }
+
+    const scopes = await this.repository.getPermissionScopes(
+      input.tenantId,
+      input.userId,
+      input.permissionKey,
+    );
+
+    if (scopes.length === 0) {
+      return false;
+    }
+
+    if (scopes.includes(RoleScope.TENANT) || scopes.includes(RoleScope.PLATFORM)) {
+      return null;
+    }
+
+    const filter: { requesterOrAssigneeUserId?: string; assignedGroupIds?: string[] } = {};
+
+    if (scopes.includes(RoleScope.OWN)) {
+      filter.requesterOrAssigneeUserId = input.userId;
+    }
+
+    if (scopes.includes(RoleScope.GROUP)) {
+      // Group membership catalogue is not yet persisted; empty means no group-visible rows.
+      filter.assignedGroupIds = [];
+    }
+
+    if (!filter.requesterOrAssigneeUserId && !filter.assignedGroupIds) {
+      return false;
+    }
+
+    return filter;
   }
 
   async assignRole(
@@ -125,13 +203,19 @@ export class RbacService {
       };
     }
 
-    await this.repository.grantRolePermission(input.tenantId, input.roleId, input.permissionKey);
+    await this.repository.grantRolePermission(
+      input.tenantId,
+      input.roleId,
+      input.permissionKey,
+      input.scope ?? RoleScope.TENANT,
+    );
     await this.repository.recordAuditEvent({
       action: "rbac.role_permission.assigned",
       actorUserId: input.actorUserId,
       metadata: {
         permissionKey: input.permissionKey,
         roleId: input.roleId,
+        scope: input.scope ?? RoleScope.TENANT,
       },
       outcome: "SUCCESS",
       tenantId: input.tenantId,
@@ -140,6 +224,31 @@ export class RbacService {
     return {
       status: "granted",
     };
+  }
+
+  private scopeAllows(
+    scope: RoleScope,
+    actorUserId: string,
+    resource: ResourceScopeContext,
+  ): boolean {
+    switch (scope) {
+      case RoleScope.TENANT:
+      case RoleScope.PLATFORM:
+        return true;
+      case RoleScope.OWN:
+        return resource.ownerUserId === actorUserId || resource.assigneeUserId === actorUserId;
+      case RoleScope.GROUP: {
+        if (!resource.groupId) {
+          return false;
+        }
+        return (resource.actorGroupIds ?? []).includes(resource.groupId);
+      }
+      case RoleScope.ORGANIZATION:
+        // Organization membership is not yet modeled; fail closed.
+        return false;
+      default:
+        return false;
+    }
   }
 
   private async auditAssignment(

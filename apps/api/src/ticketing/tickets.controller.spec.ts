@@ -588,7 +588,7 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("throws 403 Forbidden when ticket.status_change permission is denied", async () => {
+    it("throws 403 Forbidden when ticket.transition permission is denied", async () => {
       canMock.mockResolvedValue(false);
       const req = createMockRequest();
 

@@ -31,6 +31,8 @@ export interface TicketFilters {
   updatedBefore?: string;
   dueAfter?: string;
   dueBefore?: string;
+  /** OR filter used by OWN-scoped list access. */
+  requesterOrAssigneeUserId?: string;
 }
 
 export interface TicketSort {
@@ -53,37 +55,46 @@ export class TicketsRepository {
     const props = aggregate.toProps();
 
     /**
-     * Wrap the publicRef sequence read and the ticket insert in an
-     * interactive transaction with a SERIALIZABLE isolation level so that
-     * concurrent creates in the same tenant cannot produce duplicate
-     * publicRef values.
+     * Wrap the publicRef sequence read and the ticket insert in a
+     * SERIALIZABLE transaction so concurrent creates cannot duplicate publicRef.
      */
     const created = await this.prisma.$transaction(
       async (tx) => {
-        // Lock: count existing tickets for this tenant inside the transaction
         const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
         const publicRef = `TKT-${count + 1001}`;
 
         return tx.ticket.create({
-          data: {
-            assignedGroupId: props.assignedGroupId,
-            assigneeUserId: props.assigneeUserId,
-            channel: props.channel,
-            closedAt: props.closedAt,
-            description: props.description,
-            dueDate: props.dueDate,
-            id: props.id,
-            priority: props.priority,
-            publicRef,
-            requesterUserId: props.requesterUserId,
-            solvedAt: props.solvedAt,
-            status: props.status,
-            tenantId: props.tenantId,
-            title: props.title,
-            type: props.type,
-            version: props.version,
-          },
+          data: this.toCreateData({ ...props, publicRef }),
         });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    return this.toDomain(created);
+  }
+
+  /**
+   * Atomically persists ticket state and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async createWithAudit(
+    aggregate: TicketAggregate,
+    audit: AuditEventInput,
+  ): Promise<TicketAggregate> {
+    const props = aggregate.toProps();
+
+    const created = await this.prisma.$transaction(
+      async (tx) => {
+        const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
+        const publicRef = `TKT-${count + 1001}`;
+
+        const ticket = await tx.ticket.create({
+          data: this.toCreateData({ ...props, publicRef }),
+        });
+        await tx.auditEvent.create({
+          data: buildAuditEventData(audit),
+        });
+        return ticket;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -116,42 +127,26 @@ export class TicketsRepository {
   }
 
   async update(aggregate: TicketAggregate, expectedVersion: number): Promise<TicketAggregate> {
-    const props = aggregate.toProps();
+    return this.updateWithClient(this.prisma, aggregate, expectedVersion);
+  }
 
-    const updated = await this.prisma.ticket.updateMany({
-      data: {
-        assignedGroupId: props.assignedGroupId,
-        assigneeUserId: props.assigneeUserId,
-        channel: props.channel,
-        closedAt: props.closedAt,
-        description: props.description,
-        dueDate: props.dueDate,
-        priority: props.priority,
-        solvedAt: props.solvedAt,
-        status: props.status,
-        title: props.title,
-        type: props.type,
-        version: props.version,
-      },
-      where: {
-        id: props.id,
-        tenantId: props.tenantId,
-        version: expectedVersion,
-      },
+  /**
+   * Atomically persists a ticket mutation and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async updateWithAudit(
+    aggregate: TicketAggregate,
+    expectedVersion: number,
+    audit: AuditEventInput,
+  ): Promise<TicketAggregate> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await this.updateWithClient(tx, aggregate, expectedVersion);
+      await tx.auditEvent.create({
+        data: buildAuditEventData(audit),
+      });
+      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+      return updated;
     });
-
-    if (updated.count === 0) {
-      const current = await this.findById(props.tenantId, props.id);
-      const currentVersion = current ? current.version : props.version;
-      throw new TicketConcurrencyException(expectedVersion, currentVersion, props.id);
-    }
-
-    const reloaded = await this.findById(props.tenantId, props.id);
-    if (!reloaded) {
-      throw new Error(`Failed to reload updated ticket ${props.id}`);
-    }
-
-    return reloaded;
   }
 
   /**
@@ -228,7 +223,7 @@ export class TicketsRepository {
     return { items, totalRecords };
   }
 
-  private buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
+  buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
     const where: Prisma.TicketWhereInput = {
       tenantId,
       deletedAt: null,
@@ -243,6 +238,13 @@ export class TicketsRepository {
     if (filters.assigneeUserId?.length) where.assigneeUserId = { in: filters.assigneeUserId };
     if (filters.requesterUserId?.length) where.requesterUserId = { in: filters.requesterUserId };
     if (filters.assignedGroupId?.length) where.assignedGroupId = { in: filters.assignedGroupId };
+
+    if (filters.requesterOrAssigneeUserId) {
+      where.OR = [
+        { requesterUserId: filters.requesterOrAssigneeUserId },
+        { assigneeUserId: filters.requesterOrAssigneeUserId },
+      ];
+    }
 
     if (filters.createdAfter || filters.createdBefore) {
       where.createdAt = {};
@@ -290,6 +292,82 @@ export class TicketsRepository {
     });
 
     return user ?? null;
+  }
+
+  private async updateWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    aggregate: TicketAggregate,
+    expectedVersion: number,
+  ): Promise<TicketAggregate> {
+    const props = aggregate.toProps();
+
+    const updated = await client.ticket.updateMany({
+      data: {
+        assignedGroupId: props.assignedGroupId,
+        assigneeUserId: props.assigneeUserId,
+        channel: props.channel,
+        closedAt: props.closedAt,
+        description: props.description,
+        dueDate: props.dueDate,
+        priority: props.priority,
+        solvedAt: props.solvedAt,
+        status: props.status,
+        title: props.title,
+        type: props.type,
+        version: props.version,
+      },
+      where: {
+        id: props.id,
+        tenantId: props.tenantId,
+        version: expectedVersion,
+      },
+    });
+
+    if (updated.count === 0) {
+      const current = await client.ticket.findFirst({
+        where: {
+          deletedAt: null,
+          id: props.id,
+          tenantId: props.tenantId,
+        },
+      });
+      const currentVersion = current ? current.version : props.version;
+      throw new TicketConcurrencyException(expectedVersion, currentVersion, props.id);
+    }
+
+    const reloaded = await client.ticket.findFirst({
+      where: {
+        deletedAt: null,
+        id: props.id,
+        tenantId: props.tenantId,
+      },
+    });
+    if (!reloaded) {
+      throw new Error(`Failed to reload updated ticket ${props.id}`);
+    }
+
+    return this.toDomain(reloaded);
+  }
+
+  private toCreateData(props: TicketProps) {
+    return {
+      assignedGroupId: props.assignedGroupId,
+      assigneeUserId: props.assigneeUserId,
+      channel: props.channel,
+      closedAt: props.closedAt,
+      description: props.description,
+      dueDate: props.dueDate,
+      id: props.id,
+      priority: props.priority,
+      publicRef: props.publicRef,
+      requesterUserId: props.requesterUserId,
+      solvedAt: props.solvedAt,
+      status: props.status,
+      tenantId: props.tenantId,
+      title: props.title,
+      type: props.type,
+      version: props.version,
+    };
   }
 
   private toDomain(record: PrismaTicket): TicketAggregate {

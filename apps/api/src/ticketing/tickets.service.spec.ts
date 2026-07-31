@@ -37,6 +37,12 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         store.set(key, updatedAgg);
         return Promise.resolve(updatedAgg);
       }),
+      createWithAudit: vi.fn((agg: TicketAggregate, input: AuditEventInput) => {
+        const key = `${agg.tenantId}:${agg.id}`;
+        store.set(key, agg);
+        auditLogs.push(input);
+        return Promise.resolve(agg);
+      }),
       findById: vi.fn((tenantId: string, id: string) => {
         const key = `${tenantId}:${id}`;
         return Promise.resolve(store.get(key) ?? null);
@@ -83,6 +89,14 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         store.set(key, agg);
         return Promise.resolve(agg);
       }),
+      updateWithAudit: vi.fn(
+        (agg: TicketAggregate, _expectedVersion: number, input: AuditEventInput) => {
+          const key = `${agg.tenantId}:${agg.id}`;
+          store.set(key, agg);
+          auditLogs.push(input);
+          return Promise.resolve(agg);
+        },
+      ),
     } as unknown as TicketsRepository;
 
     service = new TicketsService(repository);

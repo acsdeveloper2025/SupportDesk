@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 describe("schema boundary", () => {
   const tableNames = Prisma.dmmf.datamodel.models.map((model) => model.dbName ?? model.name);
 
-  it("contains the auth, identity, and ticket foundation tables", () => {
+  it("contains the auth, identity, ticket, and attachment foundation tables", () => {
     expect(tableNames).toEqual(
       expect.arrayContaining([
+        "attachments",
         "audit_events",
         "auth_tokens",
         "comments",
@@ -29,7 +30,6 @@ describe("schema boundary", () => {
 
   it("does not introduce deferred business feature tables", () => {
     const deferredTables = [
-      "attachments",
       "notification_intents",
       "organizations",
       "reports",
