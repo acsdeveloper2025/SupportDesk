@@ -254,4 +254,199 @@ describeIntegration("Ticketing PostgreSQL integration", () => {
     expect(await prisma.permission.count({ where: { key: "ticket.status_change" } })).toBe(0);
     expect(await prisma.permission.count({ where: { key: "comment.read" } })).toBe(0);
   });
+
+  it("searches tickets by title, description, public reference, and requester identity", async () => {
+    await prisma.userProfile.create({
+      data: {
+        displayName: "Alice Requester",
+        firstName: "Alice",
+        id: randomUUID(),
+        lastName: "Requester",
+        userId: userA,
+      },
+    });
+
+    const titled = await ticketsService.createTicket({
+      description: "Cannot reach the corporate gateway",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "VPN connection failure",
+    });
+    await ticketsService.createTicket({
+      description: "Replace toner cartridge",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Printer outage",
+    });
+
+    const byTitle = await ticketsService.searchTickets({
+      filters: { q: "vpn" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(byTitle.items.map((t) => t.id)).toEqual([titled.id]);
+
+    const byDescription = await ticketsService.searchTickets({
+      filters: { q: "corporate gateway" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(byDescription.items.map((t) => t.id)).toEqual([titled.id]);
+
+    const byRef = await ticketsService.searchTickets({
+      filters: { q: titled.publicRef.slice(0, 6) },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "asc", field: "publicRef" },
+      tenantId: tenantA,
+    });
+    expect(byRef.items.some((t) => t.id === titled.id)).toBe(true);
+
+    const byRequesterName = await ticketsService.searchTickets({
+      filters: { q: "alice" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(byRequesterName.totalRecords).toBeGreaterThanOrEqual(2);
+
+    const byEmail = await ticketsService.searchTickets({
+      filters: { q: `user-a-${userA}` },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(byEmail.totalRecords).toBeGreaterThanOrEqual(2);
+  });
+
+  it("enforces tenant isolation, pagination, sorting, and combined filters for search", async () => {
+    const tenantBUser = randomUUID();
+    await prisma.user.create({
+      data: {
+        email: `user-b2-${tenantBUser}@example.com`,
+        emailNormalized: `user-b2-${tenantBUser}@example.com`,
+        id: tenantBUser,
+        passwordHash: "hash",
+        state: UserState.ACTIVE,
+      },
+    });
+
+    const ticketA = await ticketsService.createTicket({
+      description: "Tenant A searchable body",
+      priority: TicketPriority.HIGH,
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Shared keyword alpha",
+    });
+    await ticketsService.createTicket({
+      description: "Other A ticket",
+      priority: TicketPriority.LOW,
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Shared keyword beta",
+    });
+    await ticketsService.createTicket({
+      description: "Tenant B searchable body",
+      requesterUserId: tenantBUser,
+      tenantId: tenantB,
+      title: "Shared keyword alpha",
+    });
+
+    const isolated = await ticketsService.searchTickets({
+      filters: { q: "Shared keyword alpha" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(isolated.items).toHaveLength(1);
+    expect(isolated.items[0]?.id).toBe(ticketA.id);
+
+    const filtered = await ticketsService.searchTickets({
+      filters: { priority: [TicketPriority.HIGH], q: "Shared keyword" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "asc", field: "priority" },
+      tenantId: tenantA,
+    });
+    expect(filtered.items.map((t) => t.id)).toEqual([ticketA.id]);
+
+    const page1 = await ticketsService.searchTickets({
+      filters: { q: "Shared keyword" },
+      page: 1,
+      pageSize: 1,
+      sort: { direction: "asc", field: "title" },
+      tenantId: tenantA,
+    });
+    expect(page1.items).toHaveLength(1);
+    expect(page1.totalRecords).toBe(2);
+    expect(page1.totalPages).toBe(2);
+    expect(page1.hasNextPage).toBe(true);
+    expect(page1.items[0]?.title).toBe("Shared keyword alpha");
+
+    const injection = await ticketsService.searchTickets({
+      filters: { q: "'; DROP TABLE tickets; --" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(injection.items).toHaveLength(0);
+    expect(await prisma.ticket.count({ where: { tenantId: tenantA } })).toBeGreaterThan(0);
+  });
+
+  it("filters search results by hasComments and hasAttachments", async () => {
+    const withComment = await ticketsService.createTicket({
+      description: "Has a comment",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Comment ticket",
+    });
+    const plain = await ticketsService.createTicket({
+      description: "No relations",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Plain ticket",
+    });
+
+    await commentsService.createComment(
+      tenantA,
+      withComment.id,
+      { body: "First note", visibility: CommentVisibility.PUBLIC },
+      userA,
+    );
+    const commented = await ticketsService.searchTickets({
+      filters: { hasComments: true },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(commented.items.map((t) => t.id)).toEqual([withComment.id]);
+
+    const withoutComments = await ticketsService.searchTickets({
+      filters: { hasComments: false, q: "ticket" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(withoutComments.items.map((t) => t.id)).toContain(plain.id);
+    expect(withoutComments.items.map((t) => t.id)).not.toContain(withComment.id);
+
+    const noAttachments = await ticketsService.searchTickets({
+      filters: { hasAttachments: false, q: "Comment ticket" },
+      page: 1,
+      pageSize: 20,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+    expect(noAttachments.items.map((t) => t.id)).toEqual([withComment.id]);
+  });
 });

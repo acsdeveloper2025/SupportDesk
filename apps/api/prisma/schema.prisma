@@ -447,6 +447,11 @@ model Ticket {
   @@index([tenantId, assigneeUserId], map: "idx_tickets__tenant_id_assignee_user_id")
   @@index([tenantId, requesterUserId], map: "idx_tickets__tenant_id_requester_user_id")
   @@index([tenantId, deletedAt], map: "idx_tickets__tenant_id_deleted_at")
+  @@index([tenantId, assignedGroupId], map: "idx_tickets__tenant_id_assigned_group_id")
+  @@index([tenantId, priority], map: "idx_tickets__tenant_id_priority")
+  @@index([tenantId, createdAt], map: "idx_tickets__tenant_id_created_at")
+  @@index([tenantId, updatedAt], map: "idx_tickets__tenant_id_updated_at")
+  @@index([tenantId, dueDate], map: "idx_tickets__tenant_id_due_date")
   @@map("tickets")
 }
 

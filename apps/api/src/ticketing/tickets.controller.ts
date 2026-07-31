@@ -23,6 +23,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
@@ -41,6 +42,7 @@ import {
   TicketListResponseDto,
   validateListTicketsQuery,
 } from "./dto/list-tickets.dto";
+import { SearchTicketsQueryApiDto, validateSearchTicketsQuery } from "./dto/search-tickets.dto";
 import { TicketResponseDto } from "./dto/ticket-response.dto";
 import {
   TransitionTicketStatusDto,
@@ -227,6 +229,129 @@ export class TicketsController {
       tenantId: context.tenantId,
       filters: toTicketFilters(dto),
     });
+  }
+
+  @Get("search")
+  @AuthRateLimit("ticket-search")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "Search and filter tickets within the authenticated tenant using PostgreSQL. " +
+      "Supports case-insensitive partial matching on public reference, title, description, " +
+      "and requester name/email, combined with the same filters/sort/pagination as list. " +
+      "Does not create timeline or audit events.",
+    summary: "Search tickets",
+  })
+  @ApiQuery({
+    description:
+      "Case-insensitive partial match across publicRef, title, description, requester name/email",
+    name: "q",
+    required: false,
+    type: String,
+  })
+  @ApiQuery({ name: "page", required: false, type: Number, example: 1 })
+  @ApiQuery({ name: "pageSize", required: false, type: Number, example: 20 })
+  @ApiQuery({
+    enum: ["createdAt", "updatedAt", "priority", "dueDate", "status", "publicRef"],
+    name: "sortBy",
+    required: false,
+  })
+  @ApiQuery({ enum: ["asc", "desc"], name: "sortDir", required: false })
+  @ApiQuery({ description: "CSV of statuses", name: "status", required: false, type: String })
+  @ApiQuery({ description: "CSV of priorities", name: "priority", required: false, type: String })
+  @ApiQuery({ description: "CSV of types", name: "type", required: false, type: String })
+  @ApiQuery({ description: "CSV of channels", name: "channel", required: false, type: String })
+  @ApiQuery({
+    description: "CSV of assignee user UUIDs",
+    name: "assigneeUserId",
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    description: "CSV of assignment group UUIDs",
+    name: "assignedGroupId",
+    required: false,
+    type: String,
+  })
+  @ApiQuery({ name: "createdAfter", required: false, type: String })
+  @ApiQuery({ name: "createdBefore", required: false, type: String })
+  @ApiQuery({ name: "updatedAfter", required: false, type: String })
+  @ApiQuery({ name: "updatedBefore", required: false, type: String })
+  @ApiQuery({ name: "dueAfter", required: false, type: String })
+  @ApiQuery({ name: "dueBefore", required: false, type: String })
+  @ApiQuery({ name: "hasAttachments", required: false, type: Boolean })
+  @ApiQuery({ name: "hasComments", required: false, type: Boolean })
+  @ApiOkResponse({
+    description: "Search results returned successfully.",
+    type: TicketListResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid query parameters (search text, sort, page, filters, or dates).",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Authentication token missing, invalid, or expired.",
+  })
+  @ApiForbiddenResponse({
+    description: "User lacks the ticket.read permission in the current tenant.",
+  })
+  async searchTickets(@Query() query: SearchTicketsQueryApiDto, @Req() request: Request) {
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const scopeFilter = await this.rbacService.resolveListScopeFilter({
+      permissionKey: "ticket.read",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+
+    if (scopeFilter === false) {
+      throw new ForbiddenException("Lacks required ticket.read permission");
+    }
+
+    const dto = validateSearchTicketsQuery(query);
+
+    const filters: TicketFilters = {
+      assignedGroupId: dto.assignedGroupId,
+      assigneeUserId: dto.assigneeUserId,
+      channel: dto.channel,
+      createdAfter: dto.createdAfter,
+      createdBefore: dto.createdBefore,
+      dueAfter: dto.dueAfter,
+      dueBefore: dto.dueBefore,
+      hasAttachments: dto.hasAttachments,
+      hasComments: dto.hasComments,
+      priority: dto.priority,
+      q: dto.q,
+      requesterUserId: dto.requesterUserId,
+      status: dto.status,
+      type: dto.type,
+      updatedAfter: dto.updatedAfter,
+      updatedBefore: dto.updatedBefore,
+    };
+
+    if (scopeFilter) {
+      if (scopeFilter.requesterOrAssigneeUserId) {
+        filters.requesterOrAssigneeUserId = scopeFilter.requesterOrAssigneeUserId;
+      }
+      if (scopeFilter.assignedGroupIds !== undefined) {
+        filters.assignedGroupIds = scopeFilter.assignedGroupIds;
+      }
+    }
+
+    const result = await this.ticketsService.searchTickets({
+      filters,
+      page: dto.page,
+      pageSize: dto.pageSize,
+      sort: { direction: dto.sortDir, field: dto.sortBy },
+      tenantId: context.tenantId,
+    });
+
+    return {
+      ...result,
+      items: result.items.map((t) => TicketResponseDto.fromDomain(t)),
+    };
   }
 
   @Get(":id")

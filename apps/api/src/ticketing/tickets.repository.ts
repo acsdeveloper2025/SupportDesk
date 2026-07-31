@@ -16,6 +16,7 @@ import {
   TicketConcurrencyException,
   type TicketProps,
 } from "./domain/ticket.aggregate";
+import { buildTicketSearchOrClause } from "./ticket-search.builder";
 
 export interface TicketFilters {
   status?: TicketStatus[];
@@ -31,8 +32,16 @@ export interface TicketFilters {
   updatedBefore?: string;
   dueAfter?: string;
   dueBefore?: string;
-  /** OR filter used by OWN-scoped list access. */
+  /** Case-insensitive partial match across publicRef/title/description/requester. */
+  q?: string;
+  /** When set, require at least one (or zero) non-deleted attachment. */
+  hasAttachments?: boolean;
+  /** When set, require at least one (or zero) non-deleted comment. */
+  hasComments?: boolean;
+  /** OR filter used by OWN-scoped list/search access. */
   requesterOrAssigneeUserId?: string;
+  /** GROUP-scoped list/search access (empty array matches nothing). */
+  assignedGroupIds?: string[];
 }
 
 export interface TicketSort {
@@ -239,11 +248,37 @@ export class TicketsRepository {
     if (filters.requesterUserId?.length) where.requesterUserId = { in: filters.requesterUserId };
     if (filters.assignedGroupId?.length) where.assignedGroupId = { in: filters.assignedGroupId };
 
-    if (filters.requesterOrAssigneeUserId) {
-      where.OR = [
-        { requesterUserId: filters.requesterOrAssigneeUserId },
-        { assigneeUserId: filters.requesterOrAssigneeUserId },
-      ];
+    const andConditions: Prisma.TicketWhereInput[] = [];
+
+    const scopeOr = this.buildScopeOrClause(filters);
+    if (scopeOr === "none") {
+      // GROUP-only scope with no memberships → no visible rows.
+      where.id = { in: [] };
+    } else if (scopeOr) {
+      andConditions.push({ OR: scopeOr });
+    }
+
+    if (filters.q?.trim()) {
+      const searchOr = buildTicketSearchOrClause(filters.q);
+      if (searchOr.length > 0) {
+        andConditions.push({ OR: searchOr });
+      }
+    }
+
+    if (filters.hasAttachments === true) {
+      andConditions.push({ attachments: { some: { deletedAt: null } } });
+    } else if (filters.hasAttachments === false) {
+      andConditions.push({ attachments: { none: { deletedAt: null } } });
+    }
+
+    if (filters.hasComments === true) {
+      andConditions.push({ comments: { some: { deletedAt: null } } });
+    } else if (filters.hasComments === false) {
+      andConditions.push({ comments: { none: { deletedAt: null } } });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     if (filters.createdAfter || filters.createdBefore) {
@@ -265,6 +300,36 @@ export class TicketsRepository {
     }
 
     return where;
+  }
+
+  private buildScopeOrClause(
+    filters: TicketFilters,
+  ): Prisma.TicketWhereInput[] | "none" | undefined {
+    const hasOwnScope = Boolean(filters.requesterOrAssigneeUserId);
+    const hasGroupScope = filters.assignedGroupIds !== undefined;
+
+    if (!hasOwnScope && !hasGroupScope) {
+      return undefined;
+    }
+
+    const scopeOr: Prisma.TicketWhereInput[] = [];
+
+    if (filters.requesterOrAssigneeUserId) {
+      scopeOr.push(
+        { requesterUserId: filters.requesterOrAssigneeUserId },
+        { assigneeUserId: filters.requesterOrAssigneeUserId },
+      );
+    }
+
+    if (filters.assignedGroupIds && filters.assignedGroupIds.length > 0) {
+      scopeOr.push({ assignedGroupId: { in: filters.assignedGroupIds } });
+    }
+
+    if (scopeOr.length === 0) {
+      return "none";
+    }
+
+    return scopeOr;
   }
 
   /**

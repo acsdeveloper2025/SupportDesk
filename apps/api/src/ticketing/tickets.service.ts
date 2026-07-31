@@ -224,6 +224,14 @@ export class TicketsService {
     };
   }
 
+  /**
+   * PostgreSQL-backed ticket search. Reuses list pagination/filter/sort machinery.
+   * Does not emit timeline or audit events.
+   */
+  async searchTickets(dto: ListTicketsDto): Promise<ListTicketsResult> {
+    return this.listTickets(dto);
+  }
+
   async countTickets(dto: CountTicketsDto): Promise<{ count: number }> {
     const count = await this.repository.count(dto.tenantId, dto.filters);
     return { count };

@@ -1,6 +1,6 @@
 # Tickets API
 
-Related: [../09-ticket-lifecycle.md](../09-ticket-lifecycle.md), [../workflow-matrix.md](../workflow-matrix.md), [comments.md](comments.md), [attachments.md](attachments.md).
+Related: [../09-ticket-lifecycle.md](../09-ticket-lifecycle.md), [../workflow-matrix.md](../workflow-matrix.md), [comments.md](comments.md), [attachments.md](attachments.md), [search.md](search.md).
 
 This document has two layers:
 

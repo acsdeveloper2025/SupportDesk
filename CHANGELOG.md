@@ -6,7 +6,7 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 
 ### Added
 
-- (none yet — post–Ticket Module baseline on `main`; this branch adds attachment work below)
+- (none yet — post–Ticket Module baseline on `main`; this branch adds attachment/search work below)
 
 ## [v1.0-ticket-module] - 2026-08-01
 
@@ -29,6 +29,7 @@ Evidence: [docs/ticket-module-v1-hardening-report.md](docs/ticket-module-v1-hard
 - Comments OpenAPI smoke coverage and PostgreSQL schema integration tests.
 - As-built synchronization for tickets/comments API docs, database table catalogue, UI component inventory, and REST pagination exception.
 - Ticket Attachment Upload & Local Storage (`#23` / `E05-I08`) with multipart upload, list, authenticated download, and soft-delete APIs; PostgreSQL attachment metadata; UUID filesystem storage under `ATTACHMENTS_STORAGE_ROOT`; SHA-256 checksums; MIME/extension/size validation; path-traversal protection; `NoOpVirusScanner` port; attachment RBAC permissions; audit events; OpenAPI coverage; unit and PostgreSQL integration tests.
+- Ticket Search & Advanced Filtering (`#24` / `E05-I09`) with `GET /api/v1/tickets/search`; PostgreSQL case-insensitive partial search; shared list filters plus attachment/comment flags; allow-listed sort; scoped `ticket.read`; search indexes; OpenAPI and tests; `docs/api/search.md`.
 - Documentation foundation for product requirements, architecture, security, domain behavior, quality, delivery, operations, and roadmap.
 - Shared glossary, architectural decision log, repository governance, contribution guidance, and license.
 - Final architecture foundation documentation: database design, API specification, permission/workflow/audit/notification/email/error catalogues, UI components, coding standards, ADR records, and GitHub project plan.

@@ -412,4 +412,26 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
       }),
     ).rejects.toThrow(ClosedTicketAssignmentException);
   });
+
+  it("searches tickets by reusing list pagination metadata", async () => {
+    await service.createTicket({
+      description: "Searchable description about VPN",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Network issue",
+    });
+
+    const result = await service.searchTickets({
+      filters: { q: "vpn" },
+      page: 1,
+      pageSize: 10,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.totalRecords).toBe(1);
+    expect(result.appliedFilters).toEqual({ q: "vpn" });
+    expect(result.sort).toEqual({ direction: "desc", field: "createdAt" });
+  });
 });
