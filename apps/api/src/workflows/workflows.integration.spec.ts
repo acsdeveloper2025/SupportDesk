@@ -65,6 +65,17 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
   beforeEach(async () => {
     await prisma.workflowVersion.deleteMany();
     await prisma.workflow.deleteMany();
+    await prisma.slaEvaluation.deleteMany();
+    await prisma.slaTarget.deleteMany();
+    await prisma.slaPolicyVersion.deleteMany();
+    await prisma.slaPolicy.deleteMany();
+    await prisma.businessScheduleVersion.deleteMany();
+    await prisma.businessSchedule.deleteMany();
+    await prisma.notificationPreference.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.comment.deleteMany();
+    await prisma.attachment.deleteMany();
+    await prisma.ticket.deleteMany();
     await prisma.auditEvent.deleteMany();
     await prisma.rolePermission.deleteMany();
     await prisma.userRole.deleteMany();
@@ -204,9 +215,9 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
     } = {},
   ) {
     const definition = validDefinition({
-      actions: overrides.actions,
-      conditions: overrides.conditions,
-      triggers: overrides.triggers,
+      ...(overrides.actions !== undefined ? { actions: overrides.actions } : {}),
+      ...(overrides.conditions !== undefined ? { conditions: overrides.conditions } : {}),
+      ...(overrides.triggers !== undefined ? { triggers: overrides.triggers } : {}),
     });
     return workflowsService.create({
       actions: definition.actions,
@@ -255,7 +266,7 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
     expect(v2Published?.state).toBe(ConfigPublicationState.PUBLISHED);
     expect(JSON.stringify(v1Retired?.triggers)).toBe(v1Triggers);
     expect(JSON.stringify(v1Retired?.actions)).toBe(v1Actions);
-    expect(JSON.stringify(v2Published?.actions)).toBe(JSON.stringify(revisedActions));
+    expect(v2Published?.actions).toEqual(revisedActions);
   });
 
   it("rejects duplicate key and duplicate priority", async () => {
@@ -354,7 +365,7 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
 
     const actions = (
       await prisma.auditEvent.findMany({
-        orderBy: { createdAt: "asc" },
+        orderBy: { occurredAt: "asc" },
         where: { targetId: created.id, tenantId: tenantA },
       })
     ).map((event) => event.action);
