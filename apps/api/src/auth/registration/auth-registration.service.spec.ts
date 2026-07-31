@@ -16,9 +16,16 @@ const tenantId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
 
 class FakeIdentityLookup {
+  available = true;
   registrationEnabled = true;
 
   resolveTenant() {
+    if (!this.available) {
+      return Promise.resolve({
+        status: "unavailable" as const,
+      });
+    }
+
     return Promise.resolve({
       status: "found" as const,
       tenant: {
@@ -44,6 +51,7 @@ class FakeIdentityLookup {
 class FakeRegistrationRepository implements AuthRegistrationRepository {
   audits: AuthAuditEventInput[] = [];
   createdRegistration: PendingUserRegistrationInput | null = null;
+  createThrows = false;
   duplicateUser = false;
   tokenRecord: VerificationTokenRecord | null = null;
   expiredTokenId: string | null = null;
@@ -54,6 +62,10 @@ class FakeRegistrationRepository implements AuthRegistrationRepository {
   }
 
   createPendingUserRegistration(input: PendingUserRegistrationInput) {
+    if (this.createThrows) {
+      return Promise.reject(new Error("write failed"));
+    }
+
     this.createdRegistration = input;
 
     return Promise.resolve({
@@ -105,6 +117,90 @@ class FakeNotificationService implements Pick<AuthNotificationService, "deliverE
 }
 
 describe("AuthRegistrationService", () => {
+  it("rejects malformed registration requests with safe validation errors", async () => {
+    const repository = new FakeRegistrationRepository();
+    const service = new AuthRegistrationService(
+      new FakeIdentityLookup(),
+      repository,
+      new PasswordPolicyService(),
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new SecureTokenService(16),
+      new FakeNotificationService(),
+    );
+
+    await expect(
+      service.register({
+        email: "not-an-email",
+        password: "CorrectHorse9!Battery",
+      }),
+    ).resolves.toEqual({
+      errors: ["AUTH_REQUEST_INVALID"],
+      status: "validation_failed",
+    });
+    expect(repository.createdRegistration).toBeNull();
+    expect(repository.audits).toContainEqual({
+      action: "auth.registration.rejected",
+      outcome: "FAILURE",
+      tenantId: null,
+    });
+  });
+
+  it("rejects passwords that fail tenant registration policy", async () => {
+    const repository = new FakeRegistrationRepository();
+    const service = new AuthRegistrationService(
+      new FakeIdentityLookup(),
+      repository,
+      new PasswordPolicyService(),
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new SecureTokenService(16),
+      new FakeNotificationService(),
+    );
+
+    await expect(
+      service.register({
+        email: "agent@acme.test",
+        password: "weak",
+        tenant: { slug: "acme" },
+      }),
+    ).resolves.toMatchObject({
+      status: "validation_failed",
+    });
+    expect(repository.createdRegistration).toBeNull();
+    expect(repository.audits).toContainEqual({
+      action: "auth.registration.rejected",
+      outcome: "DENIED",
+      tenantId: null,
+    });
+  });
+
+  it("keeps tenant lookup failures enumeration-safe", async () => {
+    const identity = new FakeIdentityLookup();
+    identity.available = false;
+    const repository = new FakeRegistrationRepository();
+    const service = new AuthRegistrationService(
+      identity,
+      repository,
+      new PasswordPolicyService(),
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new SecureTokenService(16),
+      new FakeNotificationService(),
+    );
+
+    await expect(
+      service.register({
+        email: "agent@acme.test",
+        password: "CorrectHorse9!Battery",
+        tenant: { slug: "missing" },
+      }),
+    ).resolves.toEqual({ status: "accepted" });
+    expect(repository.createdRegistration).toBeNull();
+    expect(repository.audits).toContainEqual({
+      action: "auth.registration.rejected",
+      outcome: "DENIED",
+      tenantId: null,
+    });
+  });
+
   it("creates a pending user, stores only hashed secrets, sends the raw verification token, and audits success", async () => {
     const identity = new FakeIdentityLookup();
     const repository = new FakeRegistrationRepository();
@@ -202,6 +298,57 @@ describe("AuthRegistrationService", () => {
       action: "auth.registration.rejected",
       outcome: "DENIED",
       tenantId,
+    });
+  });
+
+  it("audits registration write failures without exposing them to callers", async () => {
+    const repository = new FakeRegistrationRepository();
+    repository.createThrows = true;
+    const service = new AuthRegistrationService(
+      new FakeIdentityLookup(),
+      repository,
+      new PasswordPolicyService(),
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new SecureTokenService(16),
+      new FakeNotificationService(),
+    );
+
+    await expect(
+      service.register({
+        email: "agent@acme.test",
+        password: "CorrectHorse9!Battery",
+        tenant: { slug: "acme" },
+      }),
+    ).resolves.toEqual({ status: "accepted" });
+    expect(repository.audits).toContainEqual({
+      action: "auth.registration.rejected",
+      outcome: "FAILURE",
+      tenantId,
+    });
+  });
+
+  it("keeps missing and unavailable verification tokens enumeration-safe", async () => {
+    const repository = new FakeRegistrationRepository();
+    const service = new AuthRegistrationService(
+      new FakeIdentityLookup(),
+      repository,
+      new PasswordPolicyService(),
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new SecureTokenService(16),
+      new FakeNotificationService(),
+    );
+
+    await expect(service.confirmEmailVerification({})).resolves.toEqual({
+      status: "accepted",
+    });
+    await expect(service.confirmEmailVerification({ token: "unknown-token" })).resolves.toEqual({
+      status: "accepted",
+    });
+    expect(repository.verifiedTokenId).toBeNull();
+    expect(repository.audits).toContainEqual({
+      action: "auth.email_verification.rejected",
+      outcome: "FAILURE",
+      tenantId: null,
     });
   });
 

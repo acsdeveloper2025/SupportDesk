@@ -37,6 +37,52 @@ class FakePasswordRepository implements AuthPasswordRepository {
 }
 
 describe("AuthPasswordService", () => {
+  it("denies password changes without an authenticated session and current password", async () => {
+    const repository = new FakePasswordRepository();
+    const service = new AuthPasswordService(
+      repository,
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new PasswordPolicyService(),
+    );
+
+    await expect(
+      service.changePassword({
+        newPassword: "NewCorrectHorse9!Battery",
+      }),
+    ).resolves.toEqual({ status: "denied" });
+    expect(repository.completed).toBeNull();
+    expect(repository.audits).toContainEqual(
+      expect.objectContaining({
+        action: "auth.password_change.rejected",
+        outcome: "DENIED",
+      }),
+    );
+  });
+
+  it("denies password changes when the current session is unavailable", async () => {
+    const repository = new FakePasswordRepository();
+    const service = new AuthPasswordService(
+      repository,
+      new PasswordHashingService({ memoryCost: 4096, timeCost: 1 }),
+      new PasswordPolicyService(),
+    );
+
+    await expect(
+      service.changePassword({
+        currentPassword: "CorrectHorse9!Battery",
+        currentSessionId: sessionId,
+        newPassword: "NewCorrectHorse9!Battery",
+      }),
+    ).resolves.toEqual({ status: "denied" });
+    expect(repository.completed).toBeNull();
+    expect(repository.audits).toContainEqual(
+      expect.objectContaining({
+        action: "auth.password_change.rejected",
+        outcome: "DENIED",
+      }),
+    );
+  });
+
   it("denies a password change when the current password is wrong", async () => {
     const hashing = new PasswordHashingService({ memoryCost: 4096, timeCost: 1 });
     const repository = new FakePasswordRepository();

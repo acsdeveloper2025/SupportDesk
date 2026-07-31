@@ -129,6 +129,7 @@ export class AuthController {
   @Post("password/change")
   @AuthRateLimit("password-change")
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
   @ApiBody({
     schema: {
       properties: {
@@ -246,6 +247,7 @@ export class AuthController {
 
   @Post("logout")
   @HttpCode(HttpStatus.ACCEPTED)
+  @ApiBearerAuth()
   @ApiAcceptedResponse({
     description: "Logout request accepted.",
   })
@@ -265,6 +267,7 @@ export class AuthController {
   }
 
   @Get("sessions")
+  @ApiBearerAuth()
   @ApiOkResponse({
     description: "Current user's active sessions.",
   })
@@ -285,6 +288,7 @@ export class AuthController {
 
   @Delete("sessions/:sessionId")
   @HttpCode(HttpStatus.ACCEPTED)
+  @ApiBearerAuth()
   @ApiAcceptedResponse({
     description: "Session revocation request accepted.",
   })

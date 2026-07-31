@@ -27,8 +27,15 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("SupportDesk API")
-    .setDescription("Bootstrap API surface. Business APIs are intentionally not implemented yet.")
+    .setDescription(
+      "SupportDesk API surface for the bootstrapped platform and Authentication & Identity foundation.",
+    )
     .setVersion("0.1.0")
+    .addBearerAuth({
+      bearerFormat: "JWT",
+      scheme: "bearer",
+      type: "http",
+    })
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(process.env.SWAGGER_PATH ?? "/docs", app, swaggerDocument);

@@ -19,3 +19,4 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 - Access-token guard and `GET /api/v1/auth/me` current identity API with active-session, tenant/user ownership, and bearer-authenticated session-management support.
 - Next.js authentication BFF routes for CSRF issuance, login, refresh, logout, and current identity proxying with HttpOnly cookies and token-redacted responses.
 - Frontend authentication pages for login, forgot password, reset password, email verification, and basic profile, with component and Playwright smoke coverage.
+- Authentication milestone quality gate with OpenAPI endpoint inventory smoke coverage, repeatable auth coverage script, documentation alignment, and technical-debt register.

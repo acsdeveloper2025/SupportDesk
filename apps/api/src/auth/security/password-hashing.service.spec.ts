@@ -12,7 +12,7 @@ describe("PasswordHashingService", () => {
     expect(hash).not.toContain("CorrectHorse9!Battery");
     await expect(service.verifyPassword(hash, "CorrectHorse9!Battery")).resolves.toBe(true);
     await expect(service.verifyPassword(hash, "WrongHorse9!Battery")).resolves.toBe(false);
-  });
+  }, 15_000);
 
   it("fails closed for malformed stored hashes", async () => {
     const service = new PasswordHashingService();

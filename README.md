@@ -94,6 +94,7 @@ The root CI script runs linting, type checking, unit tests, build, and security 
 5. [Workflow](docs/workflow-matrix.md), [audit](docs/audit-events.md), [notifications](docs/notification-events.md), [email templates](docs/email-templates.md), and [errors](docs/errors.md) — operational catalogues.
 6. [Testing](docs/16-testing-quality.md), [deployment](docs/18-deployment-cicd.md), [operations](docs/19-operations-recovery.md), [GitHub backlog](docs/github-backlog.md), [implementation order](docs/implementation-order.md), and [sprint plan](docs/sprint-plan.md) — release and delivery expectations.
 7. [Roadmap](docs/20-roadmap.md), [decision log](docs/decision-log.md), and [ADRs](docs/adr/README.md) — delivery gates and architectural decisions.
+8. [Authentication quality gate](docs/authentication-milestone-quality-gate.md) — implemented auth surface, verification evidence, and remaining technical debt.
 
 Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must”, “should”, and “may” carry their RFC 2119 meanings. Requirement IDs are stable and are linked through the [traceability matrix](docs/04-functional-requirements.md#traceability-matrix).
 
@@ -109,4 +110,4 @@ Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must
 
 ## Status
 
-This is a baseline specification expanded into a final architecture foundation. See the [completion report](docs/22-architecture-foundation-completion-report.md) for readiness, remaining open questions, and the implementation recommendation. Accepted assumptions are explicitly labeled in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
+This is a baseline specification expanded into a final architecture foundation and Authentication & Identity implementation. See the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md) for readiness, remaining open questions, and implementation recommendations. Accepted assumptions are explicitly labeled in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
