@@ -119,6 +119,33 @@ export class TicketsRepository {
     });
   }
 
+  /**
+   * Validates that a user exists, is ACTIVE, and has an active role in the
+   * given tenant.  Returns a minimal record if found, or `null` otherwise.
+   *
+   * Used by the assignment service to prevent cross-tenant or inactive
+   * user assignments.
+   */
+  async findActiveUserInTenant(tenantId: string, userId: string): Promise<{ id: string } | null> {
+    const user = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: {
+        deletedAt: null,
+        id: userId,
+        roles: {
+          some: {
+            revokedAt: null,
+            role: { deletedAt: null },
+            tenantId,
+          },
+        },
+        state: "ACTIVE",
+      },
+    });
+
+    return user ?? null;
+  }
+
   private toDomain(record: PrismaTicket): TicketAggregate {
     const props: TicketProps = {
       assignedGroupId: record.assignedGroupId,

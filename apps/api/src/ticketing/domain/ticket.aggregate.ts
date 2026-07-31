@@ -28,6 +28,12 @@ export class TicketConcurrencyException extends ConflictException {
   }
 }
 
+export class ClosedTicketAssignmentException extends BadRequestException {
+  constructor(ticketId: string) {
+    super(`Cannot assign or unassign a closed ticket (id: ${ticketId})`);
+  }
+}
+
 export interface TicketProps {
   id: string;
   tenantId: string;
@@ -58,6 +64,8 @@ const VALID_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   [TicketStatus.SOLVED]: [TicketStatus.OPEN, TicketStatus.CLOSED],
   [TicketStatus.CLOSED]: [],
 };
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class TicketAggregate {
   private props: TicketProps;
@@ -262,6 +270,83 @@ export class TicketAggregate {
 
     this.props.updatedAt = new Date();
     this.props.version += 1;
+  }
+
+  /**
+   * Assign or reassign a user and/or group to this ticket.
+   *
+   * Returns the previous assignee/group IDs so the caller can include them
+   * in the audit event metadata.
+   */
+  public assign(
+    params: {
+      assigneeUserId?: string | null;
+      assignedGroupId?: string | null;
+    },
+    expectedVersion: number,
+  ): {
+    previousAssigneeUserId: string | null | undefined;
+    previousAssignedGroupId: string | null | undefined;
+  } {
+    this.verifyVersion(expectedVersion);
+
+    if (this.props.status === TicketStatus.CLOSED) {
+      throw new ClosedTicketAssignmentException(this.props.id);
+    }
+
+    if (params.assigneeUserId !== undefined && params.assigneeUserId !== null) {
+      if (!uuidPattern.test(params.assigneeUserId)) {
+        throw new BadRequestException("assigneeUserId must be a valid UUID");
+      }
+    }
+
+    if (params.assignedGroupId !== undefined && params.assignedGroupId !== null) {
+      if (!uuidPattern.test(params.assignedGroupId)) {
+        throw new BadRequestException("assignedGroupId must be a valid UUID");
+      }
+    }
+
+    const previousAssigneeUserId = this.props.assigneeUserId;
+    const previousAssignedGroupId = this.props.assignedGroupId;
+
+    if (params.assigneeUserId !== undefined) {
+      this.props.assigneeUserId = params.assigneeUserId;
+    }
+
+    if (params.assignedGroupId !== undefined) {
+      this.props.assignedGroupId = params.assignedGroupId;
+    }
+
+    this.props.updatedAt = new Date();
+    this.props.version += 1;
+
+    return { previousAssignedGroupId, previousAssigneeUserId };
+  }
+
+  /**
+   * Remove the current assignee and group from this ticket.
+   *
+   * Returns previous values for audit metadata.
+   */
+  public unassign(expectedVersion: number): {
+    previousAssigneeUserId: string | null | undefined;
+    previousAssignedGroupId: string | null | undefined;
+  } {
+    this.verifyVersion(expectedVersion);
+
+    if (this.props.status === TicketStatus.CLOSED) {
+      throw new ClosedTicketAssignmentException(this.props.id);
+    }
+
+    const previousAssigneeUserId = this.props.assigneeUserId;
+    const previousAssignedGroupId = this.props.assignedGroupId;
+
+    this.props.assigneeUserId = null;
+    this.props.assignedGroupId = null;
+    this.props.updatedAt = new Date();
+    this.props.version += 1;
+
+    return { previousAssignedGroupId, previousAssigneeUserId };
   }
 
   public toProps(): TicketProps {

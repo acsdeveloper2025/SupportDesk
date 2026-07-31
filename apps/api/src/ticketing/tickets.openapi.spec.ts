@@ -26,10 +26,12 @@ describe("Tickets OpenAPI Document", () => {
         {
           provide: TicketsService,
           useValue: {
+            assignTicket: () => Promise.resolve({}),
             createTicket: () => Promise.resolve({}),
             getTicketById: () => Promise.resolve({}),
             getTicketByPublicRef: () => Promise.resolve({}),
             transitionStatus: () => Promise.resolve({}),
+            unassignTicket: () => Promise.resolve({}),
             updateTicket: () => Promise.resolve({}),
           },
         },
@@ -68,9 +70,12 @@ describe("Tickets OpenAPI Document", () => {
     expect(Object.keys(document.paths).sort()).toEqual([
       "/api/v1/tickets",
       "/api/v1/tickets/reference/{publicRef}",
+      "/api/v1/tickets/reference/{publicRef}/assign",
       "/api/v1/tickets/reference/{publicRef}/status",
       "/api/v1/tickets/{id}",
+      "/api/v1/tickets/{id}/assign",
       "/api/v1/tickets/{id}/status",
+      "/api/v1/tickets/{id}/unassign",
     ]);
 
     expect(document.paths["/api/v1/tickets"]?.post?.summary).toBe("Create a ticket");
@@ -87,6 +92,15 @@ describe("Tickets OpenAPI Document", () => {
     );
     expect(document.paths["/api/v1/tickets/reference/{publicRef}/status"]?.post?.summary).toBe(
       "Transition ticket status by public reference",
+    );
+    expect(document.paths["/api/v1/tickets/{id}/assign"]?.post?.summary).toBe(
+      "Assign ticket by ID",
+    );
+    expect(document.paths["/api/v1/tickets/reference/{publicRef}/assign"]?.post?.summary).toBe(
+      "Assign ticket by public reference",
+    );
+    expect(document.paths["/api/v1/tickets/{id}/unassign"]?.post?.summary).toBe(
+      "Unassign ticket by ID",
     );
   });
 });

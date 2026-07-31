@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { TicketChannel, TicketPriority, TicketStatus, TicketType } from "@prisma/client";
 
 import { TicketAggregate } from "./domain/ticket.aggregate";
@@ -46,6 +46,30 @@ export interface TransitionTicketStatusDto {
   expectedVersion: number;
   actorUserId: string;
   newStatus: TicketStatus;
+  correlationId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface AssignTicketDto {
+  tenantId: string;
+  ticketId: string;
+  expectedVersion: number;
+  actorUserId: string;
+  /** UUID of the user to assign, or null to clear user assignment. */
+  assigneeUserId?: string | null;
+  /** UUID of the group to assign, or null to clear group assignment. */
+  assignedGroupId?: string | null;
+  correlationId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface UnassignTicketDto {
+  tenantId: string;
+  ticketId: string;
+  expectedVersion: number;
+  actorUserId: string;
   correlationId?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -172,6 +196,93 @@ export class TicketsService {
         newVersion: updated.version,
         publicRef: updated.publicRef,
         toStatus: updated.status,
+      },
+      outcome: "SUCCESS",
+      targetId: updated.id,
+      targetType: "ticket",
+      tenantId: dto.tenantId,
+      userAgent: dto.userAgent,
+    });
+
+    return updated;
+  }
+
+  async assignTicket(dto: AssignTicketDto): Promise<TicketAggregate> {
+    const ticket = await this.getTicketById(dto.tenantId, dto.ticketId);
+
+    // Validate assignee user is active and belongs to this tenant
+    if (dto.assigneeUserId) {
+      const activeUser = await this.repository.findActiveUserInTenant(
+        dto.tenantId,
+        dto.assigneeUserId,
+      );
+      if (!activeUser) {
+        throw new BadRequestException(
+          `Assignee user ${dto.assigneeUserId} is not an active member of this tenant`,
+        );
+      }
+    }
+
+    const isReassign =
+      ticket.assigneeUserId !== null &&
+      ticket.assigneeUserId !== undefined &&
+      (dto.assigneeUserId !== ticket.assigneeUserId ||
+        dto.assignedGroupId !== ticket.assignedGroupId);
+
+    const { previousAssigneeUserId, previousAssignedGroupId } = ticket.assign(
+      {
+        assignedGroupId: dto.assignedGroupId,
+        assigneeUserId: dto.assigneeUserId,
+      },
+      dto.expectedVersion,
+    );
+
+    const updated = await this.repository.update(ticket, dto.expectedVersion);
+
+    await this.repository.recordAuditEvent({
+      action: isReassign ? "ticket.reassigned" : "ticket.assigned",
+      actorUserId: dto.actorUserId,
+      correlationId: dto.correlationId,
+      ipAddress: dto.ipAddress,
+      metadata: {
+        newAssignedGroupId: updated.assignedGroupId ?? null,
+        newAssigneeUserId: updated.assigneeUserId ?? null,
+        newVersion: updated.version,
+        previousAssignedGroupId: previousAssignedGroupId ?? null,
+        previousAssigneeUserId: previousAssigneeUserId ?? null,
+        previousVersion: dto.expectedVersion,
+        publicRef: updated.publicRef,
+      },
+      outcome: "SUCCESS",
+      targetId: updated.id,
+      targetType: "ticket",
+      tenantId: dto.tenantId,
+      userAgent: dto.userAgent,
+    });
+
+    return updated;
+  }
+
+  async unassignTicket(dto: UnassignTicketDto): Promise<TicketAggregate> {
+    const ticket = await this.getTicketById(dto.tenantId, dto.ticketId);
+
+    const { previousAssigneeUserId, previousAssignedGroupId } = ticket.unassign(
+      dto.expectedVersion,
+    );
+
+    const updated = await this.repository.update(ticket, dto.expectedVersion);
+
+    await this.repository.recordAuditEvent({
+      action: "ticket.unassigned",
+      actorUserId: dto.actorUserId,
+      correlationId: dto.correlationId,
+      ipAddress: dto.ipAddress,
+      metadata: {
+        newVersion: updated.version,
+        previousAssignedGroupId: previousAssignedGroupId ?? null,
+        previousAssigneeUserId: previousAssigneeUserId ?? null,
+        previousVersion: dto.expectedVersion,
+        publicRef: updated.publicRef,
       },
       outcome: "SUCCESS",
       targetId: updated.id,

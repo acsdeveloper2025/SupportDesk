@@ -32,12 +32,14 @@ import { getAuthenticatedRequestContext } from "../auth/guards/auth-context";
 import { AuthRateLimit } from "../auth/rate-limit/auth-rate-limit.guard";
 import { getCorrelationId } from "../common/logging/correlation-id";
 import { RbacService } from "../rbac/rbac.service";
+import { AssignTicketRequestDto, validateAssignTicketPayload } from "./dto/assign-ticket.dto";
 import { CreateTicketRequestDto, validateCreateTicketPayload } from "./dto/create-ticket.dto";
 import { TicketResponseDto } from "./dto/ticket-response.dto";
 import {
   TransitionTicketStatusDto,
   validateTransitionStatusPayload,
 } from "./dto/transition-ticket-status.dto";
+import { UnassignTicketRequestDto, validateUnassignTicketPayload } from "./dto/unassign-ticket.dto";
 import { UpdateTicketRequestDto, validateUpdateTicketPayload } from "./dto/update-ticket.dto";
 import { TicketsService } from "./tickets.service";
 
@@ -454,6 +456,174 @@ export class TicketsController {
       newStatus: body.status,
       tenantId: context.tenantId,
       ticketId: existing.id,
+      userAgent: request.header ? request.header("user-agent") : request.headers?.["user-agent"],
+    });
+
+    return TicketResponseDto.fromDomain(updated);
+  }
+
+  // ── Issue #20: Ticket Assignment ────────────────────────────────────
+
+  @Post(":id/assign")
+  @AuthRateLimit("ticket-assign")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "Assign or reassign a ticket to a user and/or group by its system UUID. " +
+      "Closed tickets cannot be assigned. Optimistic concurrency version required.",
+    summary: "Assign ticket by ID",
+  })
+  @ApiOkResponse({
+    description: "Ticket successfully assigned.",
+    type: TicketResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid payload, invalid UUID, inactive assignee, or closed ticket.",
+  })
+  @ApiUnauthorizedResponse({ description: "Authentication token missing, invalid, or expired." })
+  @ApiForbiddenResponse({ description: "User lacks the ticket.assign permission." })
+  @ApiNotFoundResponse({ description: "Ticket not found within the authenticated tenant." })
+  @ApiConflictResponse({ description: "Optimistic concurrency conflict (version mismatch)." })
+  async assignTicketById(
+    @Param("id") id: string,
+    @Body() body: AssignTicketRequestDto,
+    @Req() request: Request,
+  ) {
+    validateAssignTicketPayload(body as unknown as Record<string, unknown>);
+
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canAssign = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssign) {
+      throw new ForbiddenException("Lacks required ticket.assign permission");
+    }
+
+    const updated = await this.ticketsService.assignTicket({
+      actorUserId: context.userId,
+      assignedGroupId: body.assignedGroupId,
+      assigneeUserId: body.assigneeUserId,
+      correlationId: getCorrelationId(request),
+      expectedVersion: body.version,
+      ipAddress: request.ip,
+      tenantId: context.tenantId,
+      ticketId: id,
+      userAgent: request.header ? request.header("user-agent") : request.headers?.["user-agent"],
+    });
+
+    return TicketResponseDto.fromDomain(updated);
+  }
+
+  @Post("reference/:publicRef/assign")
+  @AuthRateLimit("ticket-assign")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "Assign or reassign a ticket to a user and/or group by its public reference code. " +
+      "Closed tickets cannot be assigned. Optimistic concurrency version required.",
+    summary: "Assign ticket by public reference",
+  })
+  @ApiOkResponse({
+    description: "Ticket successfully assigned.",
+    type: TicketResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid payload, invalid UUID, inactive assignee, or closed ticket.",
+  })
+  @ApiUnauthorizedResponse({ description: "Authentication token missing, invalid, or expired." })
+  @ApiForbiddenResponse({ description: "User lacks the ticket.assign permission." })
+  @ApiNotFoundResponse({ description: "Ticket not found within the authenticated tenant." })
+  @ApiConflictResponse({ description: "Optimistic concurrency conflict (version mismatch)." })
+  async assignTicketByPublicRef(
+    @Param("publicRef") publicRef: string,
+    @Body() body: AssignTicketRequestDto,
+    @Req() request: Request,
+  ) {
+    validateAssignTicketPayload(body as unknown as Record<string, unknown>);
+
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canAssign = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssign) {
+      throw new ForbiddenException("Lacks required ticket.assign permission");
+    }
+
+    const existing = await this.ticketsService.getTicketByPublicRef(context.tenantId, publicRef);
+
+    const updated = await this.ticketsService.assignTicket({
+      actorUserId: context.userId,
+      assignedGroupId: body.assignedGroupId,
+      assigneeUserId: body.assigneeUserId,
+      correlationId: getCorrelationId(request),
+      expectedVersion: body.version,
+      ipAddress: request.ip,
+      tenantId: context.tenantId,
+      ticketId: existing.id,
+      userAgent: request.header ? request.header("user-agent") : request.headers?.["user-agent"],
+    });
+
+    return TicketResponseDto.fromDomain(updated);
+  }
+
+  @Post(":id/unassign")
+  @AuthRateLimit("ticket-assign")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "Remove the assignee user and group from a ticket by its system UUID. " +
+      "Closed tickets cannot be unassigned. Optimistic concurrency version required.",
+    summary: "Unassign ticket by ID",
+  })
+  @ApiOkResponse({
+    description: "Ticket successfully unassigned.",
+    type: TicketResponseDto,
+  })
+  @ApiBadRequestResponse({ description: "Invalid payload, missing version, or closed ticket." })
+  @ApiUnauthorizedResponse({ description: "Authentication token missing, invalid, or expired." })
+  @ApiForbiddenResponse({ description: "User lacks the ticket.assign permission." })
+  @ApiNotFoundResponse({ description: "Ticket not found within the authenticated tenant." })
+  @ApiConflictResponse({ description: "Optimistic concurrency conflict (version mismatch)." })
+  async unassignTicketById(
+    @Param("id") id: string,
+    @Body() body: UnassignTicketRequestDto,
+    @Req() request: Request,
+  ) {
+    validateUnassignTicketPayload(body as unknown as Record<string, unknown>);
+
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canAssign = await this.rbacService.can({
+      permissionKey: "ticket.assign",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canAssign) {
+      throw new ForbiddenException("Lacks required ticket.assign permission");
+    }
+
+    const updated = await this.ticketsService.unassignTicket({
+      actorUserId: context.userId,
+      correlationId: getCorrelationId(request),
+      expectedVersion: body.version,
+      ipAddress: request.ip,
+      tenantId: context.tenantId,
+      ticketId: id,
       userAgent: request.header ? request.header("user-agent") : request.headers?.["user-agent"],
     });
 

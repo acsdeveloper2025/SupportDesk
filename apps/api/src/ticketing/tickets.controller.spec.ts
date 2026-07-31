@@ -25,6 +25,8 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
   let getTicketByPublicRefMock: ReturnType<typeof vi.fn>;
   let updateTicketMock: ReturnType<typeof vi.fn>;
   let transitionStatusMock: ReturnType<typeof vi.fn>;
+  let assignTicketMock: ReturnType<typeof vi.fn>;
+  let unassignTicketMock: ReturnType<typeof vi.fn>;
   let canMock: ReturnType<typeof vi.fn>;
 
   const tenantA = "11111111-1111-1111-1111-111111111111";
@@ -109,11 +111,27 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       })(),
     );
 
+    const agentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const assignedTicket = TicketAggregate.create({
+      description: "Laptop screen flickering intermittently.",
+      id: "tkt-id-001",
+      publicRef: "TKT-1001",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Screen Flickering Issue",
+    });
+    assignedTicket.assign({ assigneeUserId: agentId }, 1);
+
+    assignTicketMock = vi.fn().mockResolvedValue(assignedTicket);
+    unassignTicketMock = vi.fn().mockResolvedValue(sampleTicket);
+
     service = {
+      assignTicket: assignTicketMock,
       createTicket: createTicketMock,
       getTicketById: getTicketByIdMock,
       getTicketByPublicRef: getTicketByPublicRefMock,
       transitionStatus: transitionStatusMock,
+      unassignTicket: unassignTicketMock,
       updateTicket: updateTicketMock,
     } as unknown as TicketsService;
 
@@ -554,6 +572,187 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
           req,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── Issue #20: Assignment endpoints ─────────────────────────────────
+
+  describe("POST /api/v1/tickets/:id/assign", () => {
+    const agentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+    it("assigns ticket successfully by ID", async () => {
+      const req = createMockRequest();
+
+      const result = await controller.assignTicketById(
+        "tkt-id-001",
+        { assigneeUserId: agentId, version: 1 },
+        req,
+      );
+
+      expect(result.id).toBe("tkt-id-001");
+      expect(assignTicketMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assigneeUserId: agentId,
+          expectedVersion: 1,
+          tenantId: tenantA,
+          ticketId: "tkt-id-001",
+        }),
+      );
+    });
+
+    it("throws 400 when version is missing", async () => {
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketById("tkt-id-001", { assigneeUserId: agentId } as never, req),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws 400 when neither assigneeUserId nor assignedGroupId is provided", async () => {
+      const req = createMockRequest();
+
+      await expect(controller.assignTicketById("tkt-id-001", { version: 1 }, req)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("throws 401 when request context is missing", async () => {
+      const req = {
+        header: vi.fn(),
+        headers: {},
+        ip: "127.0.0.1",
+      } as unknown as Request;
+
+      await expect(
+        controller.assignTicketById("tkt-id-001", { assigneeUserId: agentId, version: 1 }, req),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws 403 when ticket.assign permission is denied", async () => {
+      canMock.mockResolvedValue(false);
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketById("tkt-id-001", { assigneeUserId: agentId, version: 1 }, req),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws 404 when ticket is not found", async () => {
+      assignTicketMock.mockRejectedValue(new NotFoundException("Ticket not found"));
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketById("tkt-no-exist", { assigneeUserId: agentId, version: 1 }, req),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws 409 when version conflicts", async () => {
+      assignTicketMock.mockRejectedValue(new TicketConcurrencyException(99, 2, "tkt-id-001"));
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketById("tkt-id-001", { assigneeUserId: agentId, version: 99 }, req),
+      ).rejects.toThrow(TicketConcurrencyException);
+    });
+  });
+
+  describe("POST /api/v1/tickets/reference/:publicRef/assign", () => {
+    const agentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+    it("assigns ticket successfully by public reference", async () => {
+      const req = createMockRequest();
+
+      const result = await controller.assignTicketByPublicRef(
+        "TKT-1001",
+        { assigneeUserId: agentId, version: 1 },
+        req,
+      );
+
+      expect(result.id).toBe("tkt-id-001");
+      expect(getTicketByPublicRefMock).toHaveBeenCalledWith(tenantA, "TKT-1001");
+      expect(assignTicketMock).toHaveBeenCalledWith(
+        expect.objectContaining({ assigneeUserId: agentId, tenantId: tenantA }),
+      );
+    });
+
+    it("throws 404 for unknown public reference", async () => {
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketByPublicRef(
+          "TKT-9999",
+          { assigneeUserId: agentId, version: 1 },
+          req,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws 403 when ticket.assign permission is denied", async () => {
+      canMock.mockResolvedValue(false);
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketByPublicRef(
+          "TKT-1001",
+          { assigneeUserId: agentId, version: 1 },
+          req,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe("POST /api/v1/tickets/:id/unassign", () => {
+    it("unassigns ticket successfully by ID", async () => {
+      const req = createMockRequest();
+
+      const result = await controller.unassignTicketById("tkt-id-001", { version: 1 }, req);
+
+      expect(result.id).toBe("tkt-id-001");
+      expect(unassignTicketMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expectedVersion: 1,
+          tenantId: tenantA,
+          ticketId: "tkt-id-001",
+        }),
+      );
+    });
+
+    it("throws 400 when version is missing", async () => {
+      const req = createMockRequest();
+
+      await expect(controller.unassignTicketById("tkt-id-001", {} as never, req)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("throws 401 when request context is missing", async () => {
+      const req = {
+        header: vi.fn(),
+        headers: {},
+        ip: "127.0.0.1",
+      } as unknown as Request;
+
+      await expect(
+        controller.unassignTicketById("tkt-id-001", { version: 1 }, req),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws 403 when ticket.assign permission is denied", async () => {
+      canMock.mockResolvedValue(false);
+      const req = createMockRequest();
+
+      await expect(
+        controller.unassignTicketById("tkt-id-001", { version: 1 }, req),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws 409 when version conflicts", async () => {
+      unassignTicketMock.mockRejectedValue(new TicketConcurrencyException(99, 2, "tkt-id-001"));
+      const req = createMockRequest();
+
+      await expect(
+        controller.unassignTicketById("tkt-id-001", { version: 99 }, req),
+      ).rejects.toThrow(TicketConcurrencyException);
     });
   });
 });
