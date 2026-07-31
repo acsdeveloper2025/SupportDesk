@@ -27,7 +27,11 @@ Authentication errors must not disclose account, tenant, or membership existence
 
 All public credential and token mutations use a 60-second fixed window by default. Default limits are login 5, registration 5, verification 10, reset request 5, reset confirmation 10, password change 5, and refresh 20. Limits are keyed by endpoint scope plus hashed tenant, identifier, token, session, device, and IP dimensions. A rejected bucket returns HTTP 429 with `Retry-After` and records `auth.rate_limit.exceeded`.
 
-M2.06 issues signed JWT access tokens with minimal user, tenant, and session claims, and stores only hashed refresh tokens. Refresh tokens rotate on every refresh; replay of a rotated/revoked token revokes the token family and related session. Local session-management endpoints may still pass the current session with `x-session-id` until bearer/cookie guards replace that development transport in the guard issue.
+M2.06 issues signed JWT access tokens with minimal user, tenant, and session claims, and stores only hashed refresh tokens. Refresh tokens rotate on every refresh; replay of a rotated/revoked token revokes the token family and related session.
+
+Browser authentication uses the same-origin Next.js BFF selected in [../adr/ADR-0005.md](../adr/ADR-0005.md). Browser pages call same-origin BFF routes, which store session material only in `HttpOnly`, `Secure`, `SameSite=Lax` cookies and forward authenticated API calls server-side. Refresh tokens, session identifiers, and long-lived credentials must not be stored in `localStorage`, `sessionStorage`, or any browser-readable token cache. Cookie-authenticated state-changing requests require BFF-level CSRF validation before the API request is proxied.
+
+API-to-API clients use bearer tokens. Local session-management endpoints may still pass the current session with `x-session-id` only as temporary development transport until M2.12b/M2.12c replace protected browser flows with bearer-guarded API calls and BFF cookie handling.
 
 M2.07 stores only SHA-256 hashes of cryptographically random password-reset tokens. Reset requests always return an accepted response, tokens are purpose-scoped, single-use, and expire after `PASSWORD_RESET_TOKEN_TTL_MINUTES` (60 by default). A successful reset applies the password policy, replaces the Argon2id hash, and revokes all active sessions and refresh tokens for that tenant/user identity.
 
