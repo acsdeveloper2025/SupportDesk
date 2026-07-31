@@ -7,6 +7,7 @@ import { DatabaseModule } from "./database/database.module";
 import { HealthModule } from "./health/health.module";
 import { IdentityModule } from "./identity/identity.module";
 import { RbacModule } from "./rbac/rbac.module";
+import { TicketsModule } from "./ticketing/tickets.module";
 
 @Module({
   controllers: [AppController],
@@ -19,6 +20,7 @@ import { RbacModule } from "./rbac/rbac.module";
     HealthModule,
     IdentityModule,
     RbacModule,
+    TicketsModule,
   ],
 })
 export class AppModule {}

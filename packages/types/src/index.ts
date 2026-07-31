@@ -6,3 +6,5 @@ export interface HealthResponse {
   timestamp: string;
   correlationId: string;
 }
+
+export * from "./ticket.types";

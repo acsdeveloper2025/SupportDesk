@@ -111,6 +111,7 @@ model Tenant {
   refreshTokens               RefreshToken[]
   authTokens                  AuthToken[]
   auditEvents                 AuditEvent[]
+  tickets                     Ticket[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -171,6 +172,8 @@ model User {
   refreshTokens              RefreshToken[]
   authTokens                 AuthToken[]
   auditEvents                AuditEvent[]    @relation("AuditActorUser")
+  requestedTickets           Ticket[]        @relation("TicketRequester")
+  assignedTickets            Ticket[]        @relation("TicketAssignee")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -370,3 +373,73 @@ model AuditEvent {
   @@index([action, outcome], map: "idx_audit_events__action_outcome")
   @@map("audit_events")
 }
+
+enum TicketStatus {
+  NEW     @map("new")
+  OPEN    @map("open")
+  PENDING @map("pending")
+  ON_HOLD @map("on_hold")
+  SOLVED  @map("solved")
+  CLOSED  @map("closed")
+
+  @@map("ticket_status")
+}
+
+enum TicketPriority {
+  LOW    @map("low")
+  MEDIUM @map("medium")
+  HIGH   @map("high")
+  URGENT @map("urgent")
+
+  @@map("ticket_priority")
+}
+
+enum TicketChannel {
+  WEB   @map("web")
+  EMAIL @map("email")
+  API   @map("api")
+  CHAT  @map("chat")
+
+  @@map("ticket_channel")
+}
+
+enum TicketType {
+  QUESTION        @map("question")
+  INCIDENT        @map("incident")
+  PROBLEM         @map("problem")
+  FEATURE_REQUEST @map("feature_request")
+
+  @@map("ticket_type")
+}
+
+model Ticket {
+  id              String         @id(map: "pk_tickets") @default(uuid()) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  publicRef       String         @map("public_ref") @db.VarChar(50)
+  title           String         @db.VarChar(255)
+  description     String         @db.Text
+  status          TicketStatus   @default(NEW)
+  priority        TicketPriority @default(MEDIUM)
+  channel         TicketChannel  @default(WEB)
+  type            TicketType     @default(QUESTION)
+  requesterUserId String         @map("requester_user_id") @db.Uuid
+  assigneeUserId  String?        @map("assignee_user_id") @db.Uuid
+  assignedGroupId String?        @map("assigned_group_id") @db.Uuid
+  solvedAt        DateTime?      @map("solved_at") @db.Timestamptz(3)
+  closedAt        DateTime?      @map("closed_at") @db.Timestamptz(3)
+  dueDate         DateTime?      @map("due_date") @db.Timestamptz(3)
+  version         Int            @default(1)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz(3)
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_tickets__tenants__tenant_id")
+  requesterUser   User           @relation("TicketRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, map: "fk_tickets__users__requester_user_id")
+  assigneeUser    User?          @relation("TicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, map: "fk_tickets__users__assignee_user_id")
+
+  @@unique([tenantId, publicRef], map: "uq_tickets__tenant_id_public_ref")
+  @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
+  @@index([tenantId, assigneeUserId], map: "idx_tickets__tenant_id_assignee_user_id")
+  @@index([tenantId, requesterUserId], map: "idx_tickets__tenant_id_requester_user_id")
+  @@map("tickets")
+}
+
