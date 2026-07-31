@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { CommentVisibility } from "@prisma/client";
+import { CommentVisibility, NotificationEventType } from "@prisma/client";
 
+import { NotificationsService } from "../notifications/notifications.service";
 import { RbacService } from "../rbac/rbac.service";
 import {
   type CommentFilters,
@@ -34,6 +35,7 @@ export class CommentsService {
     @Inject(CommentsRepository) private readonly commentsRepository: CommentsRepository,
     @Inject(TicketsRepository) private readonly ticketsRepository: TicketsRepository,
     @Inject(RbacService) private readonly rbacService: RbacService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   async createComment(
@@ -82,7 +84,7 @@ export class CommentsService {
       updatedAt: new Date(),
     });
 
-    return this.commentsRepository.createWithAudit(entity, {
+    const created = await this.commentsRepository.createWithAudit(entity, {
       action: "ticket.comment.created",
       actorUserId,
       metadata: {
@@ -94,6 +96,39 @@ export class CommentsService {
       outcome: "SUCCESS",
       tenantId,
     });
+
+    const recipients = new Set<string>();
+    if (visibility === CommentVisibility.PUBLIC) {
+      recipients.add(ticket.requesterUserId);
+    }
+    if (ticket.assigneeUserId) {
+      recipients.add(ticket.assigneeUserId);
+    }
+
+    const eventType =
+      visibility === CommentVisibility.INTERNAL
+        ? NotificationEventType.COMMENT_CREATED_INTERNAL
+        : NotificationEventType.COMMENT_CREATED_PUBLIC;
+
+    await this.notificationsService.createManySafe(
+      [...recipients].map((recipientUserId) => ({
+        actorUserId,
+        body: `New ${visibility.toLowerCase()} comment on ticket ${ticket.publicRef}.`,
+        eventType,
+        payload: {
+          commentId: created.id,
+          publicRef: ticket.publicRef,
+          visibility,
+        },
+        recipientUserId,
+        resourceId: ticket.id,
+        resourceType: "ticket",
+        tenantId,
+        title: `New comment on ${ticket.publicRef}`,
+      })),
+    );
+
+    return created;
   }
 
   async getComment(

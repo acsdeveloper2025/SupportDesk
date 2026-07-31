@@ -7,6 +7,8 @@ import { PrismaClient, RoleScope, UserState, VirusScanStatus } from "@prisma/cli
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { PrismaService } from "../../database/prisma.service";
+import { NotificationsRepository } from "../../notifications/notifications.repository";
+import { NotificationsService } from "../../notifications/notifications.service";
 import { PrismaRbacRepository } from "../../rbac/rbac.repository";
 import { RbacService } from "../../rbac/rbac.service";
 import { TicketsRepository } from "../tickets.repository";
@@ -46,6 +48,8 @@ describeIntegration("Attachments PostgreSQL integration", () => {
   });
 
   beforeEach(async () => {
+    await prisma.notificationPreference.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.comment.deleteMany();
     await prisma.ticket.deleteMany();
@@ -67,13 +71,18 @@ describeIntegration("Attachments PostgreSQL integration", () => {
     const ticketsRepository = new TicketsRepository(prismaService);
     const attachmentsRepository = new AttachmentsRepository(prismaService);
     const rbacService = new RbacService(new PrismaRbacRepository(prismaService));
-    ticketsService = new TicketsService(ticketsRepository);
+    const notificationsService = new NotificationsService(
+      new NotificationsRepository(prismaService),
+      rbacService,
+    );
+    ticketsService = new TicketsService(ticketsRepository, notificationsService);
     attachmentsService = new AttachmentsService(
       attachmentsRepository,
       ticketsRepository,
       storage,
       new NoOpVirusScanner(),
       rbacService,
+      notificationsService,
     );
 
     await prisma.tenant.createMany({

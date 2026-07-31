@@ -99,7 +99,12 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
       ),
     } as unknown as TicketsRepository;
 
-    service = new TicketsService(repository);
+    const notificationsService = {
+      createManySafe: vi.fn(() => Promise.resolve()),
+      createSafe: vi.fn(() => Promise.resolve(null)),
+    };
+
+    service = new TicketsService(repository, notificationsService as never);
   });
 
   it("creates a ticket and records an audit event", async () => {

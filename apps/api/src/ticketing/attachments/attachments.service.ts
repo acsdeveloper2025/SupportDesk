@@ -10,8 +10,9 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import { VirusScanStatus } from "@prisma/client";
+import { NotificationEventType, VirusScanStatus } from "@prisma/client";
 
+import { NotificationsService } from "../../notifications/notifications.service";
 import { RbacService } from "../../rbac/rbac.service";
 import { AttachmentEntity } from "../domain/attachment.entity";
 import { TicketsRepository } from "../tickets.repository";
@@ -47,6 +48,7 @@ export class AttachmentsService {
     @Inject(LocalAttachmentStorage) private readonly storage: LocalAttachmentStorage,
     @Inject(VIRUS_SCANNER) private readonly virusScanner: VirusScanner,
     @Inject(RbacService) private readonly rbacService: RbacService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   async upload(input: UploadAttachmentInput): Promise<AttachmentEntity> {
@@ -119,7 +121,7 @@ export class AttachmentsService {
     });
 
     try {
-      return await this.attachmentsRepository.createWithAudit(entity, {
+      const created = await this.attachmentsRepository.createWithAudit(entity, {
         action: "attachment.uploaded",
         actorUserId: input.actorUserId,
         correlationId: input.correlationId,
@@ -139,6 +141,32 @@ export class AttachmentsService {
         tenantId: input.tenantId,
         userAgent: input.userAgent,
       });
+
+      const recipients = new Set<string>();
+      recipients.add(ticket.requesterUserId);
+      if (ticket.assigneeUserId) {
+        recipients.add(ticket.assigneeUserId);
+      }
+
+      await this.notificationsService.createManySafe(
+        [...recipients].map((recipientUserId) => ({
+          actorUserId: input.actorUserId,
+          body: `Attachment "${entity.originalFilename}" uploaded to ticket ${ticket.publicRef}.`,
+          eventType: NotificationEventType.ATTACHMENT_UPLOADED,
+          payload: {
+            attachmentId: created.id,
+            originalFilename: entity.originalFilename,
+            publicRef: ticket.publicRef,
+          },
+          recipientUserId,
+          resourceId: ticket.id,
+          resourceType: "ticket",
+          tenantId: input.tenantId,
+          title: `Attachment uploaded on ${ticket.publicRef}`,
+        })),
+      );
+
+      return created;
     } catch (error) {
       await this.storage.deleteFile(stored.absolutePath);
       throw error;

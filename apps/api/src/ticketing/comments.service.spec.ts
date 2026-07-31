@@ -48,10 +48,16 @@ describe("CommentsService", () => {
       can: vi.fn(),
     };
 
+    const notificationsService = {
+      createManySafe: vi.fn(() => Promise.resolve()),
+      createSafe: vi.fn(() => Promise.resolve(null)),
+    };
+
     service = new CommentsService(
       commentsRepository as unknown as CommentsRepository,
       ticketsRepository as unknown as TicketsRepository,
       rbacService as unknown as RbacService,
+      notificationsService as never,
     );
   });
 

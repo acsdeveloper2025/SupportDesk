@@ -94,6 +94,11 @@ Authentication audit writes pass through one envelope builder. It recursively re
 | `sla.target_created`                       | SLA            | System                         | SLA Target           | Policy/schedule version, due time       | Optional due notice.                |
 | `sla.warning`                              | SLA            | System                         | SLA Target           | Threshold, due time                     | SLA warning.                        |
 | `sla.breached`                             | SLA            | System                         | SLA Target           | Due time, breached at                   | Escalation notice.                  |
+| `notification.read`                        | Notification   | Recipient user                 | Notification         | Read/unread, event type                 | None.                               |
+| `notification.unread`                      | Notification   | Recipient user                 | Notification         | Event type                              | None.                               |
+| `notification.archived`                    | Notification   | Recipient user                 | Notification         | Archive state, event type               | None.                               |
+| `notification.unarchived`                  | Notification   | Recipient user                 | Notification         | Event type                              | None.                               |
+| `notification.preference.updated`          | Notification   | Actor user                     | Preference owner     | Event, channel, enabled                 | None.                               |
 | `notification.sent`                        | Notification   | Worker                         | Notification intent  | Channel, provider, template             | Provider effect.                    |
 | `notification.failed`                      | Notification   | Worker/provider                | Notification attempt | Failure class, retry state              | Operations alert if terminal.       |
 | `report.export_requested`                  | Export         | User                           | Export job           | Resource, filters summary, format       | Export job notice.                  |

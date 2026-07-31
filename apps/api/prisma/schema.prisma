@@ -114,6 +114,8 @@ model Tenant {
   tickets                     Ticket[]
   comments                    Comment[]
   attachments                 Attachment[]
+  notifications               Notification[]
+  notificationPreferences     NotificationPreference[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -178,6 +180,9 @@ model User {
   assignedTickets            Ticket[]        @relation("TicketAssignee")
   authoredComments           Comment[]       @relation("CommentAuthor")
   uploadedAttachments        Attachment[]    @relation("AttachmentUploader")
+  notifications              Notification[]  @relation("NotificationRecipient")
+  actedNotifications         Notification[]  @relation("NotificationActor")
+  notificationPreferences    NotificationPreference[]
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -516,4 +521,71 @@ model Attachment {
   @@index([tenantId, ticketId, createdAt], map: "idx_attachments__tenant_id_ticket_id_created_at")
   @@index([tenantId, virusScanStatus], map: "idx_attachments__tenant_id_virus_scan_status")
   @@map("attachments")
+}
+
+enum NotificationEventType {
+  TICKET_ASSIGNED            @map("ticket.assigned")
+  TICKET_REASSIGNED          @map("ticket.reassigned")
+  TICKET_STATUS_CHANGED      @map("ticket.status_changed")
+  COMMENT_CREATED_PUBLIC     @map("comment.created.public")
+  COMMENT_CREATED_INTERNAL   @map("comment.created.internal")
+  ATTACHMENT_UPLOADED        @map("attachment.uploaded")
+  AUTH_SESSION_REVOKED       @map("auth.session.revoked")
+  SETTINGS_SECURITY_UPDATED  @map("settings.security.updated")
+
+  @@map("notification_event_type")
+}
+
+enum NotificationChannel {
+  IN_APP @map("in_app")
+  EMAIL  @map("email")
+
+  @@map("notification_channel")
+}
+
+model Notification {
+  id               String                @id(map: "pk_notifications") @default(uuid()) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  recipientUserId  String                @map("recipient_user_id") @db.Uuid
+  eventType        NotificationEventType @map("event_type")
+  title            String                @db.VarChar(255)
+  body             String?               @db.Text
+  resourceType     String?               @map("resource_type") @db.VarChar(100)
+  resourceId       String?               @map("resource_id") @db.Uuid
+  actorUserId      String?               @map("actor_user_id") @db.Uuid
+  payload          Json?
+  readAt           DateTime?             @map("read_at") @db.Timestamptz(3)
+  archivedAt       DateTime?             @map("archived_at") @db.Timestamptz(3)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notifications__tenants__tenant_id")
+  recipientUser    User                  @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade, map: "fk_notifications__users__recipient_user_id")
+  actorUser        User?                 @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_notifications__users__actor_user_id")
+
+  @@index([tenantId, recipientUserId, createdAt], map: "idx_notifications__tenant_id_recipient_user_id_created_at")
+  @@index([tenantId, recipientUserId, readAt], map: "idx_notifications__tenant_id_recipient_user_id_read_at")
+  @@index([tenantId, recipientUserId, eventType], map: "idx_notifications__tenant_id_recipient_user_id_event_type")
+  @@index([tenantId, recipientUserId, archivedAt], map: "idx_notifications__tenant_id_recipient_user_id_archived_at")
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        String                @id(map: "pk_notification_preferences") @default(uuid()) @db.Uuid
+  tenantId  String                @map("tenant_id") @db.Uuid
+  userId    String                @map("user_id") @db.Uuid
+  eventType NotificationEventType @map("event_type")
+  channel   NotificationChannel   @default(IN_APP)
+  enabled   Boolean               @default(true)
+  version   Int                   @default(1)
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__tenants__tenant_id")
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__users__user_id")
+
+  @@unique([tenantId, userId, eventType, channel], map: "uq_notification_preferences__tenant_user_event_channel")
+  @@index([tenantId, userId], map: "idx_notification_preferences__tenant_id_user_id")
+  @@map("notification_preferences")
 }

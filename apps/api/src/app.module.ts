@@ -6,6 +6,7 @@ import { AuthModule } from "./auth/auth.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthModule } from "./health/health.module";
 import { IdentityModule } from "./identity/identity.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { RbacModule } from "./rbac/rbac.module";
 import { TicketsModule } from "./ticketing/tickets.module";
 
@@ -19,6 +20,7 @@ import { TicketsModule } from "./ticketing/tickets.module";
     DatabaseModule,
     HealthModule,
     IdentityModule,
+    NotificationsModule,
     RbacModule,
     TicketsModule,
   ],

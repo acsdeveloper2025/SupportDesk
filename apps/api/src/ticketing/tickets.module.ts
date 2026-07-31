@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { RbacModule } from "../rbac/rbac.module";
 import { AttachmentsController } from "./attachments/attachments.controller";
 import { AttachmentsRepository } from "./attachments/attachments.repository";
@@ -25,7 +26,7 @@ import { TicketsService } from "./tickets.service";
     AttachmentsService,
     AttachmentsRepository,
   ],
-  imports: [DatabaseModule, AuthModule, RbacModule],
+  imports: [DatabaseModule, AuthModule, RbacModule, NotificationsModule],
   providers: [
     TicketsService,
     TicketsRepository,

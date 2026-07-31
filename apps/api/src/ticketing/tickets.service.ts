@@ -8,7 +8,9 @@ import type {
   TicketStatus,
   TicketType,
 } from "@prisma/client";
+import { NotificationEventType } from "@prisma/client";
 
+import { NotificationsService } from "../notifications/notifications.service";
 import { TicketAggregate } from "./domain/ticket.aggregate";
 import {
   type FindTicketsParams,
@@ -131,7 +133,10 @@ export interface UnassignTicketDto {
 
 @Injectable()
 export class TicketsService {
-  constructor(@Inject(TicketsRepository) private readonly repository: TicketsRepository) {}
+  constructor(
+    @Inject(TicketsRepository) private readonly repository: TicketsRepository,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createTicket(dto: CreateTicketDto): Promise<TicketAggregate> {
     const ticketId = randomUUID();
@@ -278,7 +283,7 @@ export class TicketsService {
     const previousStatus = ticket.status;
     ticket.transitionTo(dto.newStatus, dto.expectedVersion);
 
-    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
+    const updated = await this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: "ticket.status_changed",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
@@ -295,6 +300,32 @@ export class TicketsService {
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
+
+    const recipients = new Set<string>();
+    recipients.add(updated.requesterUserId);
+    if (updated.assigneeUserId) {
+      recipients.add(updated.assigneeUserId);
+    }
+
+    await this.notificationsService.createManySafe(
+      [...recipients].map((recipientUserId) => ({
+        actorUserId: dto.actorUserId,
+        body: `Ticket ${updated.publicRef} moved from ${previousStatus} to ${updated.status}.`,
+        eventType: NotificationEventType.TICKET_STATUS_CHANGED,
+        payload: {
+          fromStatus: previousStatus,
+          publicRef: updated.publicRef,
+          toStatus: updated.status,
+        },
+        recipientUserId,
+        resourceId: updated.id,
+        resourceType: "ticket",
+        tenantId: dto.tenantId,
+        title: `Ticket ${updated.publicRef} status updated`,
+      })),
+    );
+
+    return updated;
   }
 
   async assignTicket(dto: AssignTicketDto): Promise<TicketAggregate> {
@@ -334,7 +365,7 @@ export class TicketsService {
       dto.expectedVersion,
     );
 
-    return this.repository.updateWithAudit(ticket, dto.expectedVersion, {
+    const updated = await this.repository.updateWithAudit(ticket, dto.expectedVersion, {
       action: isReassign ? "ticket.reassigned" : "ticket.assigned",
       actorUserId: dto.actorUserId,
       correlationId: dto.correlationId,
@@ -354,6 +385,27 @@ export class TicketsService {
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
+
+    if (updated.assigneeUserId) {
+      await this.notificationsService.createSafe({
+        actorUserId: dto.actorUserId,
+        body: `You were ${isReassign ? "reassigned" : "assigned"} ticket ${updated.publicRef}.`,
+        eventType: isReassign
+          ? NotificationEventType.TICKET_REASSIGNED
+          : NotificationEventType.TICKET_ASSIGNED,
+        payload: {
+          previousAssigneeUserId: previousAssigneeUserId ?? null,
+          publicRef: updated.publicRef,
+        },
+        recipientUserId: updated.assigneeUserId,
+        resourceId: updated.id,
+        resourceType: "ticket",
+        tenantId: dto.tenantId,
+        title: `Ticket ${updated.publicRef} ${isReassign ? "reassigned" : "assigned"} to you`,
+      });
+    }
+
+    return updated;
   }
 
   async unassignTicket(dto: UnassignTicketDto): Promise<TicketAggregate> {

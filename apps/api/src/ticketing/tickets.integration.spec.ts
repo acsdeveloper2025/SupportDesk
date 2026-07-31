@@ -11,6 +11,8 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { PrismaService } from "../database/prisma.service";
+import { NotificationsRepository } from "../notifications/notifications.repository";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaRbacRepository } from "../rbac/rbac.repository";
 import { RbacService } from "../rbac/rbac.service";
 import { CommentsRepository } from "./comments.repository";
@@ -30,8 +32,17 @@ describeIntegration("Ticketing PostgreSQL integration", () => {
   const commentsRepository = new CommentsRepository(prismaService);
   const rbacRepository = new PrismaRbacRepository(prismaService);
   const rbacService = new RbacService(rbacRepository);
-  const ticketsService = new TicketsService(ticketsRepository);
-  const commentsService = new CommentsService(commentsRepository, ticketsRepository, rbacService);
+  const notificationsService = new NotificationsService(
+    new NotificationsRepository(prismaService),
+    rbacService,
+  );
+  const ticketsService = new TicketsService(ticketsRepository, notificationsService);
+  const commentsService = new CommentsService(
+    commentsRepository,
+    ticketsRepository,
+    rbacService,
+    notificationsService,
+  );
 
   let tenantA: string;
   let tenantB: string;
@@ -48,6 +59,8 @@ describeIntegration("Ticketing PostgreSQL integration", () => {
   });
 
   beforeEach(async () => {
+    await prisma.notificationPreference.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.comment.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.ticket.deleteMany();

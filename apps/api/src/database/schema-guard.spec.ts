@@ -4,13 +4,15 @@ import { describe, expect, it } from "vitest";
 describe("schema boundary", () => {
   const tableNames = Prisma.dmmf.datamodel.models.map((model) => model.dbName ?? model.name);
 
-  it("contains the auth, identity, ticket, and attachment foundation tables", () => {
+  it("contains the auth, identity, ticket, attachment, and notification foundation tables", () => {
     expect(tableNames).toEqual(
       expect.arrayContaining([
         "attachments",
         "audit_events",
         "auth_tokens",
         "comments",
+        "notification_preferences",
+        "notifications",
         "permissions",
         "refresh_tokens",
         "role_permissions",

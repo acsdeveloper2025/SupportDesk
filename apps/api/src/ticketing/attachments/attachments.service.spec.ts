@@ -60,12 +60,18 @@ describe("AttachmentsService", () => {
       can: vi.fn().mockResolvedValue(true),
     };
 
+    const notificationsService = {
+      createManySafe: vi.fn(() => Promise.resolve()),
+      createSafe: vi.fn(() => Promise.resolve(null)),
+    };
+
     service = new AttachmentsService(
       attachmentsRepository as unknown as AttachmentsRepository,
       ticketsRepository as unknown as TicketsRepository,
       storage as unknown as LocalAttachmentStorage,
       virusScanner as unknown as VirusScanner,
       rbacService as unknown as RbacService,
+      notificationsService as never,
     );
   });
 

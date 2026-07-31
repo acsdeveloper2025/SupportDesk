@@ -86,6 +86,7 @@ High-volume tables should be designed for future partitioning by `tenant_id`, ti
 - `audit_events`
 - `outbox_events`
 - `notification_attempts`
+- `notifications` (in-app inbox; Issue #25)
 - `workflow_executions`
 - `sla_evaluations`
 - `email_messages`
