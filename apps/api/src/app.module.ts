@@ -10,6 +10,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { RbacModule } from "./rbac/rbac.module";
 import { SlaModule } from "./sla/sla.module";
 import { TicketsModule } from "./ticketing/tickets.module";
+import { WorkflowsModule } from "./workflows/workflows.module";
 
 @Module({
   controllers: [AppController],
@@ -25,6 +26,7 @@ import { TicketsModule } from "./ticketing/tickets.module";
     RbacModule,
     SlaModule,
     TicketsModule,
+    WorkflowsModule,
   ],
 })
 export class AppModule {}
