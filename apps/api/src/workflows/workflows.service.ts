@@ -310,6 +310,115 @@ export class WorkflowsService {
     return this.mapWorkflowResponse(published);
   }
 
+  async pause(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    reason?: string,
+    correlationId?: string,
+  ): Promise<WorkflowResponse> {
+    await this.requirePermission(tenantId, actorUserId, "workflow.pause");
+
+    const workflow = await this.requireWorkflow(tenantId, workflowId);
+    if (!workflow.enabled) {
+      throw new BadRequestException("Workflow is already paused");
+    }
+
+    const now = new Date();
+    await this.repository.client.workflow.update({
+      data: {
+        enabled: false,
+        pausedAt: now,
+        pausedReason: reason ?? null,
+        version: { increment: 1 },
+      },
+      where: { id: workflowId },
+    });
+
+    await this.repository.createAudit({
+      action: "workflow.paused",
+      actorUserId,
+      correlationId,
+      metadata: { reason, workflowId },
+      outcome: "SUCCESS",
+      targetId: workflowId,
+      targetType: "workflow",
+      tenantId,
+    });
+
+    const updated = await this.requireWorkflow(tenantId, workflowId);
+    return this.mapWorkflowResponse(updated);
+  }
+
+  async resume(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    correlationId?: string,
+  ): Promise<WorkflowResponse> {
+    await this.requirePermission(tenantId, actorUserId, "workflow.pause");
+
+    const workflow = await this.requireWorkflow(tenantId, workflowId);
+    if (workflow.enabled) {
+      throw new BadRequestException("Workflow is not paused");
+    }
+
+    await this.repository.client.workflow.update({
+      data: {
+        enabled: true,
+        pausedAt: null,
+        pausedReason: null,
+        version: { increment: 1 },
+      },
+      where: { id: workflowId },
+    });
+
+    await this.repository.createAudit({
+      action: "workflow.resumed",
+      actorUserId,
+      correlationId,
+      metadata: { workflowId },
+      outcome: "SUCCESS",
+      targetId: workflowId,
+      targetType: "workflow",
+      tenantId,
+    });
+
+    const updated = await this.requireWorkflow(tenantId, workflowId);
+    return this.mapWorkflowResponse(updated);
+  }
+
+  async softDelete(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.requirePermission(tenantId, actorUserId, "workflow.update");
+
+    await this.requireWorkflow(tenantId, workflowId);
+
+    const now = new Date();
+    await this.repository.client.workflow.update({
+      data: {
+        deletedAt: now,
+        version: { increment: 1 },
+      },
+      where: { id: workflowId },
+    });
+
+    await this.repository.createAudit({
+      action: "workflow.deleted",
+      actorUserId,
+      correlationId,
+      metadata: { workflowId },
+      outcome: "SUCCESS",
+      targetId: workflowId,
+      targetType: "workflow",
+      tenantId,
+    });
+  }
+
   private mapWorkflowResponse(workflow: WorkflowWithVersions): WorkflowResponse {
     return {
       activeVersionNumber: workflow.activeVersionNumber,
