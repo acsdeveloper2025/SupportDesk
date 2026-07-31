@@ -8,6 +8,7 @@ import { HealthModule } from "./health/health.module";
 import { IdentityModule } from "./identity/identity.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { RbacModule } from "./rbac/rbac.module";
+import { SlaModule } from "./sla/sla.module";
 import { TicketsModule } from "./ticketing/tickets.module";
 
 @Module({
@@ -22,6 +23,7 @@ import { TicketsModule } from "./ticketing/tickets.module";
     IdentityModule,
     NotificationsModule,
     RbacModule,
+    SlaModule,
     TicketsModule,
   ],
 })

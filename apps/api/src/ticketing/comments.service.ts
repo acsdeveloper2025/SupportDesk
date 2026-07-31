@@ -5,6 +5,7 @@ import { CommentVisibility, NotificationEventType } from "@prisma/client";
 
 import { NotificationsService } from "../notifications/notifications.service";
 import { RbacService } from "../rbac/rbac.service";
+import { SlaEngineService } from "../sla/sla-engine.service";
 import {
   type CommentFilters,
   CommentsRepository,
@@ -36,6 +37,7 @@ export class CommentsService {
     @Inject(TicketsRepository) private readonly ticketsRepository: TicketsRepository,
     @Inject(RbacService) private readonly rbacService: RbacService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(SlaEngineService) private readonly slaEngine: SlaEngineService,
   ) {}
 
   async createComment(
@@ -127,6 +129,24 @@ export class CommentsService {
         title: `New comment on ${ticket.publicRef}`,
       })),
     );
+
+    if (visibility === CommentVisibility.PUBLIC) {
+      await this.slaEngine.onPublicAgentComment(
+        {
+          assigneeUserId: ticket.assigneeUserId,
+          channel: ticket.channel,
+          id: ticket.id,
+          priority: ticket.priority,
+          publicRef: ticket.publicRef,
+          requesterUserId: ticket.requesterUserId,
+          status: ticket.status,
+          tenantId: ticket.tenantId,
+          type: ticket.type,
+        },
+        actorUserId,
+        actorUserId,
+      );
+    }
 
     return created;
   }

@@ -72,7 +72,7 @@ The repository is implementation-ready only after these decision-log questions a
 - OQ-05: contractual availability, maintenance exclusions, support tiers, and remedies.
 - OQ-06: retention, deletion, legal hold, audit, backup, and subject-request periods.
 - OQ-07: attachment limits, quotas, scanning, and archive requirements.
-- OQ-08: SLA calendar semantics.
+- OQ-08: SLA calendar semantics — **resolved** for MVP in [adr/ADR-0009.md](adr/ADR-0009.md).
 - OQ-09: inbound/outbound email provider and failover strategy.
 - OQ-10: notification deliverability, localization, branding, unsubscribe, and provider portability.
 - OQ-11: search technology, languages, analyzers, encryption, residency, deletion latency, and relevance controls.

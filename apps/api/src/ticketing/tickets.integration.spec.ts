@@ -36,12 +36,22 @@ describeIntegration("Ticketing PostgreSQL integration", () => {
     new NotificationsRepository(prismaService),
     rbacService,
   );
-  const ticketsService = new TicketsService(ticketsRepository, notificationsService);
+  const slaEngine = {
+    onPublicAgentComment: () => Promise.resolve(),
+    onTicketCreated: () => Promise.resolve(),
+    onTicketStatusChanged: () => Promise.resolve(),
+  };
+  const ticketsService = new TicketsService(
+    ticketsRepository,
+    notificationsService,
+    slaEngine as never,
+  );
   const commentsService = new CommentsService(
     commentsRepository,
     ticketsRepository,
     rbacService,
     notificationsService,
+    slaEngine as never,
   );
 
   let tenantA: string;

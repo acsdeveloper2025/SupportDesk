@@ -1,9 +1,10 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { RbacModule } from "../rbac/rbac.module";
+import { SlaModule } from "../sla/sla.module";
 import { AttachmentsController } from "./attachments/attachments.controller";
 import { AttachmentsRepository } from "./attachments/attachments.repository";
 import { AttachmentsService } from "./attachments/attachments.service";
@@ -26,7 +27,13 @@ import { TicketsService } from "./tickets.service";
     AttachmentsService,
     AttachmentsRepository,
   ],
-  imports: [DatabaseModule, AuthModule, RbacModule, NotificationsModule],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+    RbacModule,
+    NotificationsModule,
+    forwardRef(() => SlaModule),
+  ],
   providers: [
     TicketsService,
     TicketsRepository,

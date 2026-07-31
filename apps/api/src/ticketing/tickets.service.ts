@@ -11,6 +11,7 @@ import type {
 import { NotificationEventType } from "@prisma/client";
 
 import { NotificationsService } from "../notifications/notifications.service";
+import { SlaEngineService } from "../sla/sla-engine.service";
 import { TicketAggregate } from "./domain/ticket.aggregate";
 import {
   type FindTicketsParams,
@@ -136,6 +137,7 @@ export class TicketsService {
   constructor(
     @Inject(TicketsRepository) private readonly repository: TicketsRepository,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(SlaEngineService) private readonly slaEngine: SlaEngineService,
   ) {}
 
   async createTicket(dto: CreateTicketDto): Promise<TicketAggregate> {
@@ -159,7 +161,7 @@ export class TicketsService {
       type: dto.type,
     });
 
-    return this.repository.createWithAudit(aggregate, {
+    const created = await this.repository.createWithAudit(aggregate, {
       action: "ticket.created",
       actorUserId: dto.requesterUserId,
       correlationId: dto.correlationId,
@@ -178,6 +180,24 @@ export class TicketsService {
       tenantId: dto.tenantId,
       userAgent: dto.userAgent,
     });
+
+    await this.slaEngine.onTicketCreated(
+      {
+        assigneeUserId: created.assigneeUserId,
+        channel: created.channel,
+        createdAt: created.createdAt,
+        id: created.id,
+        priority: created.priority,
+        publicRef: created.publicRef,
+        requesterUserId: created.requesterUserId,
+        status: created.status,
+        tenantId: created.tenantId,
+        type: created.type,
+      },
+      dto.requesterUserId,
+    );
+
+    return created;
   }
 
   async getTicketById(tenantId: string, id: string): Promise<TicketAggregate> {
@@ -323,6 +343,22 @@ export class TicketsService {
         tenantId: dto.tenantId,
         title: `Ticket ${updated.publicRef} status updated`,
       })),
+    );
+
+    await this.slaEngine.onTicketStatusChanged(
+      {
+        assigneeUserId: updated.assigneeUserId,
+        channel: updated.channel,
+        id: updated.id,
+        priority: updated.priority,
+        publicRef: updated.publicRef,
+        requesterUserId: updated.requesterUserId,
+        status: updated.status,
+        tenantId: updated.tenantId,
+        type: updated.type,
+      },
+      previousStatus,
+      dto.actorUserId,
     );
 
     return updated;

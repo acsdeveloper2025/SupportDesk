@@ -119,7 +119,13 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
       createSafe: vi.fn(() => Promise.resolve(null)),
     };
 
-    service = new TicketsService(repository, notificationsService as never);
+    const slaEngine = {
+      onPublicAgentComment: vi.fn(() => Promise.resolve()),
+      onTicketCreated: vi.fn(() => Promise.resolve()),
+      onTicketStatusChanged: vi.fn(() => Promise.resolve()),
+    };
+
+    service = new TicketsService(repository, notificationsService as never, slaEngine as never);
   });
 
   it("creates a ticket and records an audit event", async () => {

@@ -19,7 +19,7 @@ Implemented in Issue #25 (`E06-I01`) for **in-app notifications only**. Email de
 
 ## In-app creation service
 
-`NotificationsService.create` / `createSafe` is the synchronous entry point other modules call after a committed domain mutation (assignment, status change, public/internal comment, attachment upload). Behavior:
+`NotificationsService.create` / `createSafe` is the synchronous entry point other modules call after a committed domain mutation (assignment, status change, public/internal comment, attachment upload, SLA warning/breach). Behavior:
 
 - Tenant-scoped persistence in `notifications`
 - Suppresses self-notifications (actor == recipient)
