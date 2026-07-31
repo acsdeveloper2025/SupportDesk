@@ -50,6 +50,8 @@ Default local URLs:
 
 Browser authentication uses same-origin Next.js route handlers under `/api/auth/*`. Those handlers call the NestJS API through server-only `SUPPORTDESK_API_URL`, store access/refresh material in `HttpOnly` cookies, and require CSRF tokens for cookie-authenticated mutations. Frontend components must not store auth tokens in `localStorage`, `sessionStorage`, or other browser-readable storage.
 
+Authentication pages are available at `/login`, `/forgot-password`, `/reset-password`, `/email-verification`, and `/profile`. They are intentionally limited to identity flows and do not introduce dashboard, ticket, report, workflow, SLA, notification, or search screens.
+
 ## Docker Development
 
 ```bash
