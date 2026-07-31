@@ -1,5 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { Ticket as PrismaTicket } from "@prisma/client";
+import {
+  Prisma,
+  type Ticket as PrismaTicket,
+  TicketChannel,
+  TicketPriority,
+  TicketStatus,
+  TicketType,
+} from "@prisma/client";
 
 import { type AuditEventInput, buildAuditEventData } from "../audit/audit-event";
 import { PrismaService } from "../database/prisma.service";
@@ -8,6 +15,34 @@ import {
   TicketConcurrencyException,
   type TicketProps,
 } from "./domain/ticket.aggregate";
+
+export interface TicketFilters {
+  status?: TicketStatus[];
+  priority?: TicketPriority[];
+  type?: TicketType[];
+  channel?: TicketChannel[];
+  assigneeUserId?: string[];
+  requesterUserId?: string[];
+  assignedGroupId?: string[];
+  createdAfter?: string;
+  createdBefore?: string;
+  updatedAfter?: string;
+  updatedBefore?: string;
+  dueAfter?: string;
+  dueBefore?: string;
+}
+
+export interface TicketSort {
+  field: string;
+  direction: "asc" | "desc";
+}
+
+export interface FindTicketsParams {
+  filters?: TicketFilters;
+  sort?: TicketSort;
+  skip?: number;
+  take?: number;
+}
 
 @Injectable()
 export class TicketsRepository {
@@ -117,6 +152,66 @@ export class TicketsRepository {
     await this.prisma.auditEvent.create({
       data: buildAuditEventData(input),
     });
+  }
+
+  async findMany(tenantId: string, params: FindTicketsParams): Promise<TicketAggregate[]> {
+    const { filters, sort, skip, take } = params;
+
+    const where = this.buildWhereClause(tenantId, filters);
+    const orderBy: Prisma.TicketOrderByWithRelationInput = sort
+      ? { [sort.field]: sort.direction }
+      : { createdAt: "desc" };
+
+    const records = await this.prisma.ticket.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+    });
+
+    return records.map((record) => this.toDomain(record));
+  }
+
+  async count(tenantId: string, filters?: TicketFilters): Promise<number> {
+    const where = this.buildWhereClause(tenantId, filters);
+    return this.prisma.ticket.count({ where });
+  }
+
+  private buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
+    const where: Prisma.TicketWhereInput = {
+      tenantId,
+      deletedAt: null,
+    };
+
+    if (!filters) return where;
+
+    if (filters.status?.length) where.status = { in: filters.status };
+    if (filters.priority?.length) where.priority = { in: filters.priority };
+    if (filters.type?.length) where.type = { in: filters.type };
+    if (filters.channel?.length) where.channel = { in: filters.channel };
+    if (filters.assigneeUserId?.length) where.assigneeUserId = { in: filters.assigneeUserId };
+    if (filters.requesterUserId?.length) where.requesterUserId = { in: filters.requesterUserId };
+    if (filters.assignedGroupId?.length) where.assignedGroupId = { in: filters.assignedGroupId };
+
+    if (filters.createdAfter || filters.createdBefore) {
+      where.createdAt = {};
+      if (filters.createdAfter) where.createdAt.gte = filters.createdAfter;
+      if (filters.createdBefore) where.createdAt.lte = filters.createdBefore;
+    }
+
+    if (filters.updatedAfter || filters.updatedBefore) {
+      where.updatedAt = {};
+      if (filters.updatedAfter) where.updatedAt.gte = filters.updatedAfter;
+      if (filters.updatedBefore) where.updatedAt.lte = filters.updatedBefore;
+    }
+
+    if (filters.dueAfter || filters.dueBefore) {
+      where.dueDate = {};
+      if (filters.dueAfter) where.dueDate.gte = filters.dueAfter;
+      if (filters.dueBefore) where.dueDate.lte = filters.dueBefore;
+    }
+
+    return where;
   }
 
   /**

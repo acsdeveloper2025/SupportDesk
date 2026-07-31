@@ -69,6 +69,7 @@ describe("Tickets OpenAPI Document", () => {
 
     expect(Object.keys(document.paths).sort()).toEqual([
       "/api/v1/tickets",
+      "/api/v1/tickets/count",
       "/api/v1/tickets/reference/{publicRef}",
       "/api/v1/tickets/reference/{publicRef}/assign",
       "/api/v1/tickets/reference/{publicRef}/status",

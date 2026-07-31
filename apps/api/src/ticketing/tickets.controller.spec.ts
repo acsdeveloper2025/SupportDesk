@@ -27,6 +27,8 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
   let transitionStatusMock: ReturnType<typeof vi.fn>;
   let assignTicketMock: ReturnType<typeof vi.fn>;
   let unassignTicketMock: ReturnType<typeof vi.fn>;
+  let listTicketsMock: ReturnType<typeof vi.fn>;
+  let countTicketsMock: ReturnType<typeof vi.fn>;
   let canMock: ReturnType<typeof vi.fn>;
 
   const tenantA = "11111111-1111-1111-1111-111111111111";
@@ -93,6 +95,18 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       }
       return Promise.resolve(updatedSampleTicket);
     });
+    listTicketsMock = vi.fn().mockResolvedValue({
+      appliedFilters: {},
+      currentPage: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      items: [sampleTicket],
+      pageSize: 20,
+      sort: { field: "createdAt", direction: "desc" },
+      totalPages: 1,
+      totalRecords: 1,
+    });
+    countTicketsMock = vi.fn().mockResolvedValue({ count: 1 });
     canMock = vi.fn().mockResolvedValue(true);
 
     transitionStatusMock = vi.fn().mockResolvedValue(
@@ -127,9 +141,11 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
 
     service = {
       assignTicket: assignTicketMock,
+      countTickets: countTicketsMock,
       createTicket: createTicketMock,
       getTicketById: getTicketByIdMock,
       getTicketByPublicRef: getTicketByPublicRefMock,
+      listTickets: listTicketsMock,
       transitionStatus: transitionStatusMock,
       unassignTicket: unassignTicketMock,
       updateTicket: updateTicketMock,
@@ -221,6 +237,57 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
           req,
         ),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe("GET /api/v1/tickets", () => {
+    it("returns listed tickets when authorized", async () => {
+      const req = createMockRequest();
+      const query = { page: 1, pageSize: 10, sortBy: "createdAt" };
+
+      const result = await controller.getTickets(query, req);
+
+      expect(listTicketsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: tenantA,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.id).toBe("tkt-id-001");
+      expect(result.totalRecords).toBe(1);
+    });
+
+    it("throws 403 Forbidden when ticket.read permission is denied", async () => {
+      canMock.mockResolvedValueOnce(false);
+      const req = createMockRequest();
+      await expect(controller.getTickets({}, req)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws 400 Bad Request when query is invalid", async () => {
+      const req = createMockRequest();
+      await expect(controller.getTickets({ page: -1 }, req)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("GET /api/v1/tickets/count", () => {
+    it("returns ticket count when authorized", async () => {
+      const req = createMockRequest();
+      const result = await controller.countTickets({ status: "NEW" }, req);
+
+      expect(countTicketsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: tenantA,
+        }),
+      );
+      expect(result.count).toBe(1);
+    });
+
+    it("throws 403 Forbidden when ticket.read permission is denied", async () => {
+      canMock.mockResolvedValueOnce(false);
+      const req = createMockRequest();
+      await expect(controller.countTickets({}, req)).rejects.toThrow(ForbiddenException);
     });
   });
 

@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -33,7 +34,9 @@ import { AuthRateLimit } from "../auth/rate-limit/auth-rate-limit.guard";
 import { getCorrelationId } from "../common/logging/correlation-id";
 import { RbacService } from "../rbac/rbac.service";
 import { AssignTicketRequestDto, validateAssignTicketPayload } from "./dto/assign-ticket.dto";
+import { validateCountTicketsQuery } from "./dto/count-tickets.dto";
 import { CreateTicketRequestDto, validateCreateTicketPayload } from "./dto/create-ticket.dto";
+import { TicketListResponseDto, validateListTicketsQuery } from "./dto/list-tickets.dto";
 import { TicketResponseDto } from "./dto/ticket-response.dto";
 import {
   TransitionTicketStatusDto,
@@ -108,6 +111,96 @@ export class TicketsController {
     });
 
     return TicketResponseDto.fromDomain(created);
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "List tickets within the authenticated tenant context with pagination and filters.",
+    summary: "List tickets",
+  })
+  @ApiOkResponse({
+    description: "Tickets listed successfully.",
+    type: TicketListResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Authentication token missing, invalid, or expired.",
+  })
+  @ApiForbiddenResponse({
+    description: "User lacks the ticket.read permission in the current tenant.",
+  })
+  async getTickets(@Query() query: unknown, @Req() request: Request) {
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canRead = await this.rbacService.can({
+      permissionKey: "ticket.read",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+
+    if (!canRead) {
+      throw new ForbiddenException("Lacks required ticket.read permission");
+    }
+
+    const dto = validateListTicketsQuery(query);
+
+    const result = await this.ticketsService.listTickets({
+      tenantId: context.tenantId,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-assertion
+      filters: dto as any, // Cast since mapped dto perfectly aligns with filters except page/sort
+      page: dto.page,
+      pageSize: dto.pageSize,
+      sort: { field: dto.sortBy, direction: dto.sortDir },
+    });
+
+    return {
+      ...result,
+      items: result.items.map((t) => TicketResponseDto.fromDomain(t)),
+    };
+  }
+
+  @Get("count")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description: "Count tickets matching the provided filters.",
+    summary: "Count tickets",
+  })
+  @ApiOkResponse({
+    description: "Ticket count retrieved successfully.",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Authentication token missing, invalid, or expired.",
+  })
+  @ApiForbiddenResponse({
+    description: "User lacks the ticket.read permission in the current tenant.",
+  })
+  async countTickets(@Query() query: unknown, @Req() request: Request) {
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canRead = await this.rbacService.can({
+      permissionKey: "ticket.read",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+
+    if (!canRead) {
+      throw new ForbiddenException("Lacks required ticket.read permission");
+    }
+
+    const dto = validateCountTicketsQuery(query);
+
+    return this.ticketsService.countTickets({
+      tenantId: context.tenantId,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-assertion
+      filters: dto as any,
+    });
   }
 
   @Get(":id")

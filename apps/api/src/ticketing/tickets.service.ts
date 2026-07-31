@@ -4,7 +4,37 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import type { TicketChannel, TicketPriority, TicketStatus, TicketType } from "@prisma/client";
 
 import { TicketAggregate } from "./domain/ticket.aggregate";
-import { TicketsRepository } from "./tickets.repository";
+import {
+  type FindTicketsParams,
+  type TicketFilters,
+  type TicketSort,
+  TicketsRepository,
+} from "./tickets.repository";
+
+export interface ListTicketsDto {
+  tenantId: string;
+  filters?: TicketFilters;
+  sort: TicketSort;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListTicketsResult {
+  items: TicketAggregate[];
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  appliedFilters: TicketFilters;
+  sort: TicketSort;
+}
+
+export interface CountTicketsDto {
+  tenantId: string;
+  filters?: TicketFilters;
+}
 
 export interface CreateTicketDto {
   tenantId: string;
@@ -137,6 +167,40 @@ export class TicketsService {
       throw new NotFoundException(`Ticket with reference ${publicRef} not found`);
     }
     return ticket;
+  }
+
+  async listTickets(dto: ListTicketsDto): Promise<ListTicketsResult> {
+    const skip = (dto.page - 1) * dto.pageSize;
+    const take = dto.pageSize;
+
+    const params: FindTicketsParams = {
+      filters: dto.filters,
+      skip,
+      sort: dto.sort,
+      take,
+    };
+
+    const items = await this.repository.findMany(dto.tenantId, params);
+    const totalRecords = await this.repository.count(dto.tenantId, dto.filters);
+
+    const totalPages = Math.ceil(totalRecords / dto.pageSize);
+
+    return {
+      appliedFilters: dto.filters ?? {},
+      currentPage: dto.page,
+      hasNextPage: dto.page < totalPages,
+      hasPreviousPage: dto.page > 1,
+      items,
+      pageSize: dto.pageSize,
+      sort: dto.sort,
+      totalPages,
+      totalRecords,
+    };
+  }
+
+  async countTickets(dto: CountTicketsDto): Promise<{ count: number }> {
+    const count = await this.repository.count(dto.tenantId, dto.filters);
+    return { count };
   }
 
   async updateTicket(dto: UpdateTicketDto): Promise<TicketAggregate> {

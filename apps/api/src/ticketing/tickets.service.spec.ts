@@ -40,6 +40,14 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         }
         return Promise.resolve(null);
       }),
+      findMany: vi.fn((tenantId: string) => {
+        const filtered = Array.from(store.values()).filter((a) => a.tenantId === tenantId);
+        return Promise.resolve(filtered);
+      }),
+      count: vi.fn((tenantId: string) => {
+        const c = Array.from(store.values()).filter((a) => a.tenantId === tenantId).length;
+        return Promise.resolve(c);
+      }),
       getNextPublicRefSequence: vi.fn((tenantId: string) => {
         let count = 0;
         for (const agg of store.values()) {
@@ -170,5 +178,40 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
       publicRef: "TKT-1001",
       toStatus: TicketStatus.OPEN,
     });
+  });
+
+  it("lists tickets with pagination and returns metadata", async () => {
+    await service.createTicket({
+      description: "First ticket",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "First",
+    });
+
+    const result = await service.listTickets({
+      tenantId: tenantA,
+      page: 1,
+      pageSize: 10,
+      sort: { field: "createdAt", direction: "desc" },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.totalRecords).toBe(1);
+    expect(result.totalPages).toBe(1);
+    expect(result.currentPage).toBe(1);
+    expect(result.hasNextPage).toBe(false);
+    expect(result.hasPreviousPage).toBe(false);
+  });
+
+  it("counts tickets for a given tenant", async () => {
+    await service.createTicket({
+      description: "One",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "One",
+    });
+
+    const result = await service.countTickets({ tenantId: tenantA });
+    expect(result.count).toBe(1);
   });
 });
