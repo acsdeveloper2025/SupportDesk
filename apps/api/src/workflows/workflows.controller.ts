@@ -231,6 +231,26 @@ export class WorkflowsController {
     );
   }
 
+  @Get(":workflowId/executions")
+  @ApiOperation({ summary: "List execution history for a workflow" })
+  @ApiOkResponse({ description: "Execution history with action attempt breakdown." })
+  async listExecutions(@Param("workflowId") workflowId: string, @Req() request: Request) {
+    const context = this.requireAuth(request);
+    const url = new URL(request.url, "http://localhost");
+    const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!, 10) : 20;
+    const offset = url.searchParams.get("offset")
+      ? parseInt(url.searchParams.get("offset")!, 10)
+      : 0;
+
+    return this.workflowsService.listExecutions(
+      context.tenantId,
+      workflowId,
+      context.userId,
+      limit,
+      offset,
+    );
+  }
+
   @Delete(":workflowId")
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Soft-delete a workflow" })

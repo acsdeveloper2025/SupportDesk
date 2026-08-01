@@ -3,6 +3,7 @@ import { forwardRef, Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { OutboxModule } from "../outbox/outbox.module";
 import { RbacModule } from "../rbac/rbac.module";
 import { SlaModule } from "../sla/sla.module";
 import { AttachmentsController } from "./attachments/attachments.controller";
@@ -32,6 +33,7 @@ import { TicketsService } from "./tickets.service";
     AuthModule,
     RbacModule,
     NotificationsModule,
+    OutboxModule,
     forwardRef(() => SlaModule),
   ],
   providers: [

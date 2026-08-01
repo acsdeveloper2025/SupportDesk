@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import {
   ConfigPublicationState,
   type Prisma,
@@ -15,7 +15,7 @@ import { PrismaService } from "../database/prisma.service";
 
 @Injectable()
 export class SlaRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   get client() {
     return this.prisma;

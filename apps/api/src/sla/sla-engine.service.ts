@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 
 import { NotificationsService } from "../notifications/notifications.service";
+import { OutboxPublisherService } from "../outbox/outbox-publisher.service";
 import {
   BusinessHoursClock,
   businessMinutesToMs,
@@ -42,6 +43,7 @@ export class SlaEngineService {
   constructor(
     @Inject(SlaRepository) private readonly repository: SlaRepository,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(OutboxPublisherService) private readonly outboxPublisher?: OutboxPublisherService,
   ) {}
 
   async onTicketCreated(ticket: TicketSlaContext, actorUserId?: string): Promise<void> {
@@ -536,27 +538,47 @@ export class SlaEngineService {
     const warningRatio = target.policyVersion.warningThresholdPercent / 100;
 
     if (!target.warningNotifiedAt && elapsedRatio >= warningRatio && now < target.dueAt) {
-      await this.repository.client.slaTarget.update({
-        data: {
-          warningNotifiedAt: now,
-          version: { increment: 1 },
-        },
-        where: { id: target.id },
-      });
+      await this.repository.client.$transaction(async (tx) => {
+        await tx.slaTarget.update({
+          data: {
+            warningNotifiedAt: now,
+            version: { increment: 1 },
+          },
+          where: { id: target.id },
+        });
 
-      await this.repository.createAudit({
-        action: "sla.warning",
-        actorUserId,
-        metadata: {
-          dueAt: target.dueAt.toISOString(),
-          publicRef: ticket.publicRef,
-          targetType: target.type,
-          thresholdPercent: target.policyVersion.warningThresholdPercent,
-        },
-        outcome: "SUCCESS",
-        targetId: target.id,
-        targetType: "sla_target",
-        tenantId: ticket.tenantId,
+        await tx.auditEvent.create({
+          data: {
+            action: "sla.warning",
+            actorUserId,
+            metadata: {
+              dueAt: target.dueAt.toISOString(),
+              publicRef: ticket.publicRef,
+              targetType: target.type,
+              thresholdPercent: target.policyVersion.warningThresholdPercent,
+            },
+            outcome: "SUCCESS",
+            targetId: target.id,
+            targetType: "sla_target",
+            tenantId: ticket.tenantId,
+          },
+        });
+
+        if (this.outboxPublisher) {
+          await this.outboxPublisher.appendOutboxEvent(tx, {
+            tenantId: ticket.tenantId,
+            eventType: "sla.warning",
+            aggregateType: "sla_target",
+            aggregateId: target.id,
+            payload: {
+              ticketId: ticket.id,
+              publicRef: ticket.publicRef,
+              targetType: target.type,
+              dueAt: target.dueAt.toISOString(),
+              ticket,
+            },
+          });
+        }
       });
 
       await this.notifyAssignee(ticket, NotificationEventType.SLA_WARNING, {
@@ -592,6 +614,23 @@ export class SlaEngineService {
             tenantId: ticket.tenantId,
           },
         });
+
+        if (this.outboxPublisher) {
+          await this.outboxPublisher.appendOutboxEvent(tx, {
+            tenantId: ticket.tenantId,
+            eventType: "sla.breached",
+            aggregateType: "sla_target",
+            aggregateId: target.id,
+            payload: {
+              ticketId: ticket.id,
+              publicRef: ticket.publicRef,
+              targetType: target.type,
+              breachedAt: now.toISOString(),
+              dueAt: target.dueAt.toISOString(),
+              ticket,
+            },
+          });
+        }
       });
 
       await this.notifyAssignee(ticket, NotificationEventType.SLA_BREACHED, {

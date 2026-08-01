@@ -607,6 +607,18 @@ export class WorkflowsService {
     };
   }
 
+  async listExecutions(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    limit?: number,
+    offset?: number,
+  ) {
+    await this.requirePermission(tenantId, actorUserId, "workflow.read");
+    await this.requireWorkflow(tenantId, workflowId);
+    return this.repository.listExecutions(tenantId, workflowId, limit, offset);
+  }
+
   private async requireWorkflow(
     tenantId: string,
     workflowId: string,

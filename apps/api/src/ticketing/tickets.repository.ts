@@ -11,6 +11,7 @@ import {
 
 import { type AuditEventInput, buildAuditEventData } from "../audit/audit-event";
 import { PrismaService } from "../database/prisma.service";
+import { OutboxPublisherService } from "../outbox/outbox-publisher.service";
 import {
   TicketAggregate,
   TicketConcurrencyException,
@@ -58,7 +59,10 @@ export interface FindTicketsParams {
 
 @Injectable()
 export class TicketsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(OutboxPublisherService) private readonly outboxPublisher?: OutboxPublisherService,
+  ) {}
 
   async create(aggregate: TicketAggregate): Promise<TicketAggregate> {
     const props = aggregate.toProps();
@@ -109,6 +113,34 @@ export class TicketsRepository {
             },
           }),
         });
+
+        if (this.outboxPublisher) {
+          await this.outboxPublisher.appendOutboxEvent(tx, {
+            tenantId: props.tenantId,
+            eventType: "ticket.created",
+            aggregateType: "ticket",
+            aggregateId: ticket.id,
+            payload: {
+              ticket: {
+                id: ticket.id,
+                tenantId: ticket.tenantId,
+                publicRef: ticket.publicRef,
+                title: ticket.title,
+                description: ticket.description,
+                status: ticket.status,
+                priority: ticket.priority,
+                channel: ticket.channel,
+                type: ticket.type,
+                requesterUserId: ticket.requesterUserId,
+                assigneeUserId: ticket.assigneeUserId,
+                assignedGroupId: ticket.assignedGroupId,
+                ticketVersion: ticket.version,
+              },
+            },
+            correlationId: audit.correlationId,
+          });
+        }
+
         return ticket;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -154,12 +186,71 @@ export class TicketsRepository {
     expectedVersion: number,
     audit: AuditEventInput,
   ): Promise<TicketAggregate> {
+    const props = aggregate.toProps();
+
     return this.prisma.$transaction(async (tx) => {
+      const previousRecord = await tx.ticket.findUnique({
+        where: { id: props.id },
+      });
+
       const updated = await this.updateWithClient(tx, aggregate, expectedVersion);
       await tx.auditEvent.create({
         data: buildAuditEventData(audit),
       });
-      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+
+      if (this.outboxPublisher) {
+        const updatedProps = updated.toProps();
+        const payload = {
+          ticket: {
+            id: updatedProps.id,
+            tenantId: updatedProps.tenantId,
+            publicRef: updatedProps.publicRef,
+            title: updatedProps.title,
+            description: updatedProps.description,
+            status: updatedProps.status,
+            priority: updatedProps.priority,
+            channel: updatedProps.channel,
+            type: updatedProps.type,
+            requesterUserId: updatedProps.requesterUserId,
+            assigneeUserId: updatedProps.assigneeUserId,
+            assignedGroupId: updatedProps.assignedGroupId,
+            ticketVersion: updatedProps.version,
+          },
+          fromStatus: previousRecord?.status,
+          toStatus: updatedProps.status,
+          fromAssigneeUserId: previousRecord?.assigneeUserId,
+          toAssigneeUserId: updatedProps.assigneeUserId,
+          fromAssignedGroupId: previousRecord?.assignedGroupId,
+          toAssignedGroupId: updatedProps.assignedGroupId,
+        };
+
+        if (previousRecord && previousRecord.status !== updatedProps.status) {
+          await this.outboxPublisher.appendOutboxEvent(tx, {
+            tenantId: updatedProps.tenantId,
+            eventType: "ticket.status_changed",
+            aggregateType: "ticket",
+            aggregateId: updatedProps.id,
+            payload,
+            correlationId: audit.correlationId,
+          });
+        }
+
+        if (
+          previousRecord &&
+          (previousRecord.assigneeUserId !== updatedProps.assigneeUserId ||
+            previousRecord.assignedGroupId !== updatedProps.assignedGroupId)
+        ) {
+          await this.outboxPublisher.appendOutboxEvent(tx, {
+            tenantId: updatedProps.tenantId,
+            eventType: "ticket.assigned",
+            aggregateType: "ticket",
+            aggregateId: updatedProps.id,
+            payload,
+            correlationId: audit.correlationId,
+          });
+        }
+      }
+
       return updated;
     });
   }

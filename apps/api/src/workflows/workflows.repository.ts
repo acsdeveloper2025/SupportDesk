@@ -59,4 +59,25 @@ export class WorkflowsRepository {
       triggers: version.triggers,
     };
   }
+
+  async listExecutions(tenantId: string, workflowId: string, limit = 20, offset = 0) {
+    const [data, total] = await Promise.all([
+      this.prisma.workflowExecution.findMany({
+        where: { tenantId, workflowId },
+        include: {
+          actionAttempts: {
+            orderBy: { ordinal: "asc" },
+          },
+        },
+        orderBy: { startedAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.workflowExecution.count({
+        where: { tenantId, workflowId },
+      }),
+    ]);
+
+    return { data, total, limit, offset };
+  }
 }

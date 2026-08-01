@@ -124,6 +124,10 @@ model Tenant {
   slaEvaluations              SlaEvaluation[]
   workflows                   Workflow[]
   workflowVersions            WorkflowVersion[]
+  outboxEvents                OutboxEvent[]
+  workflowExecutions          WorkflowExecution[]
+  workflowActionAttempts      WorkflowActionAttempt[]
+  notificationIntents         NotificationIntent[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -191,6 +195,7 @@ model User {
   notifications              Notification[]  @relation("NotificationRecipient")
   actedNotifications         Notification[]  @relation("NotificationActor")
   notificationPreferences    NotificationPreference[]
+  notificationIntents        NotificationIntent[]    @relation("NotificationIntentRecipient")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -787,6 +792,7 @@ model Workflow {
   deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(3)
   tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflows__tenants__tenant_id")
   versions            WorkflowVersion[]
+  executions          WorkflowExecution[]
 
   @@unique([tenantId, key], map: "uq_workflows__tenant_id_key")
   @@index([tenantId, deletedAt], map: "idx_workflows__tenant_id_deleted_at")
@@ -808,8 +814,136 @@ model WorkflowVersion {
   updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
   tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__tenants__tenant_id")
   workflow      Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__workflows__workflow_id")
+  executions    WorkflowExecution[]
 
   @@unique([tenantId, workflowId, versionNumber], map: "uq_workflow_versions__tenant_workflow_version")
   @@index([tenantId, workflowId, state], map: "idx_workflow_versions__tenant_workflow_state")
   @@map("workflow_versions")
+}
+
+enum OutboxState {
+  PENDING       @map("pending")
+  CLAIMED       @map("claimed")
+  PROCESSED     @map("processed")
+  FAILED        @map("failed")
+  DEAD_LETTERED @map("dead_lettered")
+
+  @@map("outbox_state")
+}
+
+enum ExecutionState {
+  RUNNING            @map("running")
+  SUCCEEDED          @map("succeeded")
+  SKIPPED_CONDITIONS @map("skipped_conditions")
+  FAILED             @map("failed")
+  PARTIAL_FAILED     @map("partial_failed")
+  DEAD_LETTERED      @map("dead_lettered")
+  SKIPPED_DEPTH_CAP  @map("skipped_depth_cap")
+
+  @@map("execution_state")
+}
+
+enum ActionAttemptState {
+  PENDING       @map("pending")
+  RUNNING       @map("running")
+  SUCCEEDED     @map("succeeded")
+  FAILED        @map("failed")
+  DEAD_LETTERED @map("dead_lettered")
+
+  @@map("action_attempt_state")
+}
+
+model OutboxEvent {
+  id                 String              @id(map: "pk_outbox_events") @default(uuid()) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  eventType          String              @map("event_type") @db.VarChar(150)
+  aggregateType      String              @map("aggregate_type") @db.VarChar(100)
+  aggregateId        String              @map("aggregate_id") @db.Uuid
+  dedupeKey          String              @map("dedupe_key") @db.VarChar(255)
+  payload            Json
+  correlationId      String              @map("correlation_id") @db.VarChar(100)
+  causationId        String?             @map("causation_id") @db.VarChar(100)
+  automationDepth    Int                 @default(0) @map("automation_depth")
+  state              OutboxState         @default(PENDING)
+  attemptCount       Int                 @default(0) @map("attempt_count")
+  availableAt        DateTime            @default(now()) @map("available_at") @db.Timestamptz(3)
+  leaseOwner         String?             @map("lease_owner") @db.VarChar(100)
+  leaseExpiresAt     DateTime?           @map("lease_expires_at") @db.Timestamptz(3)
+  lastError          Json?               @map("last_error")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  processedAt        DateTime?           @map("processed_at") @db.Timestamptz(3)
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_outbox_events__tenants__tenant_id")
+  workflowExecutions WorkflowExecution[]
+
+  @@unique([tenantId, dedupeKey], map: "uq_outbox_events__tenant_id_dedupe_key")
+  @@index([state, availableAt, tenantId], map: "idx_outbox_events__state_available_at_tenant_id")
+  @@index([tenantId, aggregateType, aggregateId], map: "idx_outbox_events__tenant_id_aggregate")
+  @@map("outbox_events")
+}
+
+model WorkflowExecution {
+  id                    String                  @id(map: "pk_workflow_executions") @default(uuid()) @db.Uuid
+  tenantId              String                  @map("tenant_id") @db.Uuid
+  outboxEventId         String                  @map("outbox_event_id") @db.Uuid
+  workflowId            String                  @map("workflow_id") @db.Uuid
+  workflowVersionId     String                  @map("workflow_version_id") @db.Uuid
+  workflowVersionNumber Int                     @map("workflow_version_number")
+  triggerEventType      String                  @map("trigger_event_type") @db.VarChar(150)
+  priority              Int
+  automationDepth       Int                     @map("automation_depth")
+  conditionResult       Json?                   @map("condition_result")
+  state                 ExecutionState          @default(RUNNING)
+  lastError             Json?                   @map("last_error")
+  startedAt             DateTime                @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt           DateTime?               @map("completed_at") @db.Timestamptz(3)
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_executions__tenants__tenant_id")
+  outboxEvent           OutboxEvent             @relation(fields: [outboxEventId], references: [id], onDelete: Cascade, map: "fk_workflow_executions__outbox_events__outbox_event_id")
+  workflow              Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade, map: "fk_workflow_executions__workflows__workflow_id")
+  workflowVersion       WorkflowVersion         @relation(fields: [workflowVersionId], references: [id], onDelete: Cascade, map: "fk_workflow_executions__workflow_versions__workflow_version_id")
+  actionAttempts        WorkflowActionAttempt[]
+
+  @@unique([tenantId, outboxEventId, workflowVersionId], map: "uq_workflow_executions__tenant_outbox_event_version")
+  @@index([tenantId, workflowId, startedAt], map: "idx_workflow_executions__tenant_id_workflow_id_started_at")
+  @@index([tenantId, state], map: "idx_workflow_executions__tenant_id_state")
+  @@map("workflow_executions")
+}
+
+model WorkflowActionAttempt {
+  id             String             @id(map: "pk_workflow_action_attempts") @default(uuid()) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  executionId    String             @map("execution_id") @db.Uuid
+  ordinal        Int
+  actionType     String             @map("action_type") @db.VarChar(100)
+  paramsSnapshot Json               @map("params_snapshot")
+  state          ActionAttemptState @default(PENDING)
+  attemptNumber  Int                @default(1) @map("attempt_number")
+  resultRef      Json?              @map("result_ref")
+  lastError      Json?              @map("last_error")
+  startedAt      DateTime           @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?          @map("completed_at") @db.Timestamptz(3)
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_action_attempts__tenants__tenant_id")
+  execution      WorkflowExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade, map: "fk_workflow_action_attempts__executions__execution_id")
+
+  @@unique([tenantId, executionId, ordinal], map: "uq_workflow_action_attempts__tenant_execution_ordinal")
+  @@index([tenantId, executionId], map: "idx_workflow_action_attempts__tenant_id_execution_id")
+  @@map("workflow_action_attempts")
+}
+
+model NotificationIntent {
+  id              String   @id(map: "pk_notification_intents") @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  sourceType      String   @map("source_type") @db.VarChar(100)
+  sourceId        String   @map("source_id") @db.VarChar(255)
+  recipientUserId String   @map("recipient_user_id") @db.Uuid
+  channel         String   @db.VarChar(50)
+  templateKey     String   @map("template_key") @db.VarChar(100)
+  payload         Json
+  dedupeKey       String   @map("dedupe_key") @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notification_intents__tenants__tenant_id")
+  recipientUser   User     @relation("NotificationIntentRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade, map: "fk_notification_intents__users__recipient_user_id")
+
+  @@unique([tenantId, dedupeKey], map: "uq_notification_intents__tenant_id_dedupe_key")
+  @@index([tenantId, recipientUserId, createdAt], map: "idx_notification_intents__tenant_recipient_created")
+  @@map("notification_intents")
 }

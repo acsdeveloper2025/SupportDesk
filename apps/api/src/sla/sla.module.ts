@@ -3,6 +3,7 @@ import { forwardRef, Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { OutboxModule } from "../outbox/outbox.module";
 import { RbacModule } from "../rbac/rbac.module";
 import { TicketsModule } from "../ticketing/tickets.module";
 import { BusinessSchedulesController } from "./business-schedules.controller";
@@ -21,6 +22,7 @@ import { SlaQueryController } from "./sla-query.controller";
     AuthModule,
     RbacModule,
     NotificationsModule,
+    OutboxModule,
     forwardRef(() => TicketsModule),
   ],
   providers: [SlaRepository, BusinessSchedulesService, SlaPoliciesService, SlaEngineService],

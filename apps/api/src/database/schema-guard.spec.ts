@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 describe("schema boundary", () => {
   const tableNames = Prisma.dmmf.datamodel.models.map((model) => model.dbName ?? model.name);
 
-  it("contains the auth, identity, ticket, attachment, notification, SLA, and workflow foundation tables", () => {
+  it("contains the auth, identity, ticket, attachment, notification, SLA, workflow, and outbox foundation tables", () => {
     expect(tableNames).toEqual(
       expect.arrayContaining([
         "attachments",
@@ -13,8 +13,10 @@ describe("schema boundary", () => {
         "business_schedule_versions",
         "business_schedules",
         "comments",
+        "notification_intents",
         "notification_preferences",
         "notifications",
+        "outbox_events",
         "permissions",
         "refresh_tokens",
         "role_permissions",
@@ -32,6 +34,8 @@ describe("schema boundary", () => {
         "user_profiles",
         "user_roles",
         "users",
+        "workflow_action_attempts",
+        "workflow_executions",
         "workflow_versions",
         "workflows",
       ]),
@@ -39,12 +43,7 @@ describe("schema boundary", () => {
   });
 
   it("does not introduce deferred business feature tables", () => {
-    const deferredTables = [
-      "notification_intents",
-      "organizations",
-      "reports",
-      "workflow_executions",
-    ];
+    const deferredTables = ["organizations", "reports"];
 
     for (const tableName of deferredTables) {
       expect(tableNames).not.toContain(tableName);

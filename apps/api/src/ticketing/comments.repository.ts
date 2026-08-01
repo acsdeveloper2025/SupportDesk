@@ -3,6 +3,7 @@ import { type Comment as PrismaComment, CommentVisibility, Prisma } from "@prism
 
 import { type AuditEventInput, buildAuditEventData } from "../audit/audit-event";
 import { PrismaService } from "../database/prisma.service";
+import { OutboxPublisherService } from "../outbox/outbox-publisher.service";
 import { CommentConcurrencyException, CommentEntity } from "./domain/comment.entity";
 
 export interface CommentFilters {
@@ -24,7 +25,10 @@ export interface FindCommentsParams {
 
 @Injectable()
 export class CommentsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(OutboxPublisherService) private readonly outboxPublisher?: OutboxPublisherService,
+  ) {}
 
   async recordAuditEvent(input: AuditEventInput): Promise<void> {
     await this.prisma.auditEvent.create({
@@ -68,7 +72,45 @@ export class CommentsRepository {
       await tx.auditEvent.create({
         data: buildAuditEventData(audit),
       });
-      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+
+      if (this.outboxPublisher) {
+        const ticket = await tx.ticket.findUnique({
+          where: { id: entity.ticketId },
+        });
+
+        await this.outboxPublisher.appendOutboxEvent(tx, {
+          tenantId: entity.tenantId,
+          eventType: "comment.added",
+          aggregateType: "comment",
+          aggregateId: comment.id,
+          payload: {
+            commentId: comment.id,
+            ticketId: comment.ticketId,
+            authorUserId: comment.authorUserId,
+            visibility: comment.visibility,
+            body: comment.body,
+            ticket: ticket
+              ? {
+                  id: ticket.id,
+                  tenantId: ticket.tenantId,
+                  publicRef: ticket.publicRef,
+                  title: ticket.title,
+                  description: ticket.description,
+                  status: ticket.status,
+                  priority: ticket.priority,
+                  channel: ticket.channel,
+                  type: ticket.type,
+                  requesterUserId: ticket.requesterUserId,
+                  assigneeUserId: ticket.assigneeUserId,
+                  assignedGroupId: ticket.assignedGroupId,
+                  ticketVersion: ticket.version,
+                }
+              : undefined,
+          },
+          correlationId: audit.correlationId,
+        });
+      }
+
       return comment;
     });
 
