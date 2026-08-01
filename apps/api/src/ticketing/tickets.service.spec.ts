@@ -38,10 +38,25 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         return Promise.resolve(updatedAgg);
       }),
       createWithAudit: vi.fn((agg: TicketAggregate, input: AuditEventInput) => {
-        const key = `${agg.tenantId}:${agg.id}`;
-        store.set(key, agg);
-        auditLogs.push(input);
-        return Promise.resolve(agg);
+        let count = 0;
+        for (const stored of store.values()) {
+          if (stored.tenantId === agg.tenantId) {
+            count += 1;
+          }
+        }
+        const props = agg.toProps();
+        props.publicRef = `TKT-${count + 1001}`;
+        const updatedAgg = new TicketAggregate(props);
+        const key = `${updatedAgg.tenantId}:${updatedAgg.id}`;
+        store.set(key, updatedAgg);
+        auditLogs.push({
+          ...input,
+          metadata: {
+            ...input.metadata,
+            publicRef: updatedAgg.publicRef,
+          },
+        });
+        return Promise.resolve(updatedAgg);
       }),
       findById: vi.fn((tenantId: string, id: string) => {
         const key = `${tenantId}:${id}`;

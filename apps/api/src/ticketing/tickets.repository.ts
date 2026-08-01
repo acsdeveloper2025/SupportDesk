@@ -101,7 +101,13 @@ export class TicketsRepository {
           data: this.toCreateData({ ...props, publicRef }),
         });
         await tx.auditEvent.create({
-          data: buildAuditEventData(audit),
+          data: buildAuditEventData({
+            ...audit,
+            metadata: {
+              ...audit.metadata,
+              publicRef,
+            },
+          }),
         });
         return ticket;
       },

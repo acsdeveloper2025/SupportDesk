@@ -457,6 +457,9 @@ model Ticket {
   @@index([tenantId, createdAt], map: "idx_tickets__tenant_id_created_at")
   @@index([tenantId, updatedAt], map: "idx_tickets__tenant_id_updated_at")
   @@index([tenantId, dueDate], map: "idx_tickets__tenant_id_due_date")
+  @@index([publicRef(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_tickets__public_ref_trgm")
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_tickets__title_trgm")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_tickets__description_trgm")
   @@map("tickets")
 }
 
