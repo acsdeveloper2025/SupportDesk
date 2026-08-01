@@ -367,7 +367,7 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
                 {comments.map((comment) => (
                   <li key={comment.id}>
                     <CommentItem
-                      canDelete={false}
+                      canDelete={comment.authorUserId === currentUserId}
                       comment={comment}
                       currentUserId={currentUserId}
                       onDelete={handleDeleteComment}

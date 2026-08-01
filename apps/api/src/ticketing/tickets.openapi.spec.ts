@@ -30,6 +30,7 @@ describe("Tickets OpenAPI Document", () => {
             createTicket: () => Promise.resolve({}),
             getTicketById: () => Promise.resolve({}),
             getTicketByPublicRef: () => Promise.resolve({}),
+            getTicketTimeline: () => Promise.resolve({ items: [], totalRecords: 0 }),
             transitionStatus: () => Promise.resolve({}),
             unassignTicket: () => Promise.resolve({}),
             updateTicket: () => Promise.resolve({}),
@@ -76,6 +77,7 @@ describe("Tickets OpenAPI Document", () => {
       "/api/v1/tickets/{id}",
       "/api/v1/tickets/{id}/assign",
       "/api/v1/tickets/{id}/status",
+      "/api/v1/tickets/{id}/timeline",
       "/api/v1/tickets/{id}/unassign",
     ]);
 

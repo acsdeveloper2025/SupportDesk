@@ -49,15 +49,11 @@ export class CommentsRepository {
   }
 
   async findById(tenantId: string, id: string): Promise<CommentEntity | null> {
-    const record = await this.prisma.comment.findUnique({
-      where: { id },
+    const record = await this.prisma.comment.findFirst({
+      where: { id, tenantId, deletedAt: null },
     });
 
-    if (!record || record.tenantId !== tenantId || record.deletedAt) {
-      return null;
-    }
-
-    return this.mapToDomain(record);
+    return record ? this.mapToDomain(record) : null;
   }
 
   async findMany(

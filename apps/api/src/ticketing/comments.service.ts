@@ -14,6 +14,20 @@ import type { CreateCommentRequestDto } from "./dto/create-comment.dto";
 import type { UpdateCommentRequestDto } from "./dto/update-comment.dto";
 import { TicketsRepository } from "./tickets.repository";
 
+export interface ListCommentsMeta {
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface ListCommentsResult {
+  items: CommentEntity[];
+  meta: ListCommentsMeta;
+}
+
 @Injectable()
 export class CommentsService {
   constructor(
@@ -127,7 +141,7 @@ export class CommentsService {
       filters?: CommentFilters;
       sort: { field: string; direction: "asc" | "desc" };
     },
-  ) {
+  ): Promise<ListCommentsResult> {
     const ticket = await this.ticketsRepository.findById(tenantId, ticketId);
     if (!ticket) {
       throw new NotFoundException("Ticket not found");

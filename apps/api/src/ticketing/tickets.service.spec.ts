@@ -3,7 +3,7 @@ import { TicketPriority, TicketStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuditEventInput } from "../audit/audit-event";
-import type { TicketAggregate } from "./domain/ticket.aggregate";
+import { TicketAggregate } from "./domain/ticket.aggregate";
 import type { TicketsRepository } from "./tickets.repository";
 import { TicketsService } from "./tickets.service";
 
@@ -24,9 +24,18 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
 
     repository = {
       create: vi.fn((agg: TicketAggregate) => {
-        const key = `${agg.tenantId}:${agg.id}`;
-        store.set(key, agg);
-        return Promise.resolve(agg);
+        let count = 0;
+        for (const stored of store.values()) {
+          if (stored.tenantId === agg.tenantId) {
+            count += 1;
+          }
+        }
+        const props = agg.toProps();
+        props.publicRef = `TKT-${count + 1001}`;
+        const updatedAgg = new TicketAggregate(props);
+        const key = `${updatedAgg.tenantId}:${updatedAgg.id}`;
+        store.set(key, updatedAgg);
+        return Promise.resolve(updatedAgg);
       }),
       findById: vi.fn((tenantId: string, id: string) => {
         const key = `${tenantId}:${id}`;
@@ -56,6 +65,14 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
           }
         }
         return Promise.resolve(`TKT-${count + 1001}`);
+      }),
+      findActiveUserInTenant: vi.fn((_tenantId: string, userId: string) => {
+        // By default, any userId is considered active in the tenant.
+        // Override per-test to simulate inactive/cross-tenant user.
+        return Promise.resolve({ id: userId });
+      }),
+      findTimeline: vi.fn(() => {
+        return Promise.resolve({ items: [], totalRecords: 0 });
       }),
       recordAuditEvent: vi.fn((input: AuditEventInput) => {
         auditLogs.push(input);
@@ -213,5 +230,152 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
 
     const result = await service.countTickets({ tenantId: tenantA });
     expect(result.count).toBe(1);
+  });
+
+  // ── Assignment tests ────────────────────────────────────────────────
+
+  it("assignTicket: assigns a user and records ticket.assigned audit event", async () => {
+    const assigneeId = "22222222-2222-4222-8222-222222222222";
+
+    const created = await service.createTicket({
+      description: "Need assignment",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Assignment Test",
+    });
+
+    const assigned = await service.assignTicket({
+      actorUserId: userA,
+      assigneeUserId: assigneeId,
+      expectedVersion: created.version,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    expect(assigned.assigneeUserId).toBe(assigneeId);
+    expect(assigned.version).toBe(2);
+
+    const assignEvent = auditLogs.find((e) => e.action === "ticket.assigned");
+    expect(assignEvent).toBeDefined();
+    expect(assignEvent?.metadata).toMatchObject({
+      newAssigneeUserId: assigneeId,
+      previousAssigneeUserId: null,
+    });
+  });
+
+  it("assignTicket: reassigns an already-assigned ticket and records ticket.reassigned audit event", async () => {
+    const firstAssignee = "33333333-3333-4333-8333-333333333333";
+    const secondAssignee = "44444444-4444-4444-8444-444444444444";
+
+    const created = await service.createTicket({
+      description: "To be reassigned",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Reassignment Test",
+    });
+
+    const assigned = await service.assignTicket({
+      actorUserId: userA,
+      assigneeUserId: firstAssignee,
+      expectedVersion: created.version,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    const reassigned = await service.assignTicket({
+      actorUserId: userA,
+      assigneeUserId: secondAssignee,
+      expectedVersion: assigned.version,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    expect(reassigned.assigneeUserId).toBe(secondAssignee);
+
+    const reassignEvent = auditLogs.find((e) => e.action === "ticket.reassigned");
+    expect(reassignEvent).toBeDefined();
+    expect(reassignEvent?.metadata).toMatchObject({
+      newAssigneeUserId: secondAssignee,
+      previousAssigneeUserId: firstAssignee,
+    });
+  });
+
+  it("unassignTicket: clears assignee and records ticket.unassigned audit event", async () => {
+    const assigneeId = "55555555-5555-4555-8555-555555555555";
+
+    const created = await service.createTicket({
+      description: "Will be unassigned",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Unassign Test",
+    });
+
+    const assigned = await service.assignTicket({
+      actorUserId: userA,
+      assigneeUserId: assigneeId,
+      expectedVersion: created.version,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    const unassigned = await service.unassignTicket({
+      actorUserId: userA,
+      expectedVersion: assigned.version,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    expect(unassigned.assigneeUserId).toBeNull();
+    expect(unassigned.assignedGroupId).toBeNull();
+
+    const unassignEvent = auditLogs.find((e) => e.action === "ticket.unassigned");
+    expect(unassignEvent).toBeDefined();
+    expect(unassignEvent?.metadata).toMatchObject({
+      previousAssigneeUserId: assigneeId,
+    });
+  });
+
+  it("assignTicket: throws ClosedTicketAssignmentException when ticket is CLOSED", async () => {
+    const { ClosedTicketAssignmentException } = await import("./domain/ticket.aggregate");
+
+    const created = await service.createTicket({
+      description: "Closing this one",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Closed Ticket Assign",
+    });
+
+    // Transition: NEW -> OPEN -> SOLVED -> CLOSED
+    const opened = await service.transitionStatus({
+      actorUserId: userA,
+      expectedVersion: created.version,
+      newStatus: TicketStatus.OPEN,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+    const solved = await service.transitionStatus({
+      actorUserId: userA,
+      expectedVersion: opened.version,
+      newStatus: TicketStatus.SOLVED,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+    const closed = await service.transitionStatus({
+      actorUserId: userA,
+      expectedVersion: solved.version,
+      newStatus: TicketStatus.CLOSED,
+      tenantId: tenantA,
+      ticketId: created.id,
+    });
+
+    await expect(
+      service.assignTicket({
+        actorUserId: userA,
+        assigneeUserId: userA,
+        expectedVersion: closed.version,
+        tenantId: tenantA,
+        ticketId: created.id,
+      }),
+    ).rejects.toThrow(ClosedTicketAssignmentException);
   });
 });

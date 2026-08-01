@@ -34,9 +34,13 @@ import { AuthRateLimit } from "../auth/rate-limit/auth-rate-limit.guard";
 import { getCorrelationId } from "../common/logging/correlation-id";
 import { RbacService } from "../rbac/rbac.service";
 import { AssignTicketRequestDto, validateAssignTicketPayload } from "./dto/assign-ticket.dto";
-import { validateCountTicketsQuery } from "./dto/count-tickets.dto";
+import { type CountTicketsQueryDto, validateCountTicketsQuery } from "./dto/count-tickets.dto";
 import { CreateTicketRequestDto, validateCreateTicketPayload } from "./dto/create-ticket.dto";
-import { TicketListResponseDto, validateListTicketsQuery } from "./dto/list-tickets.dto";
+import {
+  type ListTicketsQueryDto,
+  TicketListResponseDto,
+  validateListTicketsQuery,
+} from "./dto/list-tickets.dto";
 import { TicketResponseDto } from "./dto/ticket-response.dto";
 import {
   TransitionTicketStatusDto,
@@ -44,7 +48,31 @@ import {
 } from "./dto/transition-ticket-status.dto";
 import { UnassignTicketRequestDto, validateUnassignTicketPayload } from "./dto/unassign-ticket.dto";
 import { UpdateTicketRequestDto, validateUpdateTicketPayload } from "./dto/update-ticket.dto";
+import type { TicketFilters } from "./tickets.repository";
 import { TicketsService } from "./tickets.service";
+
+/**
+ * Maps a validated Zod list/count query DTO to the typed TicketFilters
+ * interface consumed by the service layer.
+ * This replaces the previous `dto as any` cast that required eslint-disable suppressions.
+ */
+function toTicketFilters(dto: ListTicketsQueryDto | CountTicketsQueryDto): TicketFilters {
+  return {
+    assignedGroupId: dto.assignedGroupId,
+    assigneeUserId: dto.assigneeUserId,
+    channel: dto.channel,
+    createdAfter: dto.createdAfter,
+    createdBefore: dto.createdBefore,
+    dueAfter: dto.dueAfter,
+    dueBefore: dto.dueBefore,
+    priority: dto.priority,
+    requesterUserId: dto.requesterUserId,
+    status: dto.status,
+    type: dto.type,
+    updatedAfter: dto.updatedAfter,
+    updatedBefore: dto.updatedBefore,
+  };
+}
 
 @ApiTags("tickets")
 @Controller("api/v1/tickets")
@@ -150,8 +178,7 @@ export class TicketsController {
 
     const result = await this.ticketsService.listTickets({
       tenantId: context.tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-assertion
-      filters: dto as any, // Cast since mapped dto perfectly aligns with filters except page/sort
+      filters: toTicketFilters(dto),
       page: dto.page,
       pageSize: dto.pageSize,
       sort: { field: dto.sortBy, direction: dto.sortDir },
@@ -198,8 +225,7 @@ export class TicketsController {
 
     return this.ticketsService.countTickets({
       tenantId: context.tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-assertion
-      filters: dto as any,
+      filters: toTicketFilters(dto),
     });
   }
 
@@ -721,5 +747,55 @@ export class TicketsController {
     });
 
     return TicketResponseDto.fromDomain(updated);
+  }
+
+  // ── Issue #28: Ticket Activity Timeline ──────────────────────────────────
+
+  @Get(":id/timeline")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description:
+      "Retrieve the activity timeline (audit events) for a ticket by its system UUID. " +
+      "Events are ordered newest-first. Requires ticket.read permission.",
+    summary: "Get ticket timeline by ID",
+  })
+  @ApiOkResponse({
+    description: "Timeline retrieved successfully.",
+  })
+  @ApiUnauthorizedResponse({ description: "Authentication token missing, invalid, or expired." })
+  @ApiForbiddenResponse({ description: "User lacks the ticket.read permission." })
+  @ApiNotFoundResponse({ description: "Ticket not found within the authenticated tenant." })
+  async getTicketTimelineById(
+    @Param("id") id: string,
+    @Query("page") page: unknown,
+    @Query("pageSize") pageSize: unknown,
+    @Req() request: Request,
+  ) {
+    const context = getAuthenticatedRequestContext(request);
+    if (!context) {
+      throw new UnauthorizedException();
+    }
+
+    const canRead = await this.rbacService.can({
+      permissionKey: "ticket.read",
+      tenantId: context.tenantId,
+      userId: context.userId,
+    });
+    if (!canRead) {
+      throw new ForbiddenException("Lacks required ticket.read permission");
+    }
+
+    const parsedPage = Math.max(1, Number(page) || 1);
+    const parsedPageSize = Math.min(100, Math.max(1, Number(pageSize) || 50));
+
+    const result = await this.ticketsService.getTicketTimeline({
+      actorUserId: context.userId,
+      page: parsedPage,
+      pageSize: parsedPageSize,
+      tenantId: context.tenantId,
+      ticketId: id,
+    });
+
+    return result;
   }
 }

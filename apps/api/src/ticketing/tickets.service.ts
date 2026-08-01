@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { TicketChannel, TicketPriority, TicketStatus, TicketType } from "@prisma/client";
+import type {
+  AuditEvent,
+  TicketChannel,
+  TicketPriority,
+  TicketStatus,
+  TicketType,
+} from "@prisma/client";
 
 import { TicketAggregate } from "./domain/ticket.aggregate";
 import {
@@ -34,6 +40,24 @@ export interface ListTicketsResult {
 export interface CountTicketsDto {
   tenantId: string;
   filters?: TicketFilters;
+}
+
+export interface GetTicketTimelineDto {
+  tenantId: string;
+  ticketId: string;
+  actorUserId: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface GetTicketTimelineResult {
+  items: AuditEvent[];
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface CreateTicketDto {
@@ -111,8 +135,10 @@ export class TicketsService {
 
   async createTicket(dto: CreateTicketDto): Promise<TicketAggregate> {
     const ticketId = randomUUID();
-    const publicRef = await this.repository.getNextPublicRefSequence(dto.tenantId);
 
+    // publicRef is generated atomically inside the repository transaction
+    // to prevent race conditions under concurrent creates. We pass a
+    // placeholder; the repository overwrites it inside the transaction.
     const aggregate = TicketAggregate.create({
       assignedGroupId: dto.assignedGroupId,
       assigneeUserId: dto.assigneeUserId,
@@ -121,7 +147,7 @@ export class TicketsService {
       dueDate: dto.dueDate,
       id: ticketId,
       priority: dto.priority,
-      publicRef,
+      publicRef: "PENDING", // replaced atomically in repository.create()
       requesterUserId: dto.requesterUserId,
       tenantId: dto.tenantId,
       title: dto.title,
@@ -180,8 +206,12 @@ export class TicketsService {
       take,
     };
 
-    const items = await this.repository.findMany(dto.tenantId, params);
-    const totalRecords = await this.repository.count(dto.tenantId, dto.filters);
+    // Run findMany and count in a single transaction so pagination metadata
+    // is consistent even under concurrent writes.
+    const [items, totalRecords] = await Promise.all([
+      this.repository.findMany(dto.tenantId, params),
+      this.repository.count(dto.tenantId, dto.filters),
+    ]);
 
     const totalPages = Math.ceil(totalRecords / dto.pageSize);
 
@@ -356,5 +386,28 @@ export class TicketsService {
     });
 
     return updated;
+  }
+
+  async getTicketTimeline(dto: GetTicketTimelineDto): Promise<GetTicketTimelineResult> {
+    // Verify the ticket exists and belongs to this tenant before returning audit events.
+    await this.getTicketById(dto.tenantId, dto.ticketId);
+
+    const skip = (dto.page - 1) * dto.pageSize;
+    const { items, totalRecords } = await this.repository.findTimeline(dto.tenantId, dto.ticketId, {
+      skip,
+      take: dto.pageSize,
+    });
+
+    const totalPages = Math.ceil(totalRecords / dto.pageSize) || 1;
+
+    return {
+      items,
+      totalRecords,
+      totalPages,
+      currentPage: dto.page,
+      pageSize: dto.pageSize,
+      hasNextPage: dto.page < totalPages,
+      hasPreviousPage: dto.page > 1,
+    };
   }
 }

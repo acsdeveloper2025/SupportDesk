@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  type AuditEvent as PrismaAuditEvent,
   Prisma,
   type Ticket as PrismaTicket,
   TicketChannel,
@@ -50,26 +51,42 @@ export class TicketsRepository {
 
   async create(aggregate: TicketAggregate): Promise<TicketAggregate> {
     const props = aggregate.toProps();
-    const created = await this.prisma.ticket.create({
-      data: {
-        assignedGroupId: props.assignedGroupId,
-        assigneeUserId: props.assigneeUserId,
-        channel: props.channel,
-        closedAt: props.closedAt,
-        description: props.description,
-        dueDate: props.dueDate,
-        id: props.id,
-        priority: props.priority,
-        publicRef: props.publicRef,
-        requesterUserId: props.requesterUserId,
-        solvedAt: props.solvedAt,
-        status: props.status,
-        tenantId: props.tenantId,
-        title: props.title,
-        type: props.type,
-        version: props.version,
+
+    /**
+     * Wrap the publicRef sequence read and the ticket insert in an
+     * interactive transaction with a SERIALIZABLE isolation level so that
+     * concurrent creates in the same tenant cannot produce duplicate
+     * publicRef values.
+     */
+    const created = await this.prisma.$transaction(
+      async (tx) => {
+        // Lock: count existing tickets for this tenant inside the transaction
+        const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
+        const publicRef = `TKT-${count + 1001}`;
+
+        return tx.ticket.create({
+          data: {
+            assignedGroupId: props.assignedGroupId,
+            assigneeUserId: props.assigneeUserId,
+            channel: props.channel,
+            closedAt: props.closedAt,
+            description: props.description,
+            dueDate: props.dueDate,
+            id: props.id,
+            priority: props.priority,
+            publicRef,
+            requesterUserId: props.requesterUserId,
+            solvedAt: props.solvedAt,
+            status: props.status,
+            tenantId: props.tenantId,
+            title: props.title,
+            type: props.type,
+            version: props.version,
+          },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     return this.toDomain(created);
   }
@@ -137,13 +154,18 @@ export class TicketsRepository {
     return reloaded;
   }
 
+  /**
+   * Generates the next public reference for a ticket in a tenant.
+   *
+   * @deprecated Use the transactional create() method instead – the sequence
+   * is now computed atomically inside the transaction. This method is kept
+   * only for backward-compatibility with existing service code that passes
+   * the publicRef from outside; it will be removed in a future clean-up.
+   */
   async getNextPublicRefSequence(tenantId: string): Promise<string> {
     const count = await this.prisma.ticket.count({
-      where: {
-        tenantId,
-      },
+      where: { tenantId },
     });
-
     const nextSeq = count + 1001;
     return `TKT-${nextSeq}`;
   }
@@ -175,6 +197,35 @@ export class TicketsRepository {
   async count(tenantId: string, filters?: TicketFilters): Promise<number> {
     const where = this.buildWhereClause(tenantId, filters);
     return this.prisma.ticket.count({ where });
+  }
+
+  /**
+   * Returns paginated audit events for a ticket, ordered newest-first.
+   * Only events where targetType = 'ticket' and targetId = ticketId are
+   * returned. tenantId is enforced to prevent cross-tenant leakage.
+   */
+  async findTimeline(
+    tenantId: string,
+    ticketId: string,
+    params: { skip?: number; take?: number },
+  ): Promise<{ items: PrismaAuditEvent[]; totalRecords: number }> {
+    const where: Prisma.AuditEventWhereInput = {
+      tenantId,
+      targetType: "ticket",
+      targetId: ticketId,
+    };
+
+    const [items, totalRecords] = await this.prisma.$transaction([
+      this.prisma.auditEvent.findMany({
+        where,
+        orderBy: { occurredAt: "desc" },
+        skip: params.skip,
+        take: params.take,
+      }),
+      this.prisma.auditEvent.count({ where }),
+    ]);
+
+    return { items, totalRecords };
   }
 
   private buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
