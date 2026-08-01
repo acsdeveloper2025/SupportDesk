@@ -1,8 +1,7 @@
 # Ready for Workflow Engine
 
 **Date:** 2026-08-01  
-**Baseline commit:** `ebd39c71`  
-**Tag:** `v1.0-ticket-module`  
+**Baseline tag:** `v1.0-ticket-module` (points at this release freeze on `main`)  
 **Status:** Verified — awaiting approval to begin **E11-I02**
 
 ## Verification
