@@ -63,6 +63,7 @@ This catalogue defines intended tables and invariants. It is not SQL. Naming fol
 | `sla_evaluations`                | SLA selection/recalculation evidence.              | `id`        | `tenant_id` | References captured policy and schedule versions.          |
 | `notification_templates`         | Template container.                                | `id`        | `tenant_id` | Unique `(tenant_id, key)`.                                 |
 | `notification_template_versions` | Immutable localized template content.              | `id`        | `tenant_id` | Unique `(tenant_id, template_id, locale, version_number)`. |
+| `notifications`                  | In-app notification inbox items (Issue #25).       | `id`        | `tenant_id` | Indexed by recipient, read/archive, event type.            |
 | `notification_preferences`       | User/membership notification preferences.          | `id`        | `tenant_id` | Unique recipient/channel/event preference.                 |
 | `notification_intents`           | Provider-neutral send intent.                      | `id`        | `tenant_id` | Unique dedupe key per recipient/channel/template/event.    |
 | `notification_attempts`          | Provider send attempts and terminal state.         | `id`        | `tenant_id` | Provider event IDs unique where supplied.                  |

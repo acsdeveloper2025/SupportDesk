@@ -1,3 +1,4 @@
+import { RoleScope } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import type { RbacRepository } from "./rbac.repository";
@@ -7,9 +8,12 @@ const tenantId = "11111111-1111-4111-8111-111111111111";
 const actorUserId = "22222222-2222-4222-8222-222222222222";
 const targetUserId = "33333333-3333-4333-8333-333333333333";
 const roleId = "44444444-4444-4444-8444-444444444444";
+const otherUserId = "55555555-5555-4555-8555-555555555555";
+const groupId = "66666666-6666-4666-8666-666666666666";
 
 class FakeRbacRepository implements RbacRepository {
   actorPermissions = new Set<string>();
+  actorPermissionScopes = new Map<string, RoleScope[]>();
   assigned = false;
   rolePermissionKeys: string[] = [];
   roleTenantId: string | null = tenantId;
@@ -19,6 +23,14 @@ class FakeRbacRepository implements RbacRepository {
 
   hasPermission(tenantIdInput: string, _userId: string, permissionKey: string) {
     return Promise.resolve(tenantIdInput === tenantId && this.actorPermissions.has(permissionKey));
+  }
+
+  getPermissionScopes(tenantIdInput: string, _userId: string, permissionKey: string) {
+    if (tenantIdInput !== tenantId || !this.actorPermissions.has(permissionKey)) {
+      return Promise.resolve([]);
+    }
+
+    return Promise.resolve(this.actorPermissionScopes.get(permissionKey) ?? [RoleScope.TENANT]);
   }
 
   getRolePermissionKeys() {
@@ -81,6 +93,74 @@ describe("RbacService", () => {
         userId: actorUserId,
       }),
     ).resolves.toBe(false);
+  });
+
+  it("evaluates own, group, and tenant scopes against a resource", async () => {
+    const repository = new FakeRbacRepository();
+    repository.actorPermissions.add("ticket.read");
+    repository.actorPermissionScopes.set("ticket.read", [RoleScope.OWN]);
+    const service = new RbacService(repository);
+
+    await expect(
+      service.can({
+        permissionKey: "ticket.read",
+        resource: {
+          ownerUserId: actorUserId,
+        },
+        tenantId,
+        userId: actorUserId,
+      }),
+    ).resolves.toBe(true);
+
+    await expect(
+      service.can({
+        permissionKey: "ticket.read",
+        resource: {
+          ownerUserId: otherUserId,
+        },
+        tenantId,
+        userId: actorUserId,
+      }),
+    ).resolves.toBe(false);
+
+    repository.actorPermissionScopes.set("ticket.read", [RoleScope.GROUP]);
+    await expect(
+      service.can({
+        permissionKey: "ticket.read",
+        resource: {
+          actorGroupIds: [groupId],
+          groupId,
+          ownerUserId: otherUserId,
+        },
+        tenantId,
+        userId: actorUserId,
+      }),
+    ).resolves.toBe(true);
+
+    await expect(
+      service.can({
+        permissionKey: "ticket.read",
+        resource: {
+          actorGroupIds: [],
+          groupId,
+          ownerUserId: otherUserId,
+        },
+        tenantId,
+        userId: actorUserId,
+      }),
+    ).resolves.toBe(false);
+
+    repository.actorPermissionScopes.set("ticket.read", [RoleScope.TENANT]);
+    await expect(
+      service.can({
+        permissionKey: "ticket.read",
+        resource: {
+          ownerUserId: otherUserId,
+        },
+        tenantId,
+        userId: actorUserId,
+      }),
+    ).resolves.toBe(true);
   });
 
   it("assigns a tenant role only when the actor can assign every permission it grants", async () => {

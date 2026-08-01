@@ -37,6 +37,27 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         store.set(key, updatedAgg);
         return Promise.resolve(updatedAgg);
       }),
+      createWithAudit: vi.fn((agg: TicketAggregate, input: AuditEventInput) => {
+        let count = 0;
+        for (const stored of store.values()) {
+          if (stored.tenantId === agg.tenantId) {
+            count += 1;
+          }
+        }
+        const props = agg.toProps();
+        props.publicRef = `TKT-${count + 1001}`;
+        const updatedAgg = new TicketAggregate(props);
+        const key = `${updatedAgg.tenantId}:${updatedAgg.id}`;
+        store.set(key, updatedAgg);
+        auditLogs.push({
+          ...input,
+          metadata: {
+            ...input.metadata,
+            publicRef: updatedAgg.publicRef,
+          },
+        });
+        return Promise.resolve(updatedAgg);
+      }),
       findById: vi.fn((tenantId: string, id: string) => {
         const key = `${tenantId}:${id}`;
         return Promise.resolve(store.get(key) ?? null);
@@ -83,9 +104,22 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         store.set(key, agg);
         return Promise.resolve(agg);
       }),
+      updateWithAudit: vi.fn(
+        (agg: TicketAggregate, _expectedVersion: number, input: AuditEventInput) => {
+          const key = `${agg.tenantId}:${agg.id}`;
+          store.set(key, agg);
+          auditLogs.push(input);
+          return Promise.resolve(agg);
+        },
+      ),
     } as unknown as TicketsRepository;
 
-    service = new TicketsService(repository);
+    const notificationsService = {
+      createManySafe: vi.fn(() => Promise.resolve()),
+      createSafe: vi.fn(() => Promise.resolve(null)),
+    };
+
+    service = new TicketsService(repository, notificationsService as never);
   });
 
   it("creates a ticket and records an audit event", async () => {
@@ -397,5 +431,27 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
         ticketId: created.id,
       }),
     ).rejects.toThrow(ClosedTicketAssignmentException);
+  });
+
+  it("searches tickets by reusing list pagination metadata", async () => {
+    await service.createTicket({
+      description: "Searchable description about VPN",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Network issue",
+    });
+
+    const result = await service.searchTickets({
+      filters: { q: "vpn" },
+      page: 1,
+      pageSize: 10,
+      sort: { direction: "desc", field: "createdAt" },
+      tenantId: tenantA,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.totalRecords).toBe(1);
+    expect(result.appliedFilters).toEqual({ q: "vpn" });
+    expect(result.sort).toEqual({ direction: "desc", field: "createdAt" });
   });
 });

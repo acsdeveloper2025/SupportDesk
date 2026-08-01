@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { CommentVisibility } from "@prisma/client";
+import { CommentVisibility, NotificationEventType } from "@prisma/client";
 
+import { NotificationsService } from "../notifications/notifications.service";
 import { RbacService } from "../rbac/rbac.service";
 import {
   type CommentFilters,
@@ -34,6 +35,7 @@ export class CommentsService {
     @Inject(CommentsRepository) private readonly commentsRepository: CommentsRepository,
     @Inject(TicketsRepository) private readonly ticketsRepository: TicketsRepository,
     @Inject(RbacService) private readonly rbacService: RbacService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
   ) {}
 
   async createComment(
@@ -49,21 +51,23 @@ export class CommentsService {
 
     const visibility = dto.visibility ?? CommentVisibility.PUBLIC;
 
-    const canCreateAny = await this.rbacService.can({
+    const permissionKey =
+      visibility === CommentVisibility.INTERNAL
+        ? "ticket.comment.internal.create"
+        : "ticket.comment.public.create";
+
+    const canCreate = await this.rbacService.can({
       userId: actorUserId,
       tenantId,
-      permissionKey: "ticket.comment.create",
-    });
-    const canCreateVisibility = await this.rbacService.can({
-      userId: actorUserId,
-      tenantId,
-      permissionKey:
-        visibility === CommentVisibility.INTERNAL
-          ? "ticket.comment.internal.create"
-          : "ticket.comment.public.create",
+      permissionKey,
+      resource: {
+        assigneeUserId: ticket.assigneeUserId,
+        groupId: ticket.assignedGroupId,
+        ownerUserId: ticket.requesterUserId,
+      },
     });
 
-    if (!canCreateAny && !canCreateVisibility) {
+    if (!canCreate) {
       throw new ForbiddenException(`You do not have permission to create ${visibility} comments`);
     }
 
@@ -80,9 +84,7 @@ export class CommentsService {
       updatedAt: new Date(),
     });
 
-    const created = await this.commentsRepository.create(entity);
-
-    await this.commentsRepository.recordAuditEvent({
+    const created = await this.commentsRepository.createWithAudit(entity, {
       action: "ticket.comment.created",
       actorUserId,
       metadata: {
@@ -94,6 +96,37 @@ export class CommentsService {
       outcome: "SUCCESS",
       tenantId,
     });
+
+    const recipients = new Set<string>();
+    if (visibility === CommentVisibility.PUBLIC) {
+      recipients.add(ticket.requesterUserId);
+    }
+    if (ticket.assigneeUserId) {
+      recipients.add(ticket.assigneeUserId);
+    }
+
+    const eventType =
+      visibility === CommentVisibility.INTERNAL
+        ? NotificationEventType.COMMENT_CREATED_INTERNAL
+        : NotificationEventType.COMMENT_CREATED_PUBLIC;
+
+    await this.notificationsService.createManySafe(
+      [...recipients].map((recipientUserId) => ({
+        actorUserId,
+        body: `New ${visibility.toLowerCase()} comment on ticket ${ticket.publicRef}.`,
+        eventType,
+        payload: {
+          commentId: created.id,
+          publicRef: ticket.publicRef,
+          visibility,
+        },
+        recipientUserId,
+        resourceId: ticket.id,
+        resourceType: "ticket",
+        tenantId,
+        title: `New comment on ${ticket.publicRef}`,
+      })),
+    );
 
     return created;
   }
@@ -225,21 +258,17 @@ export class CommentsService {
     }
 
     comment.updateBody(dto.body, dto.expectedVersion);
-    const updated = await this.commentsRepository.update(comment, dto.expectedVersion);
-
-    await this.commentsRepository.recordAuditEvent({
+    return this.commentsRepository.updateWithAudit(comment, dto.expectedVersion, {
       action: "ticket.comment.updated",
       actorUserId,
       metadata: {
-        ticketId: updated.ticketId,
+        ticketId: comment.ticketId,
       },
       targetId: commentId,
       targetType: "Comment",
       outcome: "SUCCESS",
       tenantId,
     });
-
-    return updated;
   }
 
   async softDeleteComment(
@@ -268,9 +297,7 @@ export class CommentsService {
     }
 
     comment.softDelete(expectedVersion);
-    await this.commentsRepository.update(comment, expectedVersion);
-
-    await this.commentsRepository.recordAuditEvent({
+    await this.commentsRepository.updateWithAudit(comment, expectedVersion, {
       action: "ticket.comment.deleted",
       actorUserId,
       metadata: {

@@ -29,6 +29,7 @@ These terms are normative. Singular capitalized forms identify domain concepts.
 | Export Job                     | An asynchronous Tenant-scoped operation that prepares a downloadable report or data extract.                                               |
 | Legal Hold                     | A preservation rule that suspends ordinary deletion or retention expiry for specified data.                                                |
 | Notification Intent            | A provider-neutral request to notify one recipient through one channel and template.                                                       |
+| Notification                   | A tenant-scoped in-app inbox item for one recipient, created from a domain event and subject to preferences.                               |
 | Operator Elevation             | A time-bound, audited grant allowing a Platform Operator to access a Tenant-scoped operational or content path.                            |
 | Queue                          | A saved or computed Ticket list used for triage, assignment, and work prioritization.                                                      |
 | View                           | A user- or Tenant-configured presentation of filtered and sorted resources.                                                                |
