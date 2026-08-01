@@ -121,6 +121,16 @@ Authentication audit writes pass through one envelope builder. It recursively re
 | `settings.updated`                         | Settings       | Tenant Admin                   | Setting namespace    | Safe before/after, version              | Admin/security notice if sensitive.     |
 | `retention.executed`                       | Retention      | System                         | Data class/resource  | Policy version, counts                  | Operations evidence.                    |
 | `legal_hold.changed`                       | Retention      | Tenant Admin/legal             | Legal hold           | Scope, reason, expiry                   | Admin/security notice.                  |
+| `kb.category.created`                      | Knowledge Base | Agent/Admin                    | KB Category          | Name, slug, parentId                    | None.                                   |
+| `kb.category.updated`                      | Knowledge Base | Agent/Admin                    | KB Category          | Name, slug, parentId                    | None.                                   |
+| `kb.category.deleted`                      | Knowledge Base | Tenant Admin                   | KB Category          | Name, slug                              | None.                                   |
+| `kb.article.created`                       | Knowledge Base | Agent/Admin                    | KB Article           | Title, slug, categoryId, visibility     | None.                                   |
+| `kb.article.updated`                       | Knowledge Base | Agent/Admin                    | KB Article           | Title, slug, categoryId                 | None.                                   |
+| `kb.article.published`                     | Knowledge Base | Agent/Admin                    | KB Article           | Title, slug, versionNumber              | Outbox event `kb.article.published`.    |
+| `kb.article.archived`                      | Knowledge Base | Agent/Admin                    | KB Article           | Title, slug                             | None.                                   |
+| `kb.article.deleted`                       | Knowledge Base | Tenant Admin                   | KB Article           | Title, slug                             | None.                                   |
+| `kb.article.ticket_linked`                 | Knowledge Base | Agent                          | KB Article           | Ticket ID                               | None.                                   |
+| `kb.article.ticket_unlinked`               | Knowledge Base | Agent                          | KB Article           | Ticket ID                               | None.                                   |
 
 ## Retention and access
 

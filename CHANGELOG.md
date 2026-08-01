@@ -2,6 +2,25 @@
 
 All notable changes are recorded here. This project follows Keep a Changelog concepts and will adopt semantic versioning when a deployable product exists.
 
+## [v1.1-knowledge-base] - 2026-08-01
+
+Enterprise Knowledge Base module release. Git tag: `v1.1-knowledge-base`.
+
+### Added
+
+- Knowledge Base Category Tree Hierarchy (`KbCategory`) supporting parent-child category relationships, slug generation, position ordering, icon assignment, and tenant-isolated parent validation.
+- Knowledge Base Article Engine (`KbArticle`) supporting Markdown content, summary, draft/review/published/archived state machine (`KbArticleStatus`), internal/public visibility (`KbArticleVisibility`), view counter, and helpful/unhelpful feedback tracking.
+- Immutable Article Versioning (`KbArticleVersion`) automatically capturing snapshot copies of articles upon publication with incremented version numbers.
+- Knowledge Base Tagging (`KbTag` & `KbArticleTag`) for multi-tag categorization and filtering.
+- Ticket Linking (`KbTicketLink`) allowing support agents to link KB articles directly to tickets for issue resolution.
+- KB Full-Text Search Builder matching query keywords across article titles, summaries, content, category names, and tags with tenant boundary enforcement and visibility guards.
+- Transactional Outbox Event Integration (`kb.article.published`) emitted upon article publication to trigger automated workflows and external subscribers.
+- Knowledge Base RBAC Permissions (`kb.category.create`, `kb.category.read`, `kb.category.update`, `kb.category.delete`, `kb.article.create`, `kb.article.read`, `kb.article.read_internal`, `kb.article.update`, `kb.article.publish`, `kb.article.archive`, `kb.article.delete`, `kb.article.link_ticket`).
+- Knowledge Base Audit Logging for all category and article state-modifying actions (`kb.category.*`, `kb.article.*`).
+- OpenAPI Specification coverage for all `kb-categories` and `kb-articles` endpoints.
+- Next.js 15 Frontend Knowledge Base Portal & Admin UI (`/kb`, `/kb/categories/[slug]`, `/kb/articles/[slug]`, `/kb/articles/new`, `/kb/articles/[slug]/edit`, `/kb/admin/categories`).
+- Unit test suites and PostgreSQL end-to-end integration test suite (`kb.integration.spec.ts`) validating hierarchy, versioning, outbox integration, ticket linking, search, and tenant isolation negative cases.
+
 ## [Unreleased]
 
 ### Added

@@ -41,7 +41,7 @@ stateDiagram-v2
 
 ## Workflow automation rules
 
-- Workflows evaluate immutable domain-event snapshots.
+- Workflows evaluate immutable domain-event snapshots (e.g. `ticket.created`, `ticket.updated`, `kb.article.published`).
 - Published workflow versions execute in priority order.
 - Workflow actions are bounded, deduplicated, and audited.
 - Chained workflow execution has tenant-configured limits.

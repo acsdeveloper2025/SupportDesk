@@ -79,6 +79,18 @@ Scopes: `own`, `organization`, `group`, `tenant`, `platform`.
 | `platform.elevation.request`     | platform                      |                   Y |            N |                N |       N |           N |           N |        N |       N |         N |
 | `platform.elevation.approve`     | platform                      | Y, no self-approval |            N |                N |       N |           N |           N |        N |       N |         N |
 | `platform.elevation.revoke`      | platform                      |                   Y |            N |                N |       N |           N |           N |        N |       N |         N |
+| `kb.category.read`               | tenant                        |                   E |            Y |                Y |       Y |           Y |           Y |        Y |       Y |         Y |
+| `kb.category.create`             | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.category.update`             | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.category.delete`             | tenant                        |                   E |            Y |                N |       N |           N |           N |        N |       N |         N |
+| `kb.article.read`                | tenant                        |                   E |            Y |                Y |       Y |           Y |           Y |        Y |       Y |         Y |
+| `kb.article.read_internal`       | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.article.create`              | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.article.update`              | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.article.publish`             | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.article.archive`             | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
+| `kb.article.delete`              | tenant                        |                   E |            Y |                N |       N |           N |           N |        N |       N |         N |
+| `kb.article.link_ticket`         | tenant                        |                   E |            Y |                Y |       Y |           Y |           N |        N |       N |         N |
 
 Legend: `Y` allowed by default; `N` denied; `Scoped` limited by organization/group/resource; `Own` limited to owned/requester-visible resources; `Limited` depends on tenant policy; `Approval` means the role can approve or participate in an approval workflow; `E` means Super Admin requires explicit operator elevation for tenant content/configuration.
 
@@ -96,5 +108,6 @@ Canonical permission keys use `resource[.subresource].action` with no aliases. I
 - Framework (M2.10): tenant, settings, user, role, permission, audit, and platform elevation keys.
 - Ticketing (E05): `ticket.create`, `ticket.read`, `ticket.update`, `ticket.assign`, `ticket.transition`, `ticket.comment.public.create`, `ticket.comment.internal.create`, `ticket.comment.read`, `ticket.comment.internal.read`, `ticket.comment.update`, `ticket.comment.delete`, `ticket.attachment.create`, `ticket.attachment.read`, `ticket.attachment.delete`.
 - SLA (Issue #26 / E10): `sla.read`, `sla.update` (business schedules, SLA policies, ticket SLA status, active timers, basic metrics).
+- Knowledge Base (Module 1): `kb.category.read`, `kb.category.create`, `kb.category.update`, `kb.category.delete`, `kb.article.read`, `kb.article.read_internal`, `kb.article.create`, `kb.article.update`, `kb.article.publish`, `kb.article.archive`, `kb.article.delete`, `kb.article.link_ticket`.
 
 Scope evaluation for `own`, `group`, and `tenant` is performed in the RBAC authorization layer when a resource context is supplied. Remaining matrix rows stay documentation-only until their owning milestones implement them.

@@ -128,6 +128,11 @@ model Tenant {
   workflowExecutions          WorkflowExecution[]
   workflowActionAttempts      WorkflowActionAttempt[]
   notificationIntents         NotificationIntent[]
+  kbCategories                KbCategory[]
+  kbArticles                  KbArticle[]
+  kbArticleVersions           KbArticleVersion[]
+  kbTags                      KbTag[]
+  kbTicketLinks               KbTicketLink[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -196,6 +201,9 @@ model User {
   actedNotifications         Notification[]  @relation("NotificationActor")
   notificationPreferences    NotificationPreference[]
   notificationIntents        NotificationIntent[]    @relation("NotificationIntentRecipient")
+  authoredKbArticles         KbArticle[]             @relation("KbArticleAuthor")
+  createdKbVersions          KbArticleVersion[]      @relation("KbVersionCreator")
+  createdKbTicketLinks       KbTicketLink[]          @relation("KbTicketLinkCreator")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -461,6 +469,7 @@ model Ticket {
   attachments     Attachment[]
   slaTargets      SlaTarget[]
   slaEvaluations  SlaEvaluation[]
+  kbLinks         KbTicketLink[]
 
   @@unique([tenantId, publicRef], map: "uq_tickets__tenant_id_public_ref")
   @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
@@ -947,3 +956,139 @@ model NotificationIntent {
   @@index([tenantId, recipientUserId, createdAt], map: "idx_notification_intents__tenant_recipient_created")
   @@map("notification_intents")
 }
+
+enum KbArticleStatus {
+  DRAFT     @map("draft")
+  REVIEW    @map("review")
+  PUBLISHED @map("published")
+  ARCHIVED  @map("archived")
+
+  @@map("kb_article_status")
+}
+
+enum KbArticleVisibility {
+  PUBLIC   @map("public")
+  INTERNAL @map("internal")
+
+  @@map("kb_article_visibility")
+}
+
+model KbCategory {
+  id           String       @id(map: "pk_kb_categories") @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  parentId     String?      @map("parent_id") @db.Uuid
+  name         String       @db.VarChar(200)
+  slug         String       @db.VarChar(200)
+  description  String?      @db.Text
+  icon         String?      @db.VarChar(100)
+  displayOrder Int          @default(0) @map("display_order")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_categories__tenants__tenant_id")
+  parent       KbCategory?  @relation("KbCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull, map: "fk_kb_categories__parents__parent_id")
+  children     KbCategory[] @relation("KbCategoryHierarchy")
+  articles     KbArticle[]
+
+  @@unique([tenantId, slug], map: "uq_kb_categories__tenant_id_slug")
+  @@index([tenantId, parentId], map: "idx_kb_categories__tenant_id_parent_id")
+  @@map("kb_categories")
+}
+
+model KbArticle {
+  id             String              @id(map: "pk_kb_articles") @default(uuid()) @db.Uuid
+  tenantId       String              @map("tenant_id") @db.Uuid
+  categoryId     String              @map("category_id") @db.Uuid
+  authorId       String              @map("author_id") @db.Uuid
+  title          String              @db.VarChar(300)
+  slug           String              @db.VarChar(300)
+  summary        String?             @db.Text
+  content        String              @db.Text
+  status         KbArticleStatus     @default(DRAFT)
+  visibility     KbArticleVisibility @default(PUBLIC)
+  versionNumber  Int                 @default(1) @map("version_number")
+  viewsCount     Int                 @default(0) @map("views_count")
+  helpfulCount   Int                 @default(0) @map("helpful_count")
+  unhelpfulCount Int                 @default(0) @map("unhelpful_count")
+  pinned         Boolean             @default(false)
+  publishedAt    DateTime?           @map("published_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_articles__tenants__tenant_id")
+  category       KbCategory          @relation(fields: [categoryId], references: [id], onDelete: Restrict, map: "fk_kb_articles__categories__category_id")
+  author         User                @relation("KbArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade, map: "fk_kb_articles__users__author_id")
+  versions       KbArticleVersion[]
+  articleTags    KbArticleTag[]
+  ticketLinks    KbTicketLink[]
+
+  @@unique([tenantId, slug], map: "uq_kb_articles__tenant_id_slug")
+  @@index([tenantId, categoryId, status], map: "idx_kb_articles__tenant_category_status")
+  @@index([tenantId, visibility, status], map: "idx_kb_articles__tenant_visibility_status")
+  @@map("kb_articles")
+}
+
+model KbArticleVersion {
+  id            String    @id(map: "pk_kb_article_versions") @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  articleId     String    @map("article_id") @db.Uuid
+  versionNumber Int       @map("version_number")
+  title         String    @db.VarChar(300)
+  summary       String?   @db.Text
+  content       String    @db.Text
+  createdById   String    @map("created_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__tenants__tenant_id")
+  article       KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__articles__article_id")
+  createdBy     User      @relation("KbVersionCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__users__created_by_id")
+
+  @@unique([tenantId, articleId, versionNumber], map: "uq_kb_article_versions__tenant_article_version")
+  @@index([tenantId, articleId], map: "idx_kb_article_versions__tenant_id_article_id")
+  @@map("kb_article_versions")
+}
+
+model KbTag {
+  id          String         @id(map: "pk_kb_tags") @default(uuid()) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  name        String         @db.VarChar(100)
+  slug        String         @db.VarChar(100)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_tags__tenants__tenant_id")
+  articleTags KbArticleTag[]
+
+  @@unique([tenantId, slug], map: "uq_kb_tags__tenant_id_slug")
+  @@map("kb_tags")
+}
+
+model KbArticleTag {
+  articleId String    @map("article_id") @db.Uuid
+  tagId     String    @map("tag_id") @db.Uuid
+
+  article   KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__articles__article_id")
+  tag       KbTag     @relation(fields: [tagId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__tags__tag_id")
+
+  @@id([articleId, tagId], map: "pk_kb_article_tags")
+  @@map("kb_article_tags")
+}
+
+model KbTicketLink {
+  id          String    @id(map: "pk_kb_ticket_links") @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  ticketId    String    @map("ticket_id") @db.Uuid
+  articleId   String    @map("article_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tenants__tenant_id")
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tickets__ticket_id")
+  article     KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__articles__article_id")
+  createdBy   User      @relation("KbTicketLinkCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__users__created_by_id")
+
+  @@unique([tenantId, ticketId, articleId], map: "uq_kb_ticket_links__tenant_ticket_article")
+  @@index([tenantId, ticketId], map: "idx_kb_ticket_links__tenant_ticket")
+  @@index([tenantId, articleId], map: "idx_kb_ticket_links__tenant_article")
+  @@map("kb_ticket_links")
+}
+

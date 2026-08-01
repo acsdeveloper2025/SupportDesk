@@ -1,8 +1,8 @@
-# SupportDesk Enterprise Platform Architecture Book (v1.0)
+# SupportDesk Enterprise Platform Architecture Book (v1.1)
 
 > **Canonical Technical Reference & Architecture Book**  
-> **Release Target**: SupportDesk Platform v1.0 (`v1.0-platform`)  
-> **Scope**: Enterprise SaaS Infrastructure, Ticket Platform, SLA Engine, Notification Dispatcher, and Workflow Runtime Platform.
+> **Release Target**: SupportDesk Platform v1.1 (`v1.1-knowledge-base`)  
+> **Scope**: Enterprise SaaS Infrastructure, Ticket Platform, Knowledge Base Engine, SLA Engine, Notification Dispatcher, and Workflow Runtime Platform.
 
 ---
 
@@ -23,8 +23,8 @@ The system is architected as a **Modular Monolith** with explicit context bounda
   +-------------------+   +---------------+---------------+   +-------------------+
                                           |
   +-------------------+   +---------------+---------------+   +-------------------+
-  | Ticket Platform   |   |   SLA Policy & Calculation    |   | Notification Intent|
-  | Engine (v1)       |   |   Engine (Business Hours)     |   | Pipeline           |
+  | Ticket Platform   |   |   SLA Policy & Calculation    |   | Knowledge Base    |
+  | Engine (v1)       |   |   Engine (Business Hours)     |   | Engine (v1)       |
   +-------------------+   +---------------+---------------+   +-------------------+
                                           |
 +-----------------------------------------+-----------------------------------------+
@@ -75,7 +75,7 @@ The system is architected as a **Modular Monolith** with explicit context bounda
 ### 3.2 RBAC & Multi-Tenancy Module
 
 - **Tenant Context**: Injected via request header (`X-Tenant-ID`) or sub-domain lookup, validated at the API trust boundary.
-- **Permission Matrix**: Granular permission checks (`tickets:create`, `tickets:update`, `comments:create_public`, `workflows:publish`, `outbox:replay`).
+- **Permission Matrix**: Granular permission checks (`tickets:create`, `tickets:update`, `comments:create_public`, `kb.article.publish`, `workflows:publish`, `outbox:replay`).
 
 ### 3.3 Ticket Platform Engine
 
@@ -83,12 +83,17 @@ The system is architected as a **Modular Monolith** with explicit context bounda
 - **Concurrency**: Optimistic concurrency control using `version` column increments on updates.
 - **Comments & Attachments**: Public and internal comment streams; attachment metadata linked to secure storage providers.
 
-### 3.4 SLA Engine
+### 3.4 Knowledge Base Module (v1)
+
+- **Capabilities**: Category tree hierarchy, article authoring with draft/published/archived state machine (`KbArticleStatus`), immutable version snapshots (`KbArticleVersion`), internal vs. public visibility (`KbArticleVisibility`), tagging system, full-text search, article-ticket linking, and helpfulness feedback tracking.
+- **Outbox Integration**: Publishes `kb.article.published` events for workflow dispatcher triggers and external integrations.
+
+### 3.5 SLA Engine
 
 - **Target Tracking**: `FIRST_RESPONSE` and `RESOLUTION` time targets calculated based on SLA policy configurations.
 - **Business Hours Support**: Automatically pauses calculation during out-of-office hours and holidays.
 
-### 3.5 Workflow Runtime & Transactional Outbox Platform
+### 3.6 Workflow Runtime & Transactional Outbox Platform
 
 - **Outbox Publisher**: Atomic insertion of domain events into `outbox_events` within the entity transaction.
 - **Runtime Dispatcher**: Polling worker using `SELECT ... FOR UPDATE SKIP LOCKED` for concurrent, conflict-free event processing across API nodes.
@@ -110,6 +115,7 @@ The schema uses PostgreSQL with UUID primary keys and strict foreign key relatio
 - `tenants`: Root organizational tenant boundary.
 - `users`, `roles`, `user_roles`: Multi-tenant user identity and authorization assignments.
 - `tickets`, `comments`, `attachments`: Core ticket entity aggregate.
+- `kb_categories`, `kb_articles`, `kb_article_versions`, `kb_tags`, `kb_article_tags`, `kb_ticket_links`: Knowledge base hierarchy, versioning, tagging, and ticket linking.
 - `sla_policy_versions`, `ticket_sla_targets`: SLA policy definitions and runtime target trackers.
 - `workflows`, `workflow_versions`, `workflow_executions`, `workflow_action_attempts`: Workflow definition and runtime execution logs.
 - `outbox_events`: Transactional outbox event stream.
@@ -120,7 +126,7 @@ The schema uses PostgreSQL with UUID primary keys and strict foreign key relatio
 ## 5. Security Model & API Standards
 
 - **RESTful Conventions**: Clean REST resources with versioned paths (`/api/v1/...`).
-- **OpenAPI 3.0 Documentation**: Fully annotated endpoints available via Swagger UI.
+- **OpenAPI 3.0 Documentation**: Fully annotated endpoints available via Swagger UI (`kb-categories`, `kb-articles`, `tickets`, `workflows`).
 - **Standardized Error Payload**:
   ```json
   {
@@ -138,10 +144,10 @@ The schema uses PostgreSQL with UUID primary keys and strict foreign key relatio
 
 - **Migration Safety**: Zero-downtime database migrations with backward-compatible schema changes.
 - **Quality Gates**:
-  - Pre-commit Husky hooks verifying ESLint, Prettier, and TypeScript compilation.
-  - Integration testing with real PostgreSQL database (`supportdesk_migrate_verify`).
-  - Fuzz & concurrency verification for outbox queue processing.
-- **Git Release Tag**: `v1.0-platform`
+  - Pre-commit hooks verifying Prettier formatting, ESLint rules, and TypeScript compilation.
+  - Integration testing with real PostgreSQL database (`supportdesk-postgres`).
+  - Outbox queue processing & multi-tenant isolation negative test coverage.
+- **Git Release Tag**: `v1.1-knowledge-base`
 
 ---
 

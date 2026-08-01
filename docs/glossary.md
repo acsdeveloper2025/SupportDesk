@@ -33,6 +33,11 @@ These terms are normative. Singular capitalized forms identify domain concepts.
 | Operator Elevation             | A time-bound, audited grant allowing a Platform Operator to access a Tenant-scoped operational or content path.                            |
 | Queue                          | A saved or computed Ticket list used for triage, assignment, and work prioritization.                                                      |
 | View                           | A user- or Tenant-configured presentation of filtered and sorted resources.                                                                |
+| Knowledge Base                 | A tenant-scoped repository of categories, articles, version history, and tags for self-service help and agent documentation.               |
+| KB Category                    | A hierarchical organizational container for grouping related Knowledge Base articles.                                                      |
+| KB Article                     | A rich text / markdown document supporting draft, review, published, and archived states, with public or internal visibility.              |
+| Article Version                | An immutable historical snapshot captured whenever a Knowledge Base article is published.                                                  |
+| KB Ticket Link                 | A tenant-scoped relationship linking a Knowledge Base article to a Ticket for resolution tracking.                                         |
 | Personal data                  | Information relating to an identified or identifiable natural person.                                                                      |
 | Recovery point objective (RPO) | Maximum acceptable data-loss window.                                                                                                       |
 | Recovery time objective (RTO)  | Maximum acceptable restoration time.                                                                                                       |
