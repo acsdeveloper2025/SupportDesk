@@ -16,6 +16,7 @@ import {
   TicketConcurrencyException,
   type TicketProps,
 } from "./domain/ticket.aggregate";
+import { buildTicketSearchOrClause } from "./ticket-search.builder";
 
 export interface TicketFilters {
   status?: TicketStatus[];
@@ -31,6 +32,16 @@ export interface TicketFilters {
   updatedBefore?: string;
   dueAfter?: string;
   dueBefore?: string;
+  /** Case-insensitive partial match across publicRef/title/description/requester. */
+  q?: string;
+  /** When set, require at least one (or zero) non-deleted attachment. */
+  hasAttachments?: boolean;
+  /** When set, require at least one (or zero) non-deleted comment. */
+  hasComments?: boolean;
+  /** OR filter used by OWN-scoped list/search access. */
+  requesterOrAssigneeUserId?: string;
+  /** GROUP-scoped list/search access (empty array matches nothing). */
+  assignedGroupIds?: string[];
 }
 
 export interface TicketSort {
@@ -53,37 +64,52 @@ export class TicketsRepository {
     const props = aggregate.toProps();
 
     /**
-     * Wrap the publicRef sequence read and the ticket insert in an
-     * interactive transaction with a SERIALIZABLE isolation level so that
-     * concurrent creates in the same tenant cannot produce duplicate
-     * publicRef values.
+     * Wrap the publicRef sequence read and the ticket insert in a
+     * SERIALIZABLE transaction so concurrent creates cannot duplicate publicRef.
      */
     const created = await this.prisma.$transaction(
       async (tx) => {
-        // Lock: count existing tickets for this tenant inside the transaction
         const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
         const publicRef = `TKT-${count + 1001}`;
 
         return tx.ticket.create({
-          data: {
-            assignedGroupId: props.assignedGroupId,
-            assigneeUserId: props.assigneeUserId,
-            channel: props.channel,
-            closedAt: props.closedAt,
-            description: props.description,
-            dueDate: props.dueDate,
-            id: props.id,
-            priority: props.priority,
-            publicRef,
-            requesterUserId: props.requesterUserId,
-            solvedAt: props.solvedAt,
-            status: props.status,
-            tenantId: props.tenantId,
-            title: props.title,
-            type: props.type,
-            version: props.version,
-          },
+          data: this.toCreateData({ ...props, publicRef }),
         });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    return this.toDomain(created);
+  }
+
+  /**
+   * Atomically persists ticket state and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async createWithAudit(
+    aggregate: TicketAggregate,
+    audit: AuditEventInput,
+  ): Promise<TicketAggregate> {
+    const props = aggregate.toProps();
+
+    const created = await this.prisma.$transaction(
+      async (tx) => {
+        const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
+        const publicRef = `TKT-${count + 1001}`;
+
+        const ticket = await tx.ticket.create({
+          data: this.toCreateData({ ...props, publicRef }),
+        });
+        await tx.auditEvent.create({
+          data: buildAuditEventData({
+            ...audit,
+            metadata: {
+              ...audit.metadata,
+              publicRef,
+            },
+          }),
+        });
+        return ticket;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -116,42 +142,26 @@ export class TicketsRepository {
   }
 
   async update(aggregate: TicketAggregate, expectedVersion: number): Promise<TicketAggregate> {
-    const props = aggregate.toProps();
+    return this.updateWithClient(this.prisma, aggregate, expectedVersion);
+  }
 
-    const updated = await this.prisma.ticket.updateMany({
-      data: {
-        assignedGroupId: props.assignedGroupId,
-        assigneeUserId: props.assigneeUserId,
-        channel: props.channel,
-        closedAt: props.closedAt,
-        description: props.description,
-        dueDate: props.dueDate,
-        priority: props.priority,
-        solvedAt: props.solvedAt,
-        status: props.status,
-        title: props.title,
-        type: props.type,
-        version: props.version,
-      },
-      where: {
-        id: props.id,
-        tenantId: props.tenantId,
-        version: expectedVersion,
-      },
+  /**
+   * Atomically persists a ticket mutation and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async updateWithAudit(
+    aggregate: TicketAggregate,
+    expectedVersion: number,
+    audit: AuditEventInput,
+  ): Promise<TicketAggregate> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await this.updateWithClient(tx, aggregate, expectedVersion);
+      await tx.auditEvent.create({
+        data: buildAuditEventData(audit),
+      });
+      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+      return updated;
     });
-
-    if (updated.count === 0) {
-      const current = await this.findById(props.tenantId, props.id);
-      const currentVersion = current ? current.version : props.version;
-      throw new TicketConcurrencyException(expectedVersion, currentVersion, props.id);
-    }
-
-    const reloaded = await this.findById(props.tenantId, props.id);
-    if (!reloaded) {
-      throw new Error(`Failed to reload updated ticket ${props.id}`);
-    }
-
-    return reloaded;
   }
 
   /**
@@ -228,7 +238,7 @@ export class TicketsRepository {
     return { items, totalRecords };
   }
 
-  private buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
+  buildWhereClause(tenantId: string, filters?: TicketFilters): Prisma.TicketWhereInput {
     const where: Prisma.TicketWhereInput = {
       tenantId,
       deletedAt: null,
@@ -243,6 +253,39 @@ export class TicketsRepository {
     if (filters.assigneeUserId?.length) where.assigneeUserId = { in: filters.assigneeUserId };
     if (filters.requesterUserId?.length) where.requesterUserId = { in: filters.requesterUserId };
     if (filters.assignedGroupId?.length) where.assignedGroupId = { in: filters.assignedGroupId };
+
+    const andConditions: Prisma.TicketWhereInput[] = [];
+
+    const scopeOr = this.buildScopeOrClause(filters);
+    if (scopeOr === "none") {
+      // GROUP-only scope with no memberships → no visible rows.
+      where.id = { in: [] };
+    } else if (scopeOr) {
+      andConditions.push({ OR: scopeOr });
+    }
+
+    if (filters.q?.trim()) {
+      const searchOr = buildTicketSearchOrClause(filters.q);
+      if (searchOr.length > 0) {
+        andConditions.push({ OR: searchOr });
+      }
+    }
+
+    if (filters.hasAttachments === true) {
+      andConditions.push({ attachments: { some: { deletedAt: null } } });
+    } else if (filters.hasAttachments === false) {
+      andConditions.push({ attachments: { none: { deletedAt: null } } });
+    }
+
+    if (filters.hasComments === true) {
+      andConditions.push({ comments: { some: { deletedAt: null } } });
+    } else if (filters.hasComments === false) {
+      andConditions.push({ comments: { none: { deletedAt: null } } });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
 
     if (filters.createdAfter || filters.createdBefore) {
       where.createdAt = {};
@@ -263,6 +306,36 @@ export class TicketsRepository {
     }
 
     return where;
+  }
+
+  private buildScopeOrClause(
+    filters: TicketFilters,
+  ): Prisma.TicketWhereInput[] | "none" | undefined {
+    const hasOwnScope = Boolean(filters.requesterOrAssigneeUserId);
+    const hasGroupScope = filters.assignedGroupIds !== undefined;
+
+    if (!hasOwnScope && !hasGroupScope) {
+      return undefined;
+    }
+
+    const scopeOr: Prisma.TicketWhereInput[] = [];
+
+    if (filters.requesterOrAssigneeUserId) {
+      scopeOr.push(
+        { requesterUserId: filters.requesterOrAssigneeUserId },
+        { assigneeUserId: filters.requesterOrAssigneeUserId },
+      );
+    }
+
+    if (filters.assignedGroupIds && filters.assignedGroupIds.length > 0) {
+      scopeOr.push({ assignedGroupId: { in: filters.assignedGroupIds } });
+    }
+
+    if (scopeOr.length === 0) {
+      return "none";
+    }
+
+    return scopeOr;
   }
 
   /**
@@ -290,6 +363,82 @@ export class TicketsRepository {
     });
 
     return user ?? null;
+  }
+
+  private async updateWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    aggregate: TicketAggregate,
+    expectedVersion: number,
+  ): Promise<TicketAggregate> {
+    const props = aggregate.toProps();
+
+    const updated = await client.ticket.updateMany({
+      data: {
+        assignedGroupId: props.assignedGroupId,
+        assigneeUserId: props.assigneeUserId,
+        channel: props.channel,
+        closedAt: props.closedAt,
+        description: props.description,
+        dueDate: props.dueDate,
+        priority: props.priority,
+        solvedAt: props.solvedAt,
+        status: props.status,
+        title: props.title,
+        type: props.type,
+        version: props.version,
+      },
+      where: {
+        id: props.id,
+        tenantId: props.tenantId,
+        version: expectedVersion,
+      },
+    });
+
+    if (updated.count === 0) {
+      const current = await client.ticket.findFirst({
+        where: {
+          deletedAt: null,
+          id: props.id,
+          tenantId: props.tenantId,
+        },
+      });
+      const currentVersion = current ? current.version : props.version;
+      throw new TicketConcurrencyException(expectedVersion, currentVersion, props.id);
+    }
+
+    const reloaded = await client.ticket.findFirst({
+      where: {
+        deletedAt: null,
+        id: props.id,
+        tenantId: props.tenantId,
+      },
+    });
+    if (!reloaded) {
+      throw new Error(`Failed to reload updated ticket ${props.id}`);
+    }
+
+    return this.toDomain(reloaded);
+  }
+
+  private toCreateData(props: TicketProps) {
+    return {
+      assignedGroupId: props.assignedGroupId,
+      assigneeUserId: props.assigneeUserId,
+      channel: props.channel,
+      closedAt: props.closedAt,
+      description: props.description,
+      dueDate: props.dueDate,
+      id: props.id,
+      priority: props.priority,
+      publicRef: props.publicRef,
+      requesterUserId: props.requesterUserId,
+      solvedAt: props.solvedAt,
+      status: props.status,
+      tenantId: props.tenantId,
+      title: props.title,
+      type: props.type,
+      version: props.version,
+    };
   }
 
   private toDomain(record: PrismaTicket): TicketAggregate {

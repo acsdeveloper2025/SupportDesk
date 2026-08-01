@@ -29,7 +29,9 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
   let unassignTicketMock: ReturnType<typeof vi.fn>;
   let listTicketsMock: ReturnType<typeof vi.fn>;
   let countTicketsMock: ReturnType<typeof vi.fn>;
+  let searchTicketsMock: ReturnType<typeof vi.fn>;
   let canMock: ReturnType<typeof vi.fn>;
+  let resolveListScopeFilterMock: ReturnType<typeof vi.fn>;
 
   const tenantA = "11111111-1111-1111-1111-111111111111";
   const userA = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -107,7 +109,19 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       totalRecords: 1,
     });
     countTicketsMock = vi.fn().mockResolvedValue({ count: 1 });
+    searchTicketsMock = vi.fn().mockResolvedValue({
+      appliedFilters: { q: "screen" },
+      currentPage: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      items: [sampleTicket],
+      pageSize: 20,
+      sort: { field: "createdAt", direction: "desc" },
+      totalPages: 1,
+      totalRecords: 1,
+    });
     canMock = vi.fn().mockResolvedValue(true);
+    resolveListScopeFilterMock = vi.fn().mockResolvedValue(null);
 
     transitionStatusMock = vi.fn().mockResolvedValue(
       // Simulate a ticket in OPEN state after transition
@@ -146,6 +160,7 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       getTicketById: getTicketByIdMock,
       getTicketByPublicRef: getTicketByPublicRefMock,
       listTickets: listTicketsMock,
+      searchTickets: searchTicketsMock,
       transitionStatus: transitionStatusMock,
       unassignTicket: unassignTicketMock,
       updateTicket: updateTicketMock,
@@ -153,6 +168,7 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
 
     rbacService = {
       can: canMock,
+      resolveListScopeFilter: resolveListScopeFilterMock,
     } as unknown as RbacService;
 
     controller = new TicketsController(service, rbacService);
@@ -288,6 +304,72 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       canMock.mockResolvedValueOnce(false);
       const req = createMockRequest();
       await expect(controller.countTickets({}, req)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe("GET /api/v1/tickets/search", () => {
+    it("returns search results when authorized with tenant-wide scope", async () => {
+      const req = createMockRequest();
+      const result = await controller.searchTickets({ q: "screen", status: "NEW" }, req);
+
+      expect(resolveListScopeFilterMock).toHaveBeenCalledWith({
+        permissionKey: "ticket.read",
+        tenantId: tenantA,
+        userId: userA,
+      });
+      expect(searchTicketsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 20,
+          tenantId: tenantA,
+        }),
+      );
+      const searchArg = searchTicketsMock.mock.calls[0]?.[0] as {
+        filters: { q?: string; status?: string[] };
+      };
+      expect(searchArg.filters.q).toBe("screen");
+      expect(searchArg.filters.status).toEqual(["NEW"]);
+      expect(result.items).toHaveLength(1);
+      expect(result.totalRecords).toBe(1);
+    });
+
+    it("applies OWN scope filter from RBAC", async () => {
+      resolveListScopeFilterMock.mockResolvedValueOnce({
+        requesterOrAssigneeUserId: userA,
+      });
+      const req = createMockRequest();
+      await controller.searchTickets({ q: "screen" }, req);
+
+      const searchArg = searchTicketsMock.mock.calls[0]?.[0] as {
+        filters: { q?: string; requesterOrAssigneeUserId?: string };
+      };
+      expect(searchArg.filters.q).toBe("screen");
+      expect(searchArg.filters.requesterOrAssigneeUserId).toBe(userA);
+    });
+
+    it("throws 403 Forbidden when ticket.read scope resolves to denied", async () => {
+      resolveListScopeFilterMock.mockResolvedValueOnce(false);
+      const req = createMockRequest();
+      await expect(controller.searchTickets({ q: "screen" }, req)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("throws 400 Bad Request for invalid search parameters", async () => {
+      const req = createMockRequest();
+      await expect(controller.searchTickets({ sortBy: "relevance" } as never, req)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("throws 400 Bad Request for SQL-injection-like oversized or invalid input safely", async () => {
+      const req = createMockRequest();
+      await expect(
+        controller.searchTickets({ q: "'; DROP TABLE tickets; --" }, req),
+      ).resolves.toBeTruthy();
+      await expect(controller.searchTickets({ page: -1 }, req)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -588,7 +670,7 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("throws 403 Forbidden when ticket.status_change permission is denied", async () => {
+    it("throws 403 Forbidden when ticket.transition permission is denied", async () => {
       canMock.mockResolvedValue(false);
       const req = createMockRequest();
 

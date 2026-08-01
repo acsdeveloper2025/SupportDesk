@@ -27,10 +27,13 @@ describe("Tickets OpenAPI Document", () => {
           provide: TicketsService,
           useValue: {
             assignTicket: () => Promise.resolve({}),
+            countTickets: () => Promise.resolve({ count: 0 }),
             createTicket: () => Promise.resolve({}),
             getTicketById: () => Promise.resolve({}),
             getTicketByPublicRef: () => Promise.resolve({}),
             getTicketTimeline: () => Promise.resolve({ items: [], totalRecords: 0 }),
+            listTickets: () => Promise.resolve({ items: [] }),
+            searchTickets: () => Promise.resolve({ items: [] }),
             transitionStatus: () => Promise.resolve({}),
             unassignTicket: () => Promise.resolve({}),
             updateTicket: () => Promise.resolve({}),
@@ -40,6 +43,7 @@ describe("Tickets OpenAPI Document", () => {
           provide: RbacService,
           useValue: {
             can: () => Promise.resolve(true),
+            resolveListScopeFilter: () => Promise.resolve(null),
           },
         },
       ],
@@ -74,6 +78,7 @@ describe("Tickets OpenAPI Document", () => {
       "/api/v1/tickets/reference/{publicRef}",
       "/api/v1/tickets/reference/{publicRef}/assign",
       "/api/v1/tickets/reference/{publicRef}/status",
+      "/api/v1/tickets/search",
       "/api/v1/tickets/{id}",
       "/api/v1/tickets/{id}/assign",
       "/api/v1/tickets/{id}/status",
@@ -82,6 +87,10 @@ describe("Tickets OpenAPI Document", () => {
     ]);
 
     expect(document.paths["/api/v1/tickets"]?.post?.summary).toBe("Create a ticket");
+    expect(document.paths["/api/v1/tickets"]?.get?.summary).toBe("List tickets");
+    expect(document.paths["/api/v1/tickets/count"]?.get?.summary).toBe("Count tickets");
+    expect(document.paths["/api/v1/tickets/search"]?.get?.summary).toBe("Search tickets");
+    expect(document.paths["/api/v1/tickets/search"]?.get?.parameters?.length).toBeGreaterThan(0);
     expect(document.paths["/api/v1/tickets/{id}"]?.get?.summary).toBe("Get ticket by ID");
     expect(document.paths["/api/v1/tickets/{id}"]?.patch?.summary).toBe("Update ticket by ID");
     expect(document.paths["/api/v1/tickets/{id}/status"]?.post?.summary).toBe(

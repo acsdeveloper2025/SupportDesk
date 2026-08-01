@@ -29,3 +29,9 @@ pnpm-debug.log*
 # Local agent worktrees and SDD scratch
 .worktrees/
 .superpowers/
+
+# Local attachment storage (never serve publicly)
+data/
+# Local agent worktrees and SDD scratch
+.worktrees/
+.superpowers/

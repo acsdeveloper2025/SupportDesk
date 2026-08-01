@@ -41,6 +41,12 @@ echo "==> prisma migrate diff (expect: No difference detected)"
     --shadow-database-url "${SHADOW_URL}"
 )
 
+echo "==> prisma generate (required before schema integration tests)"
+(
+  cd "${API_DIR}"
+  DATABASE_URL="${VERIFY_URL}" pnpm exec prisma generate
+)
+
 echo "==> schema integration tests"
 (
   cd "${API_DIR}"

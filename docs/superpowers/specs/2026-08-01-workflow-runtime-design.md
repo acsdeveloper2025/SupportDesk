@@ -3,7 +3,7 @@
 **Status:** Approved for implementation planning  
 **Date:** 2026-08-01  
 **Issue:** E11-I03 (workflow execution engine)  
-**Related:** E11-I01 (definition), E11-I02 (validation & governance), E08-I01 (notification intents, minimal in-scope), ADR-0007 (outbox deferral lifted by this design), decision-log ADR-004  
+**Related:** E11-I01 (definition), E11-I02 (validation & governance), E08-I01 (notification intents, minimal in-scope), ADR-0007 (outbox deferral lifted by this design), decision-log ADR-004, ADR-0012  
 **Depends on:** E11-I02 merged; Ticket Module + SLA engine baselines
 
 ## Goal
@@ -243,8 +243,8 @@ Fulfills decision-log **ADR-004**. Implementation **lifts ADR-0007 deferral** (d
 
 ## Documentation updates (same implementation PR)
 
-- `docs/adr/ADR-0009.md` (this decision set) + `docs/adr/README.md` + `docs/decision-log.md`
-- Note ADR-0007 deferral lifted by ADR-0009
+- `docs/adr/ADR-0012.md` (this decision set) + `docs/adr/README.md` + `docs/decision-log.md`
+- Note ADR-0007 deferral lifted by ADR-0012
 - `docs/database/TABLES.md` / `INDEXING.md` as needed for outbox/execution columns
 - `docs/api/admin.md` outbox endpoints as implemented
 - `docs/audit-events.md` — `workflow.execution_failed`, depth-capped, etc.

@@ -48,6 +48,33 @@ export class CommentsRepository {
     return this.mapToDomain(created);
   }
 
+  /**
+   * Atomically persists comment state and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async createWithAudit(entity: CommentEntity, audit: AuditEventInput): Promise<CommentEntity> {
+    const created = await this.prisma.$transaction(async (tx) => {
+      const comment = await tx.comment.create({
+        data: {
+          id: entity.id,
+          tenantId: entity.tenantId,
+          ticketId: entity.ticketId,
+          authorUserId: entity.authorUserId,
+          body: entity.body,
+          visibility: entity.visibility,
+          version: entity.version,
+        },
+      });
+      await tx.auditEvent.create({
+        data: buildAuditEventData(audit),
+      });
+      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+      return comment;
+    });
+
+    return this.mapToDomain(created);
+  }
+
   async findById(tenantId: string, id: string): Promise<CommentEntity | null> {
     const record = await this.prisma.comment.findFirst({
       where: { id, tenantId, deletedAt: null },
@@ -78,7 +105,34 @@ export class CommentsRepository {
   }
 
   async update(entity: CommentEntity, expectedVersion: number): Promise<CommentEntity> {
-    const { count } = await this.prisma.comment.updateMany({
+    return this.updateWithClient(this.prisma, entity, expectedVersion);
+  }
+
+  /**
+   * Atomically persists a comment mutation and its audit event.
+   * Prepared so a transactional outbox insert can join the same transaction later.
+   */
+  async updateWithAudit(
+    entity: CommentEntity,
+    expectedVersion: number,
+    audit: AuditEventInput,
+  ): Promise<CommentEntity> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await this.updateWithClient(tx, entity, expectedVersion);
+      await tx.auditEvent.create({
+        data: buildAuditEventData(audit),
+      });
+      // Future: await tx.outboxMessage.create({ ... }) in the same transaction.
+      return updated;
+    });
+  }
+
+  private async updateWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    entity: CommentEntity,
+    expectedVersion: number,
+  ): Promise<CommentEntity> {
+    const { count } = await client.comment.updateMany({
       where: {
         id: entity.id,
         tenantId: entity.tenantId,
@@ -94,8 +148,7 @@ export class CommentsRepository {
     });
 
     if (count === 0) {
-      // Find what went wrong
-      const existing = await this.prisma.comment.findUnique({ where: { id: entity.id } });
+      const existing = await client.comment.findUnique({ where: { id: entity.id } });
       if (!existing || existing.tenantId !== entity.tenantId || existing.deletedAt) {
         throw new Error("Comment not found or deleted");
       }
@@ -105,7 +158,7 @@ export class CommentsRepository {
       throw new Error("Comment update failed");
     }
 
-    return entity; // assuming mutation holds the latest state, but typically we return mapped. For entity, returning entity is fine.
+    return entity;
   }
 
   private buildWhereClause(

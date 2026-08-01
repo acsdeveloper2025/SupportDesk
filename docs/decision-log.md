@@ -53,7 +53,7 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 - **Decision:** Apply the MIT License to current repository content.
 - **Validation:** Legal review before external distribution or M1, whichever occurs first; see OQ-13.
 
-## Detailed ADR folder cross-references (Ticket Module hardening)
+## Detailed ADR folder cross-references (Ticket Module hardening & Workflows)
 
 | File ADR                           | Summary                                               | Status                                       |
 | ---------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
@@ -61,7 +61,38 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 | [adr/ADR-0006.md](adr/ADR-0006.md) | Offset pagination for Ticket Module v1 lists          | Accepted                                     |
 | [adr/ADR-0007.md](adr/ADR-0007.md) | Defer transactional outbox until automation consumers | Accepted (does not supersede ADR-004 target) |
 | [adr/ADR-0008.md](adr/ADR-0008.md) | Reject `assignedGroupId` until Organizations/Groups   | Accepted                                     |
-| [adr/ADR-0009.md](adr/ADR-0009.md) | Workflow runtime with shared transactional outbox     | Accepted (lifts ADR-0007 deferral timing)    |
+| [adr/ADR-0009.md](adr/ADR-0009.md) | MVP SLA calendar and timer semantics (OQ-08)          | Accepted                                     |
+| [adr/ADR-0010.md](adr/ADR-0010.md) | Workflow definition MVP (E11-I01)                     | Accepted                                     |
+| [adr/ADR-0011.md](adr/ADR-0011.md) | Workflow validation & governance (E11-I02)            | Accepted                                     |
+| [adr/ADR-0012.md](adr/ADR-0012.md) | Workflow runtime with shared transactional outbox     | Accepted (lifts ADR-0007 deferral timing)    |
+
+## ADR-009 — MVP SLA calendar and timer semantics (OQ-08)
+
+- **Status:** Accepted
+- **Context:** OQ-08 blocked deterministic SLA Targets; multi-region calendars and holiday feeds remain deferred.
+- **Decision:** One published `default` Business Schedule per Tenant (IANA TZ, weekly windows, explicit holiday dates); pause/reopen and sync breach rules per [adr/ADR-0009.md](adr/ADR-0009.md). Use pinned `luxon` for DST-aware business-time arithmetic.
+- **Consequences:** SLA engine can ship without workers or multi-calendar admin; remaining calendar complexity stays deferred.
+
+## ADR-010 — Workflow definition MVP (E11-I01)
+
+- **Status:** Accepted
+- **Context:** Workflow automation requires versioned definitions before runtime execution; deep validation and dispatch are split across E11-I02 and E11-I03.
+- **Decision:** JSON-on-version storage with full declared trigger/condition/action catalog; draft/published/retired lifecycle; pause vs soft-delete semantics; AND conditions; structural validation only; no execution engine in E11-I01 per [adr/ADR-0010.md](adr/ADR-0010.md).
+- **Consequences:** Definition APIs and audit events ship under `/api/v1/workflows`; execution and deep publish validation remain explicitly deferred.
+
+## ADR-011 — Workflow validation & governance (E11-I02)
+
+- **Status:** Accepted
+- **Context:** Publish needed fail-closed semantic/reference/cycle checks and governance APIs without runtime execution.
+- **Decision:** `schemaVersion: 1` validation reports; sorted issues; warnings non-blocking; group refs rejected; user refs tenant-active; limits + cycle-risk; validate/clone-draft/diff APIs; snapshot diffs per [adr/ADR-0011.md](adr/ADR-0011.md).
+- **Consequences:** Invalid drafts cannot publish; dry-run validate available; execution/outbox remain E11-I03.
+
+## ADR-012 — Workflow runtime with shared transactional outbox (E11-I03)
+
+- **Status:** Accepted
+- **Context:** Decision-log ADR-004 requires atomic domain + audit + outbox commits and at-least-once async processing. E11-I03 must run deterministic automation from domain events without coupling API latency to workflow work.
+- **Decision:** Implement shared transactional outbox and worker dispatcher in E11-I03 per [adr/ADR-0012.md](adr/ADR-0012.md); single action transactions; `automationDepth` recursion cap (hard max 3); bounded retries then dead-letter; notification intents without provider send; in-process SLA calls.
+- **Consequences:** API latency uncoupled from workflow execution; outbox claimer required; ADR-0007 outbox deferral lifted.
 
 ## Open questions
 
@@ -74,12 +105,17 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 | OQ-05 | What availability objectives, maintenance exclusions, support tiers, and contractual remedies are offered?                   | Product/Operations      | M3                  |
 | OQ-06 | What retention, deletion, legal-hold, audit, backup, and subject-request periods apply by data class/region?                 | Privacy/Legal           | M1                  |
 | OQ-07 | What attachment size/count/type limits, aggregate quotas, and scan/archive requirements apply?                               | Product/Security        | M2                  |
-| OQ-08 | Which SLA calendars, time zones, holiday sources, pause/reopen policies, and contractual semantics are supported?            | Product                 | M3                  |
 | OQ-09 | Which inbound/outbound email providers, regions, dedicated domains/IPs, webhook guarantees, and failover strategy apply?     | Architecture/Operations | M2                  |
 | OQ-10 | Which notification deliverability, localization, branding, unsubscribe, and provider portability requirements apply?         | Product/Legal           | M2                  |
 | OQ-11 | Which search technology, languages, analyzers, encryption, residency, deletion latency, and relevance controls are required? | Architecture/Product    | M4                  |
 | OQ-12 | Which deployment cloud, regions, managed services, Kubernetes/serverless constraints, and portability goals apply?           | Architecture/Operations | M1                  |
 | OQ-13 | Is MIT the approved project and future product-source license; are commercial/third-party notices required?                  | Legal                   | Before distribution |
 | OQ-14 | What contractual RPO/RTO apply per failure mode, region, and service tier?                                                   | Product/Operations      | M4                  |
+
+### Resolved questions
+
+| ID    | Resolution                                                                                                                                    | Evidence                                    |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| OQ-08 | MVP: one `default` schedule per Tenant; weekly hours + explicit holidays; sync breach; pause/reopen rules in ADR-0009. Multi-region deferred. | [adr/ADR-0009.md](adr/ADR-0009.md), ADR-009 |
 
 Resolution requires evidence, decision owner approval, an ADR entry (accepted or rejected alternatives), updates to affected requirements/controls/tests/milestones, and removal of any superseded assumption.

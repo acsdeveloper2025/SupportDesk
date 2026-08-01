@@ -48,15 +48,15 @@ Scopes: `own`, `organization`, `group`, `tenant`, `platform`.
 | `ticket.transition`              | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped | Own limited | Approval |       N |         N |
 | `ticket.priority.update`         | group/tenant                  |                   E |            Y |           Scoped |       Y |      Scoped |           N | Approval |       N |         N |
 | `ticket.link`                    | group/tenant                  |                   E |            Y |           Scoped |  Scoped |      Scoped |           N |        N |       N |         N |
-| `comment.public.create`          | own/group/tenant              |                   E |            Y |                Y |       Y |           Y |         Own |        N |       N |         N |
-| `comment.internal.create`        | group/tenant                  |                   E |            Y |           Scoped |       Y |           Y |           N |        N |       N |         N |
-| `comment.read`                   | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped |  Own public |   Scoped |  Scoped |    Scoped |
-| `comment.update`                 | own/group/tenant              |                   E |            Y |           Scoped |  Scoped | Own limited | Own limited | Approval |       N |         N |
-| `comment.delete`                 | tenant                        |                   E |            Y |                N |       N |           N |           N | Approval |       N |         N |
-| `attachment.create`              | own/group/tenant              |                   E |            Y |                Y |       Y |           Y |         Own |        N |       N |         N |
-| `attachment.read`                | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped |  Own public |   Scoped |  Scoped |    Scoped |
-| `attachment.download`            | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped |  Own public |   Scoped |  Scoped |    Scoped |
-| `attachment.delete`              | tenant                        |                   E |            Y |           Scoped |       N | Own limited | Own limited | Approval |       N |         N |
+| `ticket.comment.public.create`   | own/group/tenant              |                   E |            Y |                Y |       Y |           Y |         Own |        N |       N |         N |
+| `ticket.comment.internal.create` | group/tenant                  |                   E |            Y |           Scoped |       Y |           Y |           N |        N |       N |         N |
+| `ticket.comment.read`            | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped |  Own public |   Scoped |  Scoped |    Scoped |
+| `ticket.comment.internal.read`   | group/tenant                  |                   E |            Y |           Scoped |  Scoped |      Scoped |           N |   Scoped |  Scoped |    Scoped |
+| `ticket.comment.update`          | own/group/tenant              |                   E |            Y |           Scoped |  Scoped | Own limited | Own limited | Approval |       N |         N |
+| `ticket.comment.delete`          | tenant                        |                   E |            Y |                N |       N |           N |           N | Approval |       N |         N |
+| `ticket.attachment.create`       | own/group/tenant              |                   E |            Y |                Y |       Y |           Y |         Own |        N |       N |         N |
+| `ticket.attachment.read`         | own/group/tenant              |                   E |            Y |           Scoped |  Scoped |      Scoped |  Own public |   Scoped |  Scoped |    Scoped |
+| `ticket.attachment.delete`       | tenant                        |                   E |            Y |           Scoped |       N | Own limited | Own limited | Approval |       N |         N |
 | `workflow.read`                  | tenant                        |                   E |            Y |           Scoped |       Y |           N |           N |        Y |       Y |         Y |
 | `workflow.create`                | tenant                        |                   E |            Y |                N |       N |           N |           N | Approval |       N |         N |
 | `workflow.update`                | tenant                        |                   E |            Y |                N |       N |           N |           N | Approval |       N |         N |
@@ -91,4 +91,10 @@ Legend: `Y` allowed by default; `N` denied; `Scoped` limited by organization/gro
 
 ## Implementation status
 
-M2.10 seeds and evaluates only the framework permissions for tenant metadata, settings, users/memberships, roles, permission discovery, authentication/authorization audit access, platform health, and platform elevation. All other rows in this matrix remain future contracts and are not seeded or treated as implemented permissions.
+Canonical permission keys use `resource[.subresource].action` with no aliases. Implemented and seeded permissions:
+
+- Framework (M2.10): tenant, settings, user, role, permission, audit, and platform elevation keys.
+- Ticketing (E05): `ticket.create`, `ticket.read`, `ticket.update`, `ticket.assign`, `ticket.transition`, `ticket.comment.public.create`, `ticket.comment.internal.create`, `ticket.comment.read`, `ticket.comment.internal.read`, `ticket.comment.update`, `ticket.comment.delete`, `ticket.attachment.create`, `ticket.attachment.read`, `ticket.attachment.delete`.
+- SLA (Issue #26 / E10): `sla.read`, `sla.update` (business schedules, SLA policies, ticket SLA status, active timers, basic metrics).
+
+Scope evaluation for `own`, `group`, and `tenant` is performed in the RBAC authorization layer when a resource context is supplied. Remaining matrix rows stay documentation-only until their owning milestones implement them.
