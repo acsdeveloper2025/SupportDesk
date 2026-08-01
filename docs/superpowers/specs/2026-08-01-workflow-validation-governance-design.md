@@ -1,10 +1,19 @@
 # E11-I02 — Workflow Validation & Governance
 
-**Status:** Approved for implementation planning  
+**Status:** Approved for implementation  
 **Date:** 2026-08-01  
 **Issue:** E11-I02 (Workflow validation & governance)  
 **Related:** E11-I01 (definition & versioning — complete), E11-I03 (runtime execution — deferred), E11-I04 (admin UI — deferred)  
 **Depends on:** ADR-0010 (workflow definition MVP), ADR-0008 (reject group assignment), ticket lifecycle matrix, E11-I01 module on `feat/e11-i01-workflow-definition`
+
+### Review amendments (2026-08-01)
+
+1. `WorkflowValidationReport` includes `schemaVersion: 1` for forward-compatible clients.
+2. Validation issues are always sorted by `path`, then `severity`, then `code` (deterministic tests).
+3. Diff response includes `fromVersion`, `toVersion`, `generatedAt` (UTC ISO), and `changeCount`.
+4. Warnings are informational only; **only errors** block publishing (`valid === errors.length === 0`).
+5. Version compare diffs **immutable version JSON snapshots** as stored (triggers/conditions/actions), not reconstructed live DB state.
+6. Do not expand scope further; stop for review before E11-I03 (runtime + outbox).
 
 ## Goal
 
@@ -66,9 +75,10 @@ interface WorkflowValidationIssue {
 }
 
 interface WorkflowValidationReport {
-  valid: boolean;         // true iff zero errors (warnings allowed)
-  errors: WorkflowValidationIssue[];
-  warnings: WorkflowValidationIssue[];
+  schemaVersion: 1;
+  valid: boolean;         // true iff errors.length === 0 (warnings never block)
+  errors: WorkflowValidationIssue[];   // sorted by path, severity, code
+  warnings: WorkflowValidationIssue[]; // sorted by path, severity, code; informational only
 }
 ```
 
@@ -133,12 +143,16 @@ Add only these endpoints (document in `docs/api/workflows.md`):
 
 Existing I01 routes remain; publish gains the validation gate. Version history remains available via `GET /workflows/{id}` (no separate history list unless already documented).
 
-### Diff response (minimal)
+### Diff response
+
+Diff **immutable JSON snapshots** from the two `workflow_versions` rows (`triggers`, `conditions`, `actions` as stored). Do not reconstruct definitions from other tables.
 
 ```ts
 {
   fromVersion: number;
   toVersion: number;
+  generatedAt: string; // UTC ISO-8601
+  changeCount: number; // changes.length
   changes: Array<{ path: string; change: "added" | "removed" | "changed"; before?: unknown; after?: unknown }>;
 }
 ```
