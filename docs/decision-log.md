@@ -61,6 +61,7 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 | [adr/ADR-0006.md](adr/ADR-0006.md) | Offset pagination for Ticket Module v1 lists          | Accepted                                     |
 | [adr/ADR-0007.md](adr/ADR-0007.md) | Defer transactional outbox until automation consumers | Accepted (does not supersede ADR-004 target) |
 | [adr/ADR-0008.md](adr/ADR-0008.md) | Reject `assignedGroupId` until Organizations/Groups   | Accepted                                     |
+| [adr/ADR-0009.md](adr/ADR-0009.md) | Workflow runtime with shared transactional outbox     | Accepted (lifts ADR-0007 deferral timing)    |
 
 ## Open questions
 

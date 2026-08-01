@@ -16,6 +16,7 @@ The original decision log uses `ADR-001` style IDs from the first documentation 
 | [ADR-0006](ADR-0006.md) | Ticket Module v1 offset pagination                          |
 | [ADR-0007](ADR-0007.md) | Defer transactional outbox until automation consumers exist |
 | [ADR-0008](ADR-0008.md) | Reject group assignment until Organizations/Groups exist    |
+| [ADR-0009](ADR-0009.md) | Workflow runtime with shared transactional outbox           |
 
 ## Status values
 
