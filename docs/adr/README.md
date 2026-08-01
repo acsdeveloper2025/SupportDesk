@@ -18,6 +18,7 @@ The original decision log uses `ADR-001` style IDs from the first documentation 
 | [ADR-0008](ADR-0008.md) | Reject group assignment until Organizations/Groups exist    |
 | [ADR-0009](ADR-0009.md) | MVP SLA calendar and timer semantics (OQ-08)                |
 | [ADR-0010](ADR-0010.md) | Workflow definition MVP (E11-I01)                           |
+| [ADR-0011](ADR-0011.md) | Workflow validation & governance (E11-I02)                  |
 
 ## Status values
 

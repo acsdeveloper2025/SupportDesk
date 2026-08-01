@@ -11,13 +11,15 @@ import {
 import { ConfigPublicationState, type Prisma } from "@prisma/client";
 
 import { RbacService } from "../rbac/rbac.service";
-import {
-  assertValidWorkflowDefinition,
-  type WorkflowAction,
-  type WorkflowCondition,
-  type WorkflowDefinition,
-  type WorkflowTrigger,
+import type {
+  WorkflowAction,
+  WorkflowCondition,
+  WorkflowDefinition,
+  WorkflowTrigger,
 } from "./domain/workflow-definition";
+import { diffWorkflowSnapshots } from "./domain/workflow-diff";
+import type { WorkflowValidationReport } from "./domain/workflow-validation";
+import { WorkflowValidationService } from "./workflow-validation.service";
 import { WorkflowsRepository } from "./workflows.repository";
 
 export interface CreateWorkflowInput {
@@ -81,6 +83,8 @@ export class WorkflowsService {
   constructor(
     @Inject(WorkflowsRepository) private readonly repository: WorkflowsRepository,
     @Inject(RbacService) private readonly rbacService: RbacService,
+    @Inject(WorkflowValidationService)
+    private readonly validationService: WorkflowValidationService,
   ) {}
 
   async list(tenantId: string, actorUserId: string): Promise<WorkflowResponse[]> {
@@ -110,7 +114,7 @@ export class WorkflowsService {
       conditions: input.conditions ?? [],
       triggers: input.triggers,
     };
-    this.validateDefinition(definition);
+    this.assertDraftDefinition(definition);
 
     const existingKey = await this.repository.findByKey(input.tenantId, key);
     if (existingKey) {
@@ -184,7 +188,7 @@ export class WorkflowsService {
       conditions: input.conditions ?? (baseVersion.conditions as unknown as WorkflowCondition[]),
       triggers: input.triggers ?? (baseVersion.triggers as unknown as WorkflowTrigger[]),
     };
-    this.validateDefinition(mergedDefinition);
+    this.assertDraftDefinition(mergedDefinition);
 
     const nextPriority = input.priority ?? workflow.priority;
     if (input.priority !== undefined) {
@@ -268,6 +272,30 @@ export class WorkflowsService {
       throw new BadRequestException("No draft workflow version to publish");
     }
 
+    const definition = this.definitionFromVersion(draft);
+    const report = await this.validationService.validateForPublish(tenantId, definition);
+    if (!report.valid) {
+      await this.repository.createAudit({
+        action: "workflow.published",
+        actorUserId,
+        correlationId,
+        metadata: {
+          errorCodes: report.errors.map((error) => error.code),
+          errorCount: report.errors.length,
+          workflowId,
+        },
+        outcome: "FAILURE",
+        targetId: workflowId,
+        targetType: "workflow",
+        tenantId,
+      });
+      throw new BadRequestException({
+        code: "VALIDATION_FAILED",
+        message: "Workflow validation failed",
+        report,
+      });
+    }
+
     const now = new Date();
     await this.repository.client.$transaction(async (tx) => {
       await tx.workflowVersion.updateMany({
@@ -308,6 +336,138 @@ export class WorkflowsService {
 
     const published = await this.requireWorkflow(tenantId, workflowId);
     return this.mapWorkflowResponse(published);
+  }
+
+  async validate(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    correlationId?: string,
+    definitionOverride?: WorkflowDefinition,
+  ): Promise<WorkflowValidationReport> {
+    await this.requirePermission(tenantId, actorUserId, "workflow.read");
+    const workflow = await this.requireWorkflow(tenantId, workflowId);
+
+    let definition = definitionOverride;
+    if (!definition) {
+      const draft = workflow.versions.find(
+        (version) => version.state === ConfigPublicationState.DRAFT,
+      );
+      if (!draft) {
+        throw new BadRequestException("No draft workflow version to validate");
+      }
+      definition = this.definitionFromVersion(draft);
+    }
+
+    const report = await this.validationService.validateForPublish(tenantId, definition);
+    await this.repository.createAudit({
+      action: "workflow.validated",
+      actorUserId,
+      correlationId,
+      metadata: {
+        errorCount: report.errors.length,
+        valid: report.valid,
+        warningCount: report.warnings.length,
+        workflowId,
+      },
+      outcome: report.valid ? "SUCCESS" : "FAILURE",
+      targetId: workflowId,
+      targetType: "workflow",
+      tenantId,
+    });
+    return report;
+  }
+
+  async cloneDraft(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    fromVersionNumber?: number,
+    correlationId?: string,
+  ): Promise<WorkflowResponse> {
+    await this.requirePermission(tenantId, actorUserId, "workflow.update");
+    const workflow = await this.requireWorkflow(tenantId, workflowId);
+
+    const existingDraft = workflow.versions.find(
+      (version) => version.state === ConfigPublicationState.DRAFT,
+    );
+    if (existingDraft) {
+      throw new ConflictException("Draft already exists; update or publish it first");
+    }
+
+    const source = fromVersionNumber
+      ? workflow.versions.find((version) => version.versionNumber === fromVersionNumber)
+      : (workflow.versions.find((version) => version.state === ConfigPublicationState.PUBLISHED) ??
+        workflow.versions[0]);
+
+    if (!source) {
+      throw new NotFoundException("Source workflow version not found");
+    }
+
+    const nextVersion =
+      Math.max(...workflow.versions.map((version) => version.versionNumber), 0) + 1;
+
+    await this.repository.client.workflowVersion.create({
+      data: {
+        actions: source.actions as Prisma.InputJsonValue,
+        conditions: source.conditions as Prisma.InputJsonValue,
+        id: randomUUID(),
+        state: ConfigPublicationState.DRAFT,
+        tenantId,
+        triggers: source.triggers as Prisma.InputJsonValue,
+        versionNumber: nextVersion,
+        workflowId,
+      },
+    });
+
+    await this.repository.createAudit({
+      action: "workflow.draft_cloned",
+      actorUserId,
+      correlationId,
+      metadata: {
+        fromVersion: source.versionNumber,
+        toVersion: nextVersion,
+        workflowId,
+      },
+      outcome: "SUCCESS",
+      targetId: workflowId,
+      targetType: "workflow",
+      tenantId,
+    });
+
+    const updated = await this.requireWorkflow(tenantId, workflowId);
+    return this.mapWorkflowResponse(updated);
+  }
+
+  async diffVersions(
+    tenantId: string,
+    workflowId: string,
+    actorUserId: string,
+    fromVersion: number,
+    toVersion: number,
+  ) {
+    await this.requirePermission(tenantId, actorUserId, "workflow.read");
+    const workflow = await this.requireWorkflow(tenantId, workflowId);
+    const from = workflow.versions.find((version) => version.versionNumber === fromVersion);
+    const to = workflow.versions.find((version) => version.versionNumber === toVersion);
+    if (!from || !to) {
+      throw new NotFoundException("One or both workflow versions were not found");
+    }
+
+    return diffWorkflowSnapshots(
+      fromVersion,
+      toVersion,
+      {
+        actions: from.actions,
+        conditions: from.conditions,
+        triggers: from.triggers,
+      },
+      {
+        actions: to.actions,
+        conditions: to.conditions,
+        triggers: to.triggers,
+      },
+    );
   }
 
   async pause(
@@ -458,14 +618,26 @@ export class WorkflowsService {
     return workflow;
   }
 
-  private validateDefinition(definition: WorkflowDefinition): void {
-    try {
-      assertValidWorkflowDefinition(definition);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new BadRequestException(error.message);
-      }
-      throw error;
+  private definitionFromVersion(version: {
+    actions: unknown;
+    conditions: unknown;
+    triggers: unknown;
+  }): WorkflowDefinition {
+    return {
+      actions: version.actions as WorkflowAction[],
+      conditions: version.conditions as WorkflowCondition[],
+      triggers: version.triggers as WorkflowTrigger[],
+    };
+  }
+
+  private assertDraftDefinition(definition: WorkflowDefinition): void {
+    const report = this.validationService.validateDraft(definition);
+    if (!report.valid) {
+      throw new BadRequestException({
+        code: "VALIDATION_FAILED",
+        message: "Workflow validation failed",
+        report,
+      });
     }
   }
 

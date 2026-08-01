@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -61,6 +62,30 @@ export class WorkflowsController {
     return this.workflowsService.list(context.tenantId, context.userId);
   }
 
+  @Get(":workflowId/versions/:fromVersion/diff/:toVersion")
+  @ApiOperation({ summary: "Diff two immutable workflow versions" })
+  @ApiOkResponse({ description: "Structured version diff." })
+  async diffVersions(
+    @Param("workflowId") workflowId: string,
+    @Param("fromVersion") fromVersion: string,
+    @Param("toVersion") toVersion: string,
+    @Req() request: Request,
+  ) {
+    const context = this.requireAuth(request);
+    const from = Number(fromVersion);
+    const to = Number(toVersion);
+    if (!Number.isInteger(from) || from <= 0 || !Number.isInteger(to) || to <= 0) {
+      throw new BadRequestException("fromVersion and toVersion must be positive integers");
+    }
+    return this.workflowsService.diffVersions(
+      context.tenantId,
+      workflowId,
+      context.userId,
+      from,
+      to,
+    );
+  }
+
   @Get(":workflowId")
   @ApiOperation({ summary: "Get a workflow" })
   @ApiOkResponse({ description: "Workflow detail with versions." })
@@ -112,6 +137,53 @@ export class WorkflowsController {
       triggers: optionalArray(raw, "triggers") as WorkflowTrigger[] | undefined,
       workflowId,
     });
+  }
+
+  @Post(":workflowId/validate")
+  @ApiOperation({ summary: "Validate the draft workflow (or body override)" })
+  @ApiOkResponse({ description: "Validation report." })
+  async validate(
+    @Param("workflowId") workflowId: string,
+    @Body() body: Record<string, unknown> | undefined,
+    @Req() request: Request,
+  ) {
+    const context = this.requireAuth(request);
+    const raw = body ?? {};
+    const hasOverride =
+      raw.triggers !== undefined || raw.conditions !== undefined || raw.actions !== undefined;
+    const override = hasOverride
+      ? {
+          actions: requireArray(raw, "actions") as WorkflowAction[],
+          conditions: (optionalArray(raw, "conditions") ?? []) as WorkflowCondition[],
+          triggers: requireArray(raw, "triggers") as WorkflowTrigger[],
+        }
+      : undefined;
+    return this.workflowsService.validate(
+      context.tenantId,
+      workflowId,
+      context.userId,
+      getCorrelationId(request),
+      override,
+    );
+  }
+
+  @Post(":workflowId/clone-draft")
+  @ApiOperation({ summary: "Clone a version into a new draft" })
+  @ApiOkResponse({ description: "Workflow with new draft version." })
+  async cloneDraft(
+    @Param("workflowId") workflowId: string,
+    @Body() body: Record<string, unknown> | undefined,
+    @Req() request: Request,
+  ) {
+    const context = this.requireAuth(request);
+    const raw = body ?? {};
+    return this.workflowsService.cloneDraft(
+      context.tenantId,
+      workflowId,
+      context.userId,
+      optionalPositiveInt(raw, "fromVersion"),
+      getCorrelationId(request),
+    );
   }
 
   @Post(":workflowId/publish")

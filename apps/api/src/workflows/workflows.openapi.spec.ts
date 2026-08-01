@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 describe("Workflow OpenAPI documentation coverage", () => {
   const apiDoc = readFileSync(join(process.cwd(), "../../docs/api/workflows.md"), "utf8");
 
-  it("documents CRUD publish pause resume delete", () => {
+  it("documents CRUD publish pause resume delete validate clone and diff", () => {
     expect(apiDoc).toContain("`GET /api/v1/workflows`");
     expect(apiDoc).toContain("`POST /api/v1/workflows`");
     expect(apiDoc).toContain("`PATCH /api/v1/workflows/{workflow_id}`");
@@ -14,6 +14,9 @@ describe("Workflow OpenAPI documentation coverage", () => {
     expect(apiDoc).toContain("`POST /api/v1/workflows/{workflow_id}/pause`");
     expect(apiDoc).toContain("`POST /api/v1/workflows/{workflow_id}/resume`");
     expect(apiDoc).toContain("`DELETE /api/v1/workflows/{workflow_id}`");
+    expect(apiDoc).toContain("`POST /api/v1/workflows/{workflow_id}/validate`");
+    expect(apiDoc).toContain("`POST /api/v1/workflows/{workflow_id}/clone-draft`");
+    expect(apiDoc).toContain("`GET /api/v1/workflows/{workflow_id}/versions/{from}/diff/{to}`");
   });
 
   it("marks execution as deferred", () => {

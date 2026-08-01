@@ -90,6 +90,8 @@ Authentication audit writes pass through one envelope builder. It recursively re
 | `attachment.deleted`                       | Attachment     | User/admin                     | Attachment           | Reason                                  | Optional watcher notice.                |
 | `workflow.created`                         | Automation     | Tenant Admin                   | Workflow             | Key, version ID                         | None by default.                        |
 | `workflow.draft_updated`                   | Automation     | Tenant Admin                   | Workflow             | Version ID                              | None.                                   |
+| `workflow.validated`                       | Automation     | Tenant Admin                   | Workflow             | valid, errorCount, warningCount         | None.                                   |
+| `workflow.draft_cloned`                    | Automation     | Tenant Admin                   | Workflow             | fromVersion, toVersion                  | None.                                   |
 | `workflow.published`                       | Automation     | Tenant Admin/Approver          | Workflow version     | Version, validation result              | Admin notice.                           |
 | `workflow.paused`                          | Automation     | Tenant Admin/operator          | Workflow             | Reason                                  | Admin notice.                           |
 | `workflow.resumed`                         | Automation     | Tenant Admin/operator          | Workflow             | Workflow ID                             | None.                                   |

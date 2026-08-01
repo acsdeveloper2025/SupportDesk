@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { ConfigPublicationState, PrismaClient, RoleScope, UserState } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -13,6 +18,7 @@ import type {
   WorkflowDefinition,
   WorkflowTrigger,
 } from "./domain/workflow-definition";
+import { WorkflowValidationService } from "./workflow-validation.service";
 import { WorkflowsRepository } from "./workflows.repository";
 import { WorkflowsService } from "./workflows.service";
 
@@ -46,6 +52,7 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
   const workflowsService = new WorkflowsService(
     new WorkflowsRepository(prismaService),
     rbacService,
+    new WorkflowValidationService(prismaService),
   );
 
   let tenantA: string;
@@ -375,5 +382,76 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
     expect(actions).toContain("workflow.paused");
     expect(actions).toContain("workflow.resumed");
     expect(actions).toContain("workflow.deleted");
+  });
+
+  it("blocks publish on cycle risk and returns validation report", async () => {
+    const created = await createWorkflow({
+      actions: [{ ordinal: 0, params: { status: "open" }, type: "change_status" }],
+      key: "cycle-risk",
+      priority: 401,
+      triggers: [{ type: "ticket.status_changed" }],
+    });
+
+    await expect(workflowsService.publish(tenantA, created.id, adminA)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("rejects group assignment on draft create", async () => {
+    await expect(
+      createWorkflow({
+        actions: [
+          {
+            ordinal: 0,
+            params: { groupId: "11111111-1111-4111-8111-111111111111" },
+            type: "assign",
+          },
+        ],
+        key: "group-denied",
+        priority: 402,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("validates drafts, clones after publish, and diffs versions", async () => {
+    const created = await createWorkflow({ key: "gov-apis", priority: 403 });
+    const report = await workflowsService.validate(tenantA, created.id, adminA);
+    expect(report.schemaVersion).toBe(1);
+    expect(report.valid).toBe(true);
+
+    await workflowsService.publish(tenantA, created.id, adminA);
+
+    const cloned = await workflowsService.cloneDraft(tenantA, created.id, adminA);
+    expect(cloned.versions.some((version) => version.state === ConfigPublicationState.DRAFT)).toBe(
+      true,
+    );
+
+    await expect(workflowsService.cloneDraft(tenantA, created.id, adminA)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    await workflowsService.updateDraft({
+      actions: [
+        { ordinal: 0, params: { status: "pending" }, type: "change_status" },
+        { ordinal: 1, params: { body: "next" }, type: "add_internal_comment" },
+      ],
+      actorUserId: adminA,
+      tenantId: tenantA,
+      workflowId: created.id,
+    });
+    await workflowsService.publish(tenantA, created.id, adminA);
+
+    const diff = await workflowsService.diffVersions(tenantA, created.id, adminA, 1, 2);
+    expect(diff.fromVersion).toBe(1);
+    expect(diff.toVersion).toBe(2);
+    expect(diff.changeCount).toBe(diff.changes.length);
+    expect(diff.generatedAt).toMatch(/Z$/);
+
+    const audits = await prisma.auditEvent.findMany({
+      where: { targetId: created.id, tenantId: tenantA },
+    });
+    expect(audits.map((event) => event.action)).toEqual(
+      expect.arrayContaining(["workflow.validated", "workflow.draft_cloned"]),
+    );
   });
 });
