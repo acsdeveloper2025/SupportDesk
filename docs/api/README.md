@@ -19,11 +19,16 @@ This API specification expands [../13-rest-conventions.md](../13-rest-convention
 
 - [Authentication](authentication.md) — largely as-built
 - [Tickets](tickets.md) — as-built Ticket Module v1 + deferred catalogue
+- [Ticket search](search.md) — as-built on this branch (`GET /api/v1/tickets/search`)
 - [Comments](comments.md) — as-built Ticket Module v1 + deferred catalogue
+- [Attachments](attachments.md) — as-built on this branch
+- [Notifications](notifications.md) — as-built on this branch
+- [SLA](sla.md) — as-built on this branch
+- [Workflows](workflows.md) — as-built through E11-I02 (definition + validation/governance; execution deferred)
 - [Organizations](organizations.md) — target only
 - [Users and memberships](users.md) — target (identity exists via auth)
 - [Roles](roles.md) / [Permissions](permissions.md) — catalogue; RBAC evaluator as-built
-- [Attachments](attachments.md), [Notifications](notifications.md), [Reports](reports.md), [Settings](settings.md), [Admin](admin.md) — target only
+- [Reports](reports.md), [Settings](settings.md), [Admin](admin.md) — target only
 
 ## Endpoint table key
 

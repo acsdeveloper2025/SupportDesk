@@ -1,8 +1,16 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../database/database.module";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { OutboxModule } from "../outbox/outbox.module";
 import { RbacModule } from "../rbac/rbac.module";
+import { SlaModule } from "../sla/sla.module";
+import { AttachmentsController } from "./attachments/attachments.controller";
+import { AttachmentsRepository } from "./attachments/attachments.repository";
+import { AttachmentsService } from "./attachments/attachments.service";
+import { LocalAttachmentStorage } from "./attachments/local-attachment-storage";
+import { NoOpVirusScanner, VIRUS_SCANNER } from "./attachments/virus-scanner";
 import { CommentsController } from "./comments.controller";
 import { CommentsRepository } from "./comments.repository";
 import { CommentsService } from "./comments.service";
@@ -11,9 +19,35 @@ import { TicketsRepository } from "./tickets.repository";
 import { TicketsService } from "./tickets.service";
 
 @Module({
-  controllers: [TicketsController, CommentsController],
-  exports: [TicketsService, TicketsRepository, CommentsService, CommentsRepository],
-  imports: [DatabaseModule, AuthModule, RbacModule],
-  providers: [TicketsService, TicketsRepository, CommentsService, CommentsRepository],
+  controllers: [TicketsController, CommentsController, AttachmentsController],
+  exports: [
+    TicketsService,
+    TicketsRepository,
+    CommentsService,
+    CommentsRepository,
+    AttachmentsService,
+    AttachmentsRepository,
+  ],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+    RbacModule,
+    NotificationsModule,
+    OutboxModule,
+    forwardRef(() => SlaModule),
+  ],
+  providers: [
+    TicketsService,
+    TicketsRepository,
+    CommentsService,
+    CommentsRepository,
+    AttachmentsService,
+    AttachmentsRepository,
+    LocalAttachmentStorage,
+    {
+      provide: VIRUS_SCANNER,
+      useClass: NoOpVirusScanner,
+    },
+  ],
 })
 export class TicketsModule {}

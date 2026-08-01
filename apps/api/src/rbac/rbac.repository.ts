@@ -21,6 +21,12 @@ export interface RbacAuditInput {
 export abstract class RbacRepository {
   abstract hasPermission(tenantId: string, userId: string, permissionKey: string): Promise<boolean>;
 
+  abstract getPermissionScopes(
+    tenantId: string,
+    userId: string,
+    permissionKey: string,
+  ): Promise<RoleScope[]>;
+
   abstract getRolePermissionKeys(tenantId: string, roleId: string): Promise<string[]>;
 
   abstract roleBelongsToTenant(roleId: string, tenantId: string): Promise<boolean>;
@@ -35,6 +41,7 @@ export abstract class RbacRepository {
     tenantId: string,
     roleId: string,
     permissionKey: string,
+    scope?: RoleScope,
   ): Promise<void>;
 
   abstract recordAuditEvent(input: RbacAuditInput): Promise<void>;
@@ -45,9 +52,18 @@ export class PrismaRbacRepository implements RbacRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async hasPermission(tenantId: string, userId: string, permissionKey: string): Promise<boolean> {
-    const grant = await this.prisma.rolePermission.findFirst({
+    const scopes = await this.getPermissionScopes(tenantId, userId, permissionKey);
+    return scopes.length > 0;
+  }
+
+  async getPermissionScopes(
+    tenantId: string,
+    userId: string,
+    permissionKey: string,
+  ): Promise<RoleScope[]> {
+    const grants = await this.prisma.rolePermission.findMany({
       select: {
-        id: true,
+        scope: true,
       },
       where: {
         permission: {
@@ -67,7 +83,7 @@ export class PrismaRbacRepository implements RbacRepository {
       },
     });
 
-    return grant !== null;
+    return [...new Set(grants.map((grant) => grant.scope))];
   }
 
   async getRolePermissionKeys(tenantId: string, roleId: string): Promise<string[]> {
@@ -150,6 +166,7 @@ export class PrismaRbacRepository implements RbacRepository {
     tenantId: string,
     roleId: string,
     permissionKey: string,
+    scope: RoleScope = RoleScope.TENANT,
   ): Promise<void> {
     const permission = await this.prisma.permission.findUniqueOrThrow({
       select: {
@@ -164,7 +181,7 @@ export class PrismaRbacRepository implements RbacRepository {
       create: {
         permissionId: permission.id,
         roleId,
-        scope: RoleScope.TENANT,
+        scope,
         tenantId,
       },
       update: {},
@@ -172,7 +189,7 @@ export class PrismaRbacRepository implements RbacRepository {
         tenantId_roleId_permissionId_scope: {
           permissionId: permission.id,
           roleId,
-          scope: RoleScope.TENANT,
+          scope,
           tenantId,
         },
       },

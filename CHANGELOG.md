@@ -2,11 +2,31 @@
 
 All notable changes are recorded here. This project follows Keep a Changelog concepts and will adopt semantic versioning when a deployable product exists.
 
+## [v1.1-knowledge-base] - 2026-08-01
+
+Enterprise Knowledge Base module release. Git tag: `v1.1-knowledge-base`.
+
+### Added
+
+- Knowledge Base Category Tree Hierarchy (`KbCategory`) supporting parent-child category relationships, slug generation, position ordering, icon assignment, and tenant-isolated parent validation.
+- Knowledge Base Article Engine (`KbArticle`) supporting Markdown content, summary, draft/review/published/archived state machine (`KbArticleStatus`), internal/public visibility (`KbArticleVisibility`), view counter, and helpful/unhelpful feedback tracking.
+- Immutable Article Versioning (`KbArticleVersion`) automatically capturing snapshot copies of articles upon publication with incremented version numbers.
+- Knowledge Base Tagging (`KbTag` & `KbArticleTag`) for multi-tag categorization and filtering.
+- Ticket Linking (`KbTicketLink`) allowing support agents to link KB articles directly to tickets for issue resolution.
+- KB Full-Text Search Builder matching query keywords across article titles, summaries, content, category names, and tags with tenant boundary enforcement and visibility guards.
+- Transactional Outbox Event Integration (`kb.article.published`) emitted upon article publication to trigger automated workflows and external subscribers.
+- Knowledge Base RBAC Permissions (`kb.category.create`, `kb.category.read`, `kb.category.update`, `kb.category.delete`, `kb.article.create`, `kb.article.read`, `kb.article.read_internal`, `kb.article.update`, `kb.article.publish`, `kb.article.archive`, `kb.article.delete`, `kb.article.link_ticket`).
+- Knowledge Base Audit Logging for all category and article state-modifying actions (`kb.category.*`, `kb.article.*`).
+- OpenAPI Specification coverage for all `kb-categories` and `kb-articles` endpoints.
+- Next.js 15 Frontend Knowledge Base Portal & Admin UI (`/kb`, `/kb/categories/[slug]`, `/kb/articles/[slug]`, `/kb/articles/new`, `/kb/articles/[slug]/edit`, `/kb/admin/categories`).
+- Unit test suites and PostgreSQL end-to-end integration test suite (`kb.integration.spec.ts`) validating hierarchy, versioning, outbox integration, ticket linking, search, and tenant isolation negative cases.
+
 ## [Unreleased]
 
 ### Added
 
-- (none yet — post–Ticket Module baseline)
+- Workflow Validation & Governance (`E11-I02`) with publish validation gate, validate/clone-draft/diff APIs, ADR-0011.
+- (prior WIP on this stack: attachments/search/notifications/SLA/workflow definition)
 
 ## [v1.0-ticket-module] - 2026-08-01
 
@@ -28,6 +48,9 @@ Evidence: [docs/ticket-module-v1-hardening-report.md](docs/ticket-module-v1-hard
 - `pnpm migrate:verify` script and GitHub Actions workflow for fresh Postgres migrate deploy + schema drift check + integration tests.
 - Comments OpenAPI smoke coverage and PostgreSQL schema integration tests.
 - As-built synchronization for tickets/comments API docs, database table catalogue, UI component inventory, and REST pagination exception.
+- Ticket Attachment Upload & Local Storage (`#23` / `E05-I08`) with multipart upload, list, authenticated download, and soft-delete APIs; PostgreSQL attachment metadata; UUID filesystem storage under `ATTACHMENTS_STORAGE_ROOT`; SHA-256 checksums; MIME/extension/size validation; path-traversal protection; `NoOpVirusScanner` port; attachment RBAC permissions; audit events; OpenAPI coverage; unit and PostgreSQL integration tests.
+- Ticket Search & Advanced Filtering (`#24` / `E05-I09`) with `GET /api/v1/tickets/search`; PostgreSQL case-insensitive partial search; shared list filters plus attachment/comment flags; allow-listed sort; scoped `ticket.read`; search indexes; OpenAPI and tests; `docs/api/search.md`.
+- In-App Notifications (`#25` / `E06-I01`) with notifications tables, preference APIs, own-recipient isolation, ticket/comment/attachment wiring, OpenAPI and integration tests. Email/SMS/push/queues deferred.
 - Documentation foundation for product requirements, architecture, security, domain behavior, quality, delivery, operations, and roadmap.
 - Shared glossary, architectural decision log, repository governance, contribution guidance, and license.
 - Final architecture foundation documentation: database design, API specification, permission/workflow/audit/notification/email/error catalogues, UI components, coding standards, ADR records, and GitHub project plan.
@@ -46,7 +69,7 @@ Evidence: [docs/ticket-module-v1-hardening-report.md](docs/ticket-module-v1-hard
 - Canonical `Ticket` aggregate model (`#16` / `E05-I01`) with Prisma database tables, status transition state machine, optimistic concurrency, and tenant isolation test suites (`T-DOM` & `T-ISO`).
 - Ticket Create and Read REST APIs (`#17` / `E05-I02`) including `POST /api/v1/tickets`, `GET /api/v1/tickets/:id`, `GET /api/v1/tickets/reference/:publicRef`, `CreateTicketRequestDto`, `TicketResponseDto`, RBAC authorization, and OpenAPI specifications.
 - Ticket Update & Optimistic Concurrency APIs (`#18` / `E05-I03`) including `PATCH /api/v1/tickets/:id`, `PATCH /api/v1/tickets/reference/:publicRef`, `UpdateTicketRequestDto`, `TicketConcurrencyException` (HTTP 409 Conflict), immutable field validation, RBAC authorization (`ticket.update`), and `ticket.updated` audit event logging.
-- Ticket Lifecycle & Activity Timeline (`#19` / `E05-I04`) implementing `POST /api/v1/tickets/:id/status` and `POST /api/v1/tickets/reference/:publicRef/status` endpoints for ticket status transitions (NEW → OPEN → PENDING → ON_HOLD → SOLVED → CLOSED) with the domain state machine, optimistic concurrency version check, `ticket.status_change` RBAC permission, `ticket.status_changed` audit event (fromStatus, toStatus, newVersion, publicRef), `solvedAt`/`closedAt` timestamps, full controller test suite (27 tests total), and updated OpenAPI smoke coverage (7 endpoints).
+- Ticket Lifecycle & Activity Timeline (`#19` / `E05-I04`) implementing `POST /api/v1/tickets/:id/status` and `POST /api/v1/tickets/reference/:publicRef/status` endpoints for ticket status transitions (NEW → OPEN → PENDING → ON_HOLD → SOLVED → CLOSED) with the domain state machine, optimistic concurrency version check, `ticket.transition` RBAC permission, `ticket.status_changed` audit event (fromStatus, toStatus, newVersion, publicRef), `solvedAt`/`closedAt` timestamps, full controller test suite (27 tests total), and updated OpenAPI smoke coverage (7 endpoints).
 - Ticket Assignment (`#20` / `E05-I05`) implementing `POST /api/v1/tickets/:id/assign`, `POST /api/v1/tickets/reference/:publicRef/assign`, and `POST /api/v1/tickets/:id/unassign` endpoints. Domain `TicketAggregate.assign()`/`unassign()` enforce closed-ticket guard, UUID validation, and optimistic concurrency. Service validates assignee is ACTIVE and tenant-scoped via `findActiveUserInTenant()`. Audit events: `ticket.assigned`, `ticket.reassigned`, `ticket.unassigned` with previous/new assignee and group metadata. `ticket.assign` RBAC permission required for all three endpoints. 24 new tests (16 aggregate, 42 controller, 1 OpenAPI smoke — 144 total). OpenAPI inventory updated to 8 endpoints.
 - Ticket List, Filter, Sort & Pagination APIs (`#21` / `E05-I06`) implementing `GET /api/v1/tickets` and `GET /api/v1/tickets/count` endpoints. Repository `buildWhereClause` abstracts Prisma filtering logic (status, priorities, types, channels, assignees, dates) ensuring consistent evaluation across `findMany` and `count`. Zod-validated `ListTicketsQueryDto` translates REST queries to structured sort/pagination configurations. Strict tenant isolation applied implicitly to all listing queries. Paged metadata (`totalPages`, `hasNextPage`) calculated in service layer and mapped into `TicketListResponseDto`. Endpoints protected with `ticket.read` permission. 151 total API tests passing, OpenAPI inventory updated to 9 endpoints.
 - Ticket Detail & Edit Frontend (`#27` / `TKT.12`) implementing the `/tickets/[ticketId]` page with inline editing, status/priority badges, activity timeline, and comments. Added 6 Next.js BFF proxy routes (`GET|PATCH /api/tickets/:id`, `POST /api/tickets/:id/status`, `POST /api/tickets/:id/assign`, `POST /api/tickets/:id/unassign`, `GET|POST /api/tickets/:id/comments`, `PATCH|DELETE /api/comments/:commentId`) forwarding requests with `HttpOnly` access token to NestJS. UI components: `TicketStatusBadge`, `TicketPriorityBadge`, `TicketSection`, `TicketDetailSkeleton`, `ErrorBanner`, `CommentItem`, `CommentForm`, `TimelineItem`, `EditTicketForm`. Page handles 401/403/404 error states, 409 Conflict banner for optimistic concurrency, loading skeleton, inline edit form (title, description, priority, type, channel, due date) with `react-hook-form` validation. 30 web tests passing (190 total across API + web). Build verified at 129 kB first-load JS for the detail page.

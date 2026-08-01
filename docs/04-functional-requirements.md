@@ -14,6 +14,7 @@
 | FR-10 | **Search/reporting:** Results contain only authorized current-Tenant resources; index lag is visible and source-of-truth authorization is rechecked.                                                               |
 | FR-11 | **Audit/export:** Authorized users can filter and export Tenant Audit Events; content access and export are themselves audited.                                                                                    |
 | FR-12 | **Administration:** Draft configuration validates before atomic publication; historical records retain the applied version.                                                                                        |
+| FR-13 | **Knowledge Base:** Hierarchical categories, versioned articles, public/internal visibility, ticket linking, text search, and outbox event publishing are tenant-isolated and audited.                             |
 
 ## Traceability matrix
 
@@ -25,7 +26,7 @@
 | PR-04   | FR-07, FR-12        | [automation](09-ticket-lifecycle.md), [ARC-04](05-architecture.md#architecture-control-catalogue), [workflow matrix](workflow-matrix.md)          | T-WF              | M3        |
 | PR-05   | FR-08               | [SLA](10-sla.md)                                                                                                                                  | T-SLA             | M3        |
 | PR-06   | FR-09               | [notifications](11-notifications.md), SEC-07                                                                                                      | T-NOTIFY          | M2–M3     |
-| PR-07   | FR-10, FR-11        | [architecture](05-architecture.md), SEC-08                                                                                                        | T-SEARCH, T-AUDIT | M4        |
+| PR-07   | FR-10, FR-11, FR-13 | [architecture](05-architecture.md), SEC-08                                                                                                        | T-SEARCH, T-AUDIT | M4        |
 | PR-08   | all                 | [security](07-security-compliance.md), [UX](14-ui-ux-accessibility.md)                                                                            | T-SEC, T-A11Y     | all       |
 | PR-09   | all                 | [NFR](15-non-functional-requirements.md), [operations](19-operations-recovery.md)                                                                 | T-PERF, T-DR      | M4–M5     |
 | PR-10   | FR-12               | [CI/CD](18-deployment-cicd.md), [ARC-05](05-architecture.md#architecture-control-catalogue), [migration strategy](database/MIGRATION-STRATEGY.md) | T-MIG, T-ROLLBACK | all       |

@@ -17,12 +17,14 @@ Channels: In-App, Email, Webhook, Future Push Notifications.
 | `comment.created.internal`      | Agents/managers/watchers with internal access  | In-App, Email                       | `internal_comment`                   | Retry; never send to Requesters.                                   | Alert on visibility policy violation.                   |
 | `sla.warning`                   | Assignee, manager, configured escalation group | In-App, Email, Future Push          | `sla_warning`                        | Priority retry until breach/resolution.                            | Operations metric if stale.                             |
 | `sla.breached`                  | Assignee, manager, Tenant Admin optional       | In-App, Email, Webhook, Future Push | `sla_breached`                       | Priority retry; dedupe per target threshold.                       | Escalate to operations if backlog prevents delivery.    |
-| `approval.requested`            | Approver(s)                                    | In-App, Email, Future Push          | `approval_request`                   | Retry until expiry/decision.                                       | Escalate to backup approver if configured.              |
-| `workflow.execution_failed`     | Tenant Admin/operations owner                  | In-App, Email                       | `workflow_failure`                   | Retry until acknowledged or terminal.                              | Auto-pause workflow if failure threshold crossed.       |
-| `notification.failed`           | Tenant Admin/operations owner                  | In-App                              | `notification_failure_summary`       | No recursive email if provider failed.                             | Operations dashboard and alert.                         |
-| `export.completed`              | Requester                                      | In-App, Email                       | `export_ready`                       | Retry while export downloadable.                                   | Expiry notice; user can recreate export.                |
-| `settings.security.updated`     | Tenant Admin/security contacts                 | Email, In-App                       | `security_settings_changed`          | Security priority retry.                                           | Alert on total failure.                                 |
-| `operator_elevation.approved`   | Tenant security contacts, platform security    | Email, In-App                       | `operator_elevation_notice`          | Security priority retry.                                           | Page security if notice cannot be delivered.            |
+
+MVP Issue #26 implements **in-app** `sla.warning` / `sla.breached` notifications only (assignee, or requester if unassigned). Email, escalation groups, and worker-driven delivery remain deferred.
+| `approval.requested` | Approver(s) | In-App, Email, Future Push | `approval_request` | Retry until expiry/decision. | Escalate to backup approver if configured. |
+| `workflow.execution_failed` | Tenant Admin/operations owner | In-App, Email | `workflow_failure` | Retry until acknowledged or terminal. | Auto-pause workflow if failure threshold crossed. |
+| `notification.failed` | Tenant Admin/operations owner | In-App | `notification_failure_summary` | No recursive email if provider failed. | Operations dashboard and alert. |
+| `export.completed` | Requester | In-App, Email | `export_ready` | Retry while export downloadable. | Expiry notice; user can recreate export. |
+| `settings.security.updated` | Tenant Admin/security contacts | Email, In-App | `security_settings_changed` | Security priority retry. | Alert on total failure. |
+| `operator_elevation.approved` | Tenant security contacts, platform security | Email, In-App | `operator_elevation_notice` | Security priority retry. | Page security if notice cannot be delivered. |
 
 ## Provider rules
 

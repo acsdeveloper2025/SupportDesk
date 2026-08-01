@@ -1,6 +1,6 @@
 # SupportDesk
 
-SupportDesk is an enterprise, multi-tenant ticketing SaaS built as a modular monolith. The monorepo includes Authentication & Identity, deny-by-default RBAC, audit logging, and the Ticket Module (API + ticket detail UI). Attachments, organizations, notifications, SLA, Workflow Engine, search, and reports remain deferred until their milestones are approved.
+SupportDesk is an enterprise, multi-tenant ticketing SaaS built as a modular monolith. The monorepo includes Authentication & Identity, deny-by-default RBAC, audit logging, and the Ticket Module (API + ticket detail UI). This branch adds attachment upload/storage on top of the `v1.0-ticket-module` baseline. Organizations, notifications, SLA, Workflow Engine, search, and reports remain deferred until their milestones are approved.
 
 ## Project foundation
 
@@ -75,7 +75,7 @@ pnpm audit:deps
 pnpm run ci
 ```
 
-The root CI script runs linting, type checking, unit tests, build, and security audit. GitHub Actions mirror those gates for pull requests.
+The root CI script runs linting, type checking, unit tests, build, and security audit. GitHub Actions mirror those gates for pull requests and provision PostgreSQL so ticketing integration tests run against a real database after `prisma migrate deploy`. Locally, set `DATABASE_URL` and apply migrations before `pnpm test` to execute those integration suites; without it they are skipped.
 
 ## Development Workflow
 
