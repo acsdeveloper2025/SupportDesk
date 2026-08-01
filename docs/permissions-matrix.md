@@ -95,5 +95,6 @@ Canonical permission keys use `resource[.subresource].action` with no aliases. I
 
 - Framework (M2.10): tenant, settings, user, role, permission, audit, and platform elevation keys.
 - Ticketing (E05): `ticket.create`, `ticket.read`, `ticket.update`, `ticket.assign`, `ticket.transition`, `ticket.comment.public.create`, `ticket.comment.internal.create`, `ticket.comment.read`, `ticket.comment.internal.read`, `ticket.comment.update`, `ticket.comment.delete`, `ticket.attachment.create`, `ticket.attachment.read`, `ticket.attachment.delete`.
+- SLA (Issue #26 / E10): `sla.read`, `sla.update` (business schedules, SLA policies, ticket SLA status, active timers, basic metrics).
 
 Scope evaluation for `own`, `group`, and `tenant` is performed in the RBAC authorization layer when a resource context is supplied. Remaining matrix rows stay documentation-only until their owning milestones implement them.

@@ -59,6 +59,7 @@ This catalogue expands [api/README.md](api/README.md), [13-rest-conventions.md](
 | `INVALID_TRANSITION`            | Ticket status transition is not allowed.                  |          422 | Choose allowed transition.                |
 | `APPROVAL_REQUIRED`             | Action requires approval.                                 |      409/422 | Start approval flow.                      |
 | `SLA_RECALCULATION_NOT_ALLOWED` | SLA target cannot be recalculated by policy.              |          422 | Requires policy/approval change.          |
+| `SLA_NO_PUBLISHED_SCHEDULE`     | SLA policy publish requires a published schedule.         |          422 | Publish business schedule first.          |
 | `ATTACHMENT_NOT_CLEAN`          | Attachment is pending, infected, blocked, or failed scan. |      423/422 | Wait for scan or remove file.             |
 | `QUOTA_EXCEEDED`                | Tenant/user quota exceeded.                               |      429/422 | Reduce usage or increase quota.           |
 | `EXPORT_TOO_LARGE`              | Export exceeds limits.                                    |          422 | Narrow filters or use approved bulk path. |

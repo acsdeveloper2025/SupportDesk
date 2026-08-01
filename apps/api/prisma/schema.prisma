@@ -116,6 +116,12 @@ model Tenant {
   attachments                 Attachment[]
   notifications               Notification[]
   notificationPreferences     NotificationPreference[]
+  businessSchedules           BusinessSchedule[]
+  businessScheduleVersions    BusinessScheduleVersion[]
+  slaPolicies                 SlaPolicy[]
+  slaPolicyVersions           SlaPolicyVersion[]
+  slaTargets                  SlaTarget[]
+  slaEvaluations              SlaEvaluation[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -446,6 +452,8 @@ model Ticket {
   assigneeUser    User?          @relation("TicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, map: "fk_tickets__users__assignee_user_id")
   comments        Comment[]
   attachments     Attachment[]
+  slaTargets      SlaTarget[]
+  slaEvaluations  SlaEvaluation[]
 
   @@unique([tenantId, publicRef], map: "uq_tickets__tenant_id_public_ref")
   @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
@@ -535,6 +543,8 @@ enum NotificationEventType {
   ATTACHMENT_UPLOADED        @map("attachment.uploaded")
   AUTH_SESSION_REVOKED       @map("auth.session.revoked")
   SETTINGS_SECURITY_UPDATED  @map("settings.security.updated")
+  SLA_WARNING                @map("sla.warning")
+  SLA_BREACHED               @map("sla.breached")
 
   @@map("notification_event_type")
 }
@@ -591,4 +601,169 @@ model NotificationPreference {
   @@unique([tenantId, userId, eventType, channel], map: "uq_notification_preferences__tenant_user_event_channel")
   @@index([tenantId, userId], map: "idx_notification_preferences__tenant_id_user_id")
   @@map("notification_preferences")
+}
+
+enum ConfigPublicationState {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  RETIRED   @map("retired")
+
+  @@map("config_publication_state")
+}
+
+enum SlaTargetType {
+  RESPONSE   @map("response")
+  RESOLUTION @map("resolution")
+
+  @@map("sla_target_type")
+}
+
+enum SlaTargetState {
+  RUNNING   @map("running")
+  PAUSED    @map("paused")
+  MET       @map("met")
+  BREACHED  @map("breached")
+  CANCELLED @map("cancelled")
+
+  @@map("sla_target_state")
+}
+
+model BusinessSchedule {
+  id                   String                    @id(map: "pk_business_schedules") @default(uuid()) @db.Uuid
+  tenantId             String                    @map("tenant_id") @db.Uuid
+  key                  String                    @db.VarChar(100)
+  name                 String                    @db.VarChar(200)
+  description          String?                   @db.Text
+  activeVersionNumber  Int?                      @map("active_version_number")
+  version              Int                       @default(1)
+  createdAt            DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt            DateTime?                 @map("deleted_at") @db.Timestamptz(3)
+  tenant               Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedules__tenants__tenant_id")
+  versions             BusinessScheduleVersion[]
+
+  @@unique([tenantId, key], map: "uq_business_schedules__tenant_id_key")
+  @@index([tenantId], map: "idx_business_schedules__tenant_id")
+  @@map("business_schedules")
+}
+
+model BusinessScheduleVersion {
+  id           String                  @id(map: "pk_business_schedule_versions") @default(uuid()) @db.Uuid
+  tenantId     String                  @map("tenant_id") @db.Uuid
+  scheduleId   String                  @map("schedule_id") @db.Uuid
+  versionNumber Int                    @map("version_number")
+  state        ConfigPublicationState  @default(DRAFT)
+  timeZone     String                  @map("time_zone") @db.VarChar(100)
+  weeklyHours  Json                    @map("weekly_hours")
+  holidays     Json                    @default("[]")
+  publishedAt  DateTime?               @map("published_at") @db.Timestamptz(3)
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant       Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedule_versions__tenants__tenant_id")
+  schedule     BusinessSchedule        @relation(fields: [scheduleId], references: [id], onDelete: Cascade, map: "fk_bs_versions__business_schedules__schedule_id")
+  slaTargets   SlaTarget[]
+  slaEvaluations SlaEvaluation[]
+
+  @@unique([tenantId, scheduleId, versionNumber], map: "uq_business_schedule_versions__tenant_schedule_version")
+  @@index([tenantId, scheduleId, state], map: "idx_business_schedule_versions__tenant_schedule_state")
+  @@map("business_schedule_versions")
+}
+
+model SlaPolicy {
+  id                  String             @id(map: "pk_sla_policies") @default(uuid()) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  key                 String             @db.VarChar(100)
+  name                String             @db.VarChar(200)
+  description         String?            @db.Text
+  activeVersionNumber Int?               @map("active_version_number")
+  version             Int                @default(1)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_policies__tenants__tenant_id")
+  versions            SlaPolicyVersion[]
+
+  @@unique([tenantId, key], map: "uq_sla_policies__tenant_id_key")
+  @@index([tenantId], map: "idx_sla_policies__tenant_id")
+  @@map("sla_policies")
+}
+
+model SlaPolicyVersion {
+  id                           String                 @id(map: "pk_sla_policy_versions") @default(uuid()) @db.Uuid
+  tenantId                     String                 @map("tenant_id") @db.Uuid
+  policyId                     String                 @map("policy_id") @db.Uuid
+  versionNumber                Int                    @map("version_number")
+  state                        ConfigPublicationState @default(DRAFT)
+  priority                     Int
+  scheduleKey                  String                 @default("default") @map("schedule_key") @db.VarChar(100)
+  matchPriorities              Json                   @default("[]") @map("match_priorities")
+  matchTypes                   Json                   @default("[]") @map("match_types")
+  matchChannels                Json                   @default("[]") @map("match_channels")
+  responseMinutes              Int                    @map("response_minutes")
+  resolutionMinutes            Int                    @map("resolution_minutes")
+  pauseOnPending               Boolean                @default(true) @map("pause_on_pending")
+  pauseOnHold                  Boolean                @default(false) @map("pause_on_hold")
+  restartResolutionOnReopen    Boolean                @default(false) @map("restart_resolution_on_reopen")
+  warningThresholdPercent      Int                    @default(80) @map("warning_threshold_percent")
+  publishedAt                  DateTime?              @map("published_at") @db.Timestamptz(3)
+  createdAt                    DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__tenants__tenant_id")
+  policy                       SlaPolicy              @relation(fields: [policyId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__sla_policies__policy_id")
+  slaTargets                   SlaTarget[]
+  slaEvaluations               SlaEvaluation[]
+
+  @@unique([tenantId, policyId, versionNumber], map: "uq_sla_policy_versions__tenant_policy_version")
+  @@index([tenantId, state, priority], map: "idx_sla_policy_versions__tenant_state_priority")
+  @@map("sla_policy_versions")
+}
+
+model SlaTarget {
+  id                       String                   @id(map: "pk_sla_targets") @default(uuid()) @db.Uuid
+  tenantId                 String                   @map("tenant_id") @db.Uuid
+  ticketId                 String                   @map("ticket_id") @db.Uuid
+  type                     SlaTargetType
+  state                    SlaTargetState           @default(RUNNING)
+  policyVersionId          String                   @map("policy_version_id") @db.Uuid
+  scheduleVersionId        String                   @map("schedule_version_id") @db.Uuid
+  startedAt                DateTime                 @map("started_at") @db.Timestamptz(3)
+  dueAt                    DateTime                 @map("due_at") @db.Timestamptz(3)
+  pausedAt                 DateTime?                @map("paused_at") @db.Timestamptz(3)
+  accumulatedPauseMs       BigInt                   @default(0) @map("accumulated_pause_ms")
+  completedAt              DateTime?                @map("completed_at") @db.Timestamptz(3)
+  breachedAt               DateTime?                @map("breached_at") @db.Timestamptz(3)
+  warningNotifiedAt        DateTime?                @map("warning_notified_at") @db.Timestamptz(3)
+  version                  Int                      @default(1)
+  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                   Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tenants__tenant_id")
+  ticket                   Ticket                   @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tickets__ticket_id")
+  policyVersion            SlaPolicyVersion         @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__sla_policy_versions__policy_version_id")
+  scheduleVersion          BusinessScheduleVersion  @relation(fields: [scheduleVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__schedule_versions__schedule_version_id")
+  evaluations              SlaEvaluation[]
+
+  @@index([tenantId, state, dueAt], map: "idx_sla_targets__tenant_id_state_due_at")
+  @@index([tenantId, ticketId, type], map: "idx_sla_targets__tenant_id_ticket_id_type")
+  @@map("sla_targets")
+}
+
+model SlaEvaluation {
+  id                String                  @id(map: "pk_sla_evaluations") @default(uuid()) @db.Uuid
+  tenantId          String                  @map("tenant_id") @db.Uuid
+  ticketId          String                  @map("ticket_id") @db.Uuid
+  targetId          String?                 @map("target_id") @db.Uuid
+  policyVersionId   String                  @map("policy_version_id") @db.Uuid
+  scheduleVersionId String                  @map("schedule_version_id") @db.Uuid
+  reason            String                  @db.VarChar(100)
+  inputs            Json
+  computedDueAt     DateTime?               @map("computed_due_at") @db.Timestamptz(3)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_evaluations__tenants__tenant_id")
+  ticket            Ticket                  @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_sla_evaluations__tickets__ticket_id")
+  target            SlaTarget?              @relation(fields: [targetId], references: [id], onDelete: SetNull, map: "fk_sla_evaluations__sla_targets__target_id")
+  policyVersion     SlaPolicyVersion        @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, map: "fk_sla_evaluations__sla_policy_versions__policy_version_id")
+  scheduleVersion   BusinessScheduleVersion @relation(fields: [scheduleVersionId], references: [id], onDelete: Restrict, map: "fk_sla_evaluations__schedule_versions__schedule_version_id")
+
+  @@index([tenantId, ticketId, createdAt], map: "idx_sla_evaluations__tenant_id_ticket_id_created_at")
+  @@map("sla_evaluations")
 }

@@ -6,7 +6,7 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 
 ### Added
 
-- (none yet — post–Ticket Module baseline on `main`; WIP branch adds attachments/search/notifications below)
+- (none yet — post–Ticket Module baseline on `main`; WIP branch adds attachments/search/notifications/SLA below)
 
 ## [v1.0-ticket-module] - 2026-08-01
 

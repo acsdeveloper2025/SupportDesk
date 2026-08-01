@@ -53,11 +53,18 @@ describe("CommentsService", () => {
       createSafe: vi.fn(() => Promise.resolve(null)),
     };
 
+    const slaEngine = {
+      onPublicAgentComment: vi.fn(() => Promise.resolve()),
+      onTicketCreated: vi.fn(() => Promise.resolve()),
+      onTicketStatusChanged: vi.fn(() => Promise.resolve()),
+    };
+
     service = new CommentsService(
       commentsRepository as unknown as CommentsRepository,
       ticketsRepository as unknown as TicketsRepository,
       rbacService as unknown as RbacService,
       notificationsService as never,
+      slaEngine as never,
     );
   });
 

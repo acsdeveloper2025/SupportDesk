@@ -75,7 +75,16 @@ describeIntegration("Attachments PostgreSQL integration", () => {
       new NotificationsRepository(prismaService),
       rbacService,
     );
-    ticketsService = new TicketsService(ticketsRepository, notificationsService);
+    const slaEngine = {
+      onPublicAgentComment: () => Promise.resolve(),
+      onTicketCreated: () => Promise.resolve(),
+      onTicketStatusChanged: () => Promise.resolve(),
+    };
+    ticketsService = new TicketsService(
+      ticketsRepository,
+      notificationsService,
+      slaEngine as never,
+    );
     attachmentsService = new AttachmentsService(
       attachmentsRepository,
       ticketsRepository,

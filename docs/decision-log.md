@@ -62,6 +62,13 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 | [adr/ADR-0007.md](adr/ADR-0007.md) | Defer transactional outbox until automation consumers | Accepted (does not supersede ADR-004 target) |
 | [adr/ADR-0008.md](adr/ADR-0008.md) | Reject `assignedGroupId` until Organizations/Groups   | Accepted                                     |
 
+## ADR-009 — MVP SLA calendar and timer semantics (OQ-08)
+
+- **Status:** Accepted
+- **Context:** OQ-08 blocked deterministic SLA Targets; multi-region calendars and holiday feeds remain deferred.
+- **Decision:** One published `default` Business Schedule per Tenant (IANA TZ, weekly windows, explicit holiday dates); pause/reopen and sync breach rules per [adr/ADR-0009.md](adr/ADR-0009.md). Use pinned `luxon` for DST-aware business-time arithmetic.
+- **Consequences:** SLA engine can ship without workers or multi-calendar admin; remaining calendar complexity stays deferred.
+
 ## Open questions
 
 | ID    | Question                                                                                                                     | Owner                   | Resolve by          |
@@ -73,12 +80,17 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 | OQ-05 | What availability objectives, maintenance exclusions, support tiers, and contractual remedies are offered?                   | Product/Operations      | M3                  |
 | OQ-06 | What retention, deletion, legal-hold, audit, backup, and subject-request periods apply by data class/region?                 | Privacy/Legal           | M1                  |
 | OQ-07 | What attachment size/count/type limits, aggregate quotas, and scan/archive requirements apply?                               | Product/Security        | M2                  |
-| OQ-08 | Which SLA calendars, time zones, holiday sources, pause/reopen policies, and contractual semantics are supported?            | Product                 | M3                  |
 | OQ-09 | Which inbound/outbound email providers, regions, dedicated domains/IPs, webhook guarantees, and failover strategy apply?     | Architecture/Operations | M2                  |
 | OQ-10 | Which notification deliverability, localization, branding, unsubscribe, and provider portability requirements apply?         | Product/Legal           | M2                  |
 | OQ-11 | Which search technology, languages, analyzers, encryption, residency, deletion latency, and relevance controls are required? | Architecture/Product    | M4                  |
 | OQ-12 | Which deployment cloud, regions, managed services, Kubernetes/serverless constraints, and portability goals apply?           | Architecture/Operations | M1                  |
 | OQ-13 | Is MIT the approved project and future product-source license; are commercial/third-party notices required?                  | Legal                   | Before distribution |
 | OQ-14 | What contractual RPO/RTO apply per failure mode, region, and service tier?                                                   | Product/Operations      | M4                  |
+
+### Resolved questions
+
+| ID    | Resolution                                                                                                                                    | Evidence                                    |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| OQ-08 | MVP: one `default` schedule per Tenant; weekly hours + explicit holidays; sync breach; pause/reopen rules in ADR-0009. Multi-region deferred. | [adr/ADR-0009.md](adr/ADR-0009.md), ADR-009 |
 
 Resolution requires evidence, decision owner approval, an ADR entry (accepted or rejected alternatives), updates to affected requirements/controls/tests/milestones, and removal of any superseded assumption.
