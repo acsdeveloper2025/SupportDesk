@@ -216,6 +216,64 @@ export class KbArticlesRepository {
     return { items, total };
   }
 
+  /**
+   * Suggestion search for the Service Catalog: published articles matched by tag
+   * name or title keywords, tenant-scoped with visibility guards.
+   */
+  async searchForSuggestions(
+    tenantId: string,
+    tags: string[],
+    keywords: string[],
+    canReadInternal: boolean,
+    limit = 5,
+  ): Promise<KbArticleWithRelations[]> {
+    const where: Prisma.KbArticleWhereInput = {
+      tenantId,
+      status: KbArticleStatus.PUBLISHED,
+      ...(canReadInternal ? {} : { visibility: KbArticleVisibility.PUBLIC }),
+    };
+
+    const OR: Prisma.KbArticleWhereInput[] = [];
+    const normalizedTags = tags
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => tag.length > 0);
+    const normalizedKeywords = keywords
+      .map((word) => word.trim())
+      .filter((word) => word.length > 0);
+
+    if (normalizedTags.length > 0) {
+      OR.push({
+        articleTags: {
+          some: { tag: { name: { in: normalizedTags, mode: "insensitive" } } },
+        },
+      });
+    }
+    if (normalizedKeywords.length > 0) {
+      OR.push({
+        OR: normalizedKeywords.map((keyword) => ({
+          OR: [
+            { title: { contains: keyword, mode: "insensitive" } },
+            { summary: { contains: keyword, mode: "insensitive" } },
+            { content: { contains: keyword, mode: "insensitive" } },
+          ],
+        })),
+      });
+    }
+    if (OR.length > 0) {
+      where.OR = OR;
+    }
+
+    return this.prisma.kbArticle.findMany({
+      where,
+      take: limit,
+      orderBy: [{ viewsCount: "desc" }, { publishedAt: "desc" }],
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        articleTags: { include: { tag: true } },
+      },
+    });
+  }
+
   async update(
     tenantId: string,
     id: string,

@@ -57,6 +57,73 @@ export class SlaEngineService {
     }
   }
 
+  /**
+   * Starts SLA targets for a ticket using an explicitly pinned policy (Service
+   * Catalog mapping) instead of policy matching. Resolves the published version
+   * of the pinned policy and the published schedule for its schedule key.
+   */
+  async startTargetsForTicketWithPolicy(
+    ticket: TicketSlaContext,
+    slaPolicyId: string,
+    actorUserId?: string,
+  ): Promise<void> {
+    try {
+      const policyVersion = await this.repository.findPublishedPolicyVersionById(
+        ticket.tenantId,
+        slaPolicyId,
+      );
+      if (!policyVersion) {
+        this.logger.warn(
+          `No published version for pinned SLA policy=${slaPolicyId} tenant=${ticket.tenantId}; skipping SLA`,
+        );
+        return;
+      }
+
+      const scheduleVersion = await this.repository.findPublishedScheduleVersion(
+        ticket.tenantId,
+        policyVersion.scheduleKey,
+      );
+      if (!scheduleVersion) {
+        this.logger.warn(
+          `No published schedule '${policyVersion.scheduleKey}' for tenant=${ticket.tenantId}; skipping SLA`,
+        );
+        return;
+      }
+
+      const clock = this.clockFromSchedule(scheduleVersion);
+      const startedAt = ticket.createdAt ?? new Date();
+
+      await this.createTarget({
+        actorUserId,
+        clock,
+        minutes: policyVersion.responseMinutes,
+        policyVersion,
+        scheduleVersion,
+        startedAt,
+        ticket,
+        type: SlaTargetType.RESPONSE,
+      });
+
+      await this.createTarget({
+        actorUserId,
+        clock,
+        minutes: policyVersion.resolutionMinutes,
+        policyVersion,
+        scheduleVersion,
+        startedAt,
+        ticket,
+        type: SlaTargetType.RESOLUTION,
+      });
+
+      await this.syncPauseState(ticket, startedAt, actorUserId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to start pinned SLA targets for ticket=${ticket.id} policy=${slaPolicyId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
+
   async onTicketStatusChanged(
     ticket: TicketSlaContext,
     previousStatus: TicketStatus,

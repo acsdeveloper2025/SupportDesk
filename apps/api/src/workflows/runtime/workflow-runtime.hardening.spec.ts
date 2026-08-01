@@ -12,6 +12,7 @@ import { OutboxPublisherService } from "../../outbox/outbox-publisher.service";
 import { RbacService } from "../../rbac/rbac.service";
 import { AddCommentActionExecutor } from "./action-executors/add-comment-action.executor";
 import { AssignActionExecutor } from "./action-executors/assign-action.executor";
+import { ChangeAssetStatusActionExecutor } from "./action-executors/change-asset-status-action.executor";
 import { ChangeStatusActionExecutor } from "./action-executors/change-status-action.executor";
 import { CreateNotificationActionExecutor } from "./action-executors/create-notification-action.executor";
 import { SlaActionExecutor } from "./action-executors/sla-action.executor";
@@ -44,6 +45,7 @@ describeIntegration("Workflow Runtime Hardening & End-to-End Specs", () => {
     new WorkflowExecutorService(
       prisma,
       new ChangeStatusActionExecutor(outboxPublisher),
+      new ChangeAssetStatusActionExecutor(outboxPublisher),
       new AssignActionExecutor(outboxPublisher),
       new AddCommentActionExecutor(outboxPublisher),
       new CreateNotificationActionExecutor(),

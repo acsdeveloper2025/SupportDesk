@@ -103,6 +103,18 @@ export class SlaRepository {
     });
   }
 
+  /** Published version of a specific pinned policy (Service Catalog mapping). */
+  async findPublishedPolicyVersionById(tenantId: string, policyId: string) {
+    return this.prisma.slaPolicyVersion.findFirst({
+      where: {
+        policyId,
+        tenantId,
+        state: ConfigPublicationState.PUBLISHED,
+        policy: { deletedAt: null },
+      },
+    });
+  }
+
   async findActiveTargetsForTicket(tenantId: string, ticketId: string) {
     return this.prisma.slaTarget.findMany({
       include: {

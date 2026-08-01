@@ -9,6 +9,7 @@ import {
 } from "./action-executors/action-executor.interface";
 import { AddCommentActionExecutor } from "./action-executors/add-comment-action.executor";
 import { AssignActionExecutor } from "./action-executors/assign-action.executor";
+import { ChangeAssetStatusActionExecutor } from "./action-executors/change-asset-status-action.executor";
 import { ChangeStatusActionExecutor } from "./action-executors/change-status-action.executor";
 import { CreateNotificationActionExecutor } from "./action-executors/create-notification-action.executor";
 import { SlaActionExecutor } from "./action-executors/sla-action.executor";
@@ -32,6 +33,7 @@ export class WorkflowExecutorService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ChangeStatusActionExecutor) changeStatus: ChangeStatusActionExecutor,
+    @Inject(ChangeAssetStatusActionExecutor) changeAssetStatus: ChangeAssetStatusActionExecutor,
     @Inject(AssignActionExecutor) assign: AssignActionExecutor,
     @Inject(AddCommentActionExecutor) addComment: AddCommentActionExecutor,
     @Inject(CreateNotificationActionExecutor) createNotification: CreateNotificationActionExecutor,
@@ -39,6 +41,7 @@ export class WorkflowExecutorService {
   ) {
     this.executors = new Map<string, WorkflowActionExecutor>([
       ["change_status", changeStatus],
+      ["change_asset_status", changeAssetStatus],
       ["assign", assign],
       ["add_internal_comment", addComment],
       ["create_notification", createNotification],

@@ -48,11 +48,67 @@ export class LocalAttachmentStorage {
     extension: string;
     source: Readable | Buffer;
   }): Promise<StoredFileResult> {
-    const storedFilename = this.generateStoredFilename(input.extension);
     const directory = this.resolveTenantTicketDir(input.tenantId, input.ticketId);
     await mkdir(directory, { recursive: true });
 
-    const absolutePath = this.assertWithinRoot(path.join(directory, storedFilename));
+    return this.writeToDirectory({
+      directory,
+      extension: input.extension,
+      source: input.source,
+    });
+  }
+
+  resolveTenantCatalogRequestDir(tenantId: string, requestId: string): string {
+    this.assertSafeId(tenantId, "tenantId");
+    this.assertSafeId(requestId, "requestId");
+    return path.join(this.root, `tenant-${tenantId}`, `request-${requestId}`);
+  }
+
+  resolveTenantAssetDir(tenantId: string, assetId: string): string {
+    this.assertSafeId(tenantId, "tenantId");
+    this.assertSafeId(assetId, "assetId");
+    return path.join(this.root, `tenant-${tenantId}`, `asset-${assetId}`);
+  }
+
+  /** Writes an attachment for an asset record scope. */
+  async writeFileForAsset(input: {
+    tenantId: string;
+    assetId: string;
+    extension: string;
+    source: Readable | Buffer;
+  }): Promise<StoredFileResult> {
+    const directory = this.resolveTenantAssetDir(input.tenantId, input.assetId);
+    await mkdir(directory, { recursive: true });
+    return this.writeToDirectory({
+      directory,
+      extension: input.extension,
+      source: input.source,
+    });
+  }
+
+  /** Writes an attachment for a non-ticket scope (e.g. catalog request). */
+  async writeFileForRequest(input: {
+    tenantId: string;
+    requestId: string;
+    extension: string;
+    source: Readable | Buffer;
+  }): Promise<StoredFileResult> {
+    const directory = this.resolveTenantCatalogRequestDir(input.tenantId, input.requestId);
+    await mkdir(directory, { recursive: true });
+    return this.writeToDirectory({
+      directory,
+      extension: input.extension,
+      source: input.source,
+    });
+  }
+
+  private async writeToDirectory(input: {
+    directory: string;
+    extension: string;
+    source: Readable | Buffer;
+  }): Promise<StoredFileResult> {
+    const storedFilename = this.generateStoredFilename(input.extension);
+    const absolutePath = this.assertWithinRoot(path.join(input.directory, storedFilename));
     const hash = createHash("sha256");
 
     if (Buffer.isBuffer(input.source)) {

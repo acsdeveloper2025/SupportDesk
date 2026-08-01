@@ -5,6 +5,8 @@ export const WORKFLOW_TRIGGER_TYPES = [
   "comment.added",
   "sla.warning",
   "sla.breached",
+  "asset.created",
+  "asset.status_changed",
 ] as const;
 
 export type WorkflowTriggerType = (typeof WORKFLOW_TRIGGER_TYPES)[number];
@@ -18,6 +20,8 @@ export const WORKFLOW_CONDITION_FIELDS = [
   "requester",
   "group",
   "assignee",
+  "assetType",
+  "lifecycleState",
 ] as const;
 
 export type WorkflowConditionField = (typeof WORKFLOW_CONDITION_FIELDS)[number];
@@ -33,6 +37,7 @@ export const WORKFLOW_ACTION_TYPES = [
   "create_notification",
   "sla_start",
   "sla_stop",
+  "change_asset_status",
 ] as const;
 
 export type WorkflowActionType = (typeof WORKFLOW_ACTION_TYPES)[number];
@@ -113,6 +118,25 @@ function assertActionParams(action: WorkflowAction): void {
         params.targetType !== "resolution"
       ) {
         throw new Error(`${type} action targetType must be response or resolution when set`);
+      }
+      return;
+    case "change_asset_status":
+      if (
+        typeof params.lifecycleState !== "string" ||
+        ![
+          "DRAFT",
+          "IN_STOCK",
+          "ASSIGNED",
+          "IN_REPAIR",
+          "RETIRED",
+          "DISPOSED",
+          "LOST",
+          "ARCHIVED",
+        ].includes(params.lifecycleState)
+      ) {
+        throw new Error(
+          "change_asset_status action requires params.lifecycleState to be a valid asset lifecycle state",
+        );
       }
       return;
     default:

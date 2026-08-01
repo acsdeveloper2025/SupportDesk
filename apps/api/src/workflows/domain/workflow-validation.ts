@@ -45,6 +45,11 @@ const STATUS_VALUES = new Set(Object.values(TicketStatus).map((v) => String(v).t
 const PRIORITY_VALUES = new Set(Object.values(TicketPriority).map((v) => String(v).toLowerCase()));
 const TYPE_VALUES = new Set(Object.values(TicketType).map((v) => String(v).toLowerCase()));
 const CHANNEL_VALUES = new Set(Object.values(TicketChannel).map((v) => String(v).toLowerCase()));
+const ASSET_LIFECYCLE_VALUES = new Set(
+  ["DRAFT", "IN_STOCK", "ASSIGNED", "IN_REPAIR", "RETIRED", "DISPOSED", "LOST", "ARCHIVED"].map(
+    (v) => v.toLowerCase(),
+  ),
+);
 
 const SEVERITY_RANK: Record<WorkflowValidationSeverity, number> = {
   error: 0,
@@ -346,6 +351,30 @@ function validateConditionSemantics(
   if (condition.field === "priority") checkEnum(PRIORITY_VALUES, "priority");
   if (condition.field === "type") checkEnum(TYPE_VALUES, "type");
   if (condition.field === "channel") checkEnum(CHANNEL_VALUES, "channel");
+  if (condition.field === "lifecycleState") checkEnum(ASSET_LIFECYCLE_VALUES, "lifecycleState");
+
+  if (condition.field === "assetType") {
+    const values =
+      condition.operator === "in" || condition.operator === "not_in"
+        ? Array.isArray(condition.value)
+          ? condition.value
+          : []
+        : [condition.value];
+    values.forEach((value, idx) => {
+      if (typeof value !== "string" || !UUID_RE.test(value)) {
+        issues.push(
+          issue(
+            "WORKFLOW_INVALID_UUID",
+            "error",
+            condition.operator === "in" || condition.operator === "not_in"
+              ? `${path}.value[${idx}]`
+              : `${path}.value`,
+            "Expected a UUID asset type id",
+          ),
+        );
+      }
+    });
+  }
 
   if (condition.field === "assignee" || condition.field === "requester") {
     const values =
@@ -425,6 +454,20 @@ function validateActionSemantics(
       );
     }
   }
+
+  if (action.type === "change_asset_status") {
+    const token = normalizeEnumToken(action.params.lifecycleState);
+    if (!token || !ASSET_LIFECYCLE_VALUES.has(token)) {
+      issues.push(
+        issue(
+          "WORKFLOW_INVALID_PARAM",
+          "error",
+          `${path}.params.lifecycleState`,
+          "lifecycleState must be a valid asset lifecycle state",
+        ),
+      );
+    }
+  }
 }
 
 function detectCycleRisk(definition: WorkflowDefinition, issues: WorkflowValidationIssue[]): void {
@@ -455,6 +498,31 @@ function detectCycleRisk(definition: WorkflowDefinition, issues: WorkflowValidat
             `change_status may re-fire ticket.status_changed trigger at triggers[${triggerIndex}]`,
           ),
         );
+      }
+    }
+  }
+
+  const assetStatusTriggers = definition.triggers
+    .map((trigger, index) => ({ index, trigger }))
+    .filter(({ trigger }) => trigger.type === "asset.status_changed");
+  const assetStatusActions = definition.actions
+    .map((action, index) => ({ action, index }))
+    .filter(({ action }) => action.type === "change_asset_status");
+
+  if (assetStatusTriggers.length > 0 && assetStatusActions.length > 0) {
+    for (const { index: actionIndex } of assetStatusActions) {
+      for (const { index: triggerIndex, trigger } of assetStatusTriggers) {
+        const unrestricted = trigger.fromStatus === undefined && trigger.toStatus === undefined;
+        if (unrestricted) {
+          issues.push(
+            issue(
+              "WORKFLOW_CYCLE_RISK",
+              "error",
+              `actions[${actionIndex}]`,
+              `change_asset_status may re-fire asset.status_changed trigger at triggers[${triggerIndex}]`,
+            ),
+          );
+        }
       }
     }
   }

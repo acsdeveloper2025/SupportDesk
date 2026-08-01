@@ -86,22 +86,22 @@ enum AuditOutcome {
 }
 
 model Tenant {
-  id                          String           @id(map: "pk_tenants") @default(uuid()) @db.Uuid
-  publicId                    String           @unique(map: "uq_tenants__public_id") @default(uuid()) @map("public_id") @db.Uuid
-  slug                        String           @unique(map: "uq_tenants__slug") @db.VarChar(100)
-  name                        String           @db.VarChar(200)
-  state                       TenantState      @default(ACTIVE)
-  defaultLocale               String           @default("en-US") @map("default_locale") @db.VarChar(20)
-  defaultTimeZone             String           @default("UTC") @map("default_time_zone") @db.VarChar(100)
-  registrationEnabled         Boolean          @default(false) @map("registration_enabled")
-  failedLoginLockoutThreshold Int              @default(5) @map("failed_login_lockout_threshold")
-  failedLoginWindowMinutes    Int              @default(15) @map("failed_login_window_minutes")
-  lockoutDurationMinutes      Int              @default(30) @map("lockout_duration_minutes")
-  passwordExpiresDays         Int?             @map("password_expires_days")
-  createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt                   DateTime?        @map("deleted_at") @db.Timestamptz(3)
-  version                     Int              @default(1)
+  id                          String                     @id(map: "pk_tenants") @default(uuid()) @db.Uuid
+  publicId                    String                     @unique(map: "uq_tenants__public_id") @default(uuid()) @map("public_id") @db.Uuid
+  slug                        String                     @unique(map: "uq_tenants__slug") @db.VarChar(100)
+  name                        String                     @db.VarChar(200)
+  state                       TenantState                @default(ACTIVE)
+  defaultLocale               String                     @default("en-US") @map("default_locale") @db.VarChar(20)
+  defaultTimeZone             String                     @default("UTC") @map("default_time_zone") @db.VarChar(100)
+  registrationEnabled         Boolean                    @default(false) @map("registration_enabled")
+  failedLoginLockoutThreshold Int                        @default(5) @map("failed_login_lockout_threshold")
+  failedLoginWindowMinutes    Int                        @default(15) @map("failed_login_window_minutes")
+  lockoutDurationMinutes      Int                        @default(30) @map("lockout_duration_minutes")
+  passwordExpiresDays         Int?                       @map("password_expires_days")
+  createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+  version                     Int                        @default(1)
   settings                    TenantSetting[]
   domains                     TenantDomain[]
   roles                       Role[]
@@ -133,6 +133,24 @@ model Tenant {
   kbArticleVersions           KbArticleVersion[]
   kbTags                      KbTag[]
   kbTicketLinks               KbTicketLink[]
+  serviceCategories           ServiceCategory[]
+  serviceItems                ServiceItem[]
+  serviceRequestForms         ServiceRequestForm[]
+  requestTemplates            RequestTemplate[]
+  serviceRequests             ServiceRequest[]
+  serviceRequestApprovals     ServiceRequestApproval[]
+  serviceRequestAttachments   ServiceRequestAttachment[]
+  serviceRequestHistory       ServiceRequestHistory[]
+  assetTypes                  AssetType[]
+  assetCategories             AssetCategory[]
+  assetLocations              AssetLocation[]
+  assets                      Asset[]
+  assetAssignments            AssetAssignment[]
+  assetRelationships          AssetRelationship[]
+  assetHistory                AssetHistory[]
+  assetTicketLinks            AssetTicketLink[]
+  assetTypeKbLinks            AssetTypeKbLink[]
+  assetAttachments            AssetAttachment[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -170,40 +188,56 @@ model TenantDomain {
 }
 
 model User {
-  id                         String          @id(map: "pk_users") @default(uuid()) @db.Uuid
-  publicId                   String          @unique(map: "uq_users__public_id") @default(uuid()) @map("public_id") @db.Uuid
-  email                      String          @db.VarChar(320)
-  emailNormalized            String          @unique(map: "uq_users__email_normalized") @map("email_normalized") @db.VarChar(320)
-  emailVerifiedAt            DateTime?       @map("email_verified_at") @db.Timestamptz(3)
-  passwordHash               String          @map("password_hash") @db.VarChar(255)
-  passwordChangedAt          DateTime?       @map("password_changed_at") @db.Timestamptz(3)
-  passwordExpiresAt          DateTime?       @map("password_expires_at") @db.Timestamptz(3)
-  failedLoginCount           Int             @default(0) @map("failed_login_count")
-  failedLoginWindowStartedAt DateTime?       @map("failed_login_window_started_at") @db.Timestamptz(3)
-  lockedUntil                DateTime?       @map("locked_until") @db.Timestamptz(3)
-  state                      UserState       @default(INVITED)
-  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
-  version                    Int             @default(1)
-  profile                    UserProfile?
-  preferences                UserPreference?
-  roles                      UserRole[]
-  sessions                   Session[]
-  refreshTokens              RefreshToken[]
-  authTokens                 AuthToken[]
-  auditEvents                AuditEvent[]    @relation("AuditActorUser")
-  requestedTickets           Ticket[]        @relation("TicketRequester")
-  assignedTickets            Ticket[]        @relation("TicketAssignee")
-  authoredComments           Comment[]       @relation("CommentAuthor")
-  uploadedAttachments        Attachment[]    @relation("AttachmentUploader")
-  notifications              Notification[]  @relation("NotificationRecipient")
-  actedNotifications         Notification[]  @relation("NotificationActor")
-  notificationPreferences    NotificationPreference[]
-  notificationIntents        NotificationIntent[]    @relation("NotificationIntentRecipient")
-  authoredKbArticles         KbArticle[]             @relation("KbArticleAuthor")
-  createdKbVersions          KbArticleVersion[]      @relation("KbVersionCreator")
-  createdKbTicketLinks       KbTicketLink[]          @relation("KbTicketLinkCreator")
+  id                          String                     @id(map: "pk_users") @default(uuid()) @db.Uuid
+  publicId                    String                     @unique(map: "uq_users__public_id") @default(uuid()) @map("public_id") @db.Uuid
+  email                       String                     @db.VarChar(320)
+  emailNormalized             String                     @unique(map: "uq_users__email_normalized") @map("email_normalized") @db.VarChar(320)
+  emailVerifiedAt             DateTime?                  @map("email_verified_at") @db.Timestamptz(3)
+  passwordHash                String                     @map("password_hash") @db.VarChar(255)
+  passwordChangedAt           DateTime?                  @map("password_changed_at") @db.Timestamptz(3)
+  passwordExpiresAt           DateTime?                  @map("password_expires_at") @db.Timestamptz(3)
+  failedLoginCount            Int                        @default(0) @map("failed_login_count")
+  failedLoginWindowStartedAt  DateTime?                  @map("failed_login_window_started_at") @db.Timestamptz(3)
+  lockedUntil                 DateTime?                  @map("locked_until") @db.Timestamptz(3)
+  state                       UserState                  @default(INVITED)
+  createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+  version                     Int                        @default(1)
+  profile                     UserProfile?
+  preferences                 UserPreference?
+  roles                       UserRole[]
+  sessions                    Session[]
+  refreshTokens               RefreshToken[]
+  authTokens                  AuthToken[]
+  auditEvents                 AuditEvent[]               @relation("AuditActorUser")
+  requestedTickets            Ticket[]                   @relation("TicketRequester")
+  assignedTickets             Ticket[]                   @relation("TicketAssignee")
+  authoredComments            Comment[]                  @relation("CommentAuthor")
+  uploadedAttachments         Attachment[]               @relation("AttachmentUploader")
+  notifications               Notification[]             @relation("NotificationRecipient")
+  actedNotifications          Notification[]             @relation("NotificationActor")
+  notificationPreferences     NotificationPreference[]
+  notificationIntents         NotificationIntent[]       @relation("NotificationIntentRecipient")
+  authoredKbArticles          KbArticle[]                @relation("KbArticleAuthor")
+  createdKbVersions           KbArticleVersion[]         @relation("KbVersionCreator")
+  createdKbTicketLinks        KbTicketLink[]             @relation("KbTicketLinkCreator")
+  createdRequestTemplates     RequestTemplate[]          @relation("RequestTemplateCreator")
+  submittedServiceRequests    ServiceRequest[]           @relation("ServiceRequestRequester")
+  requestedForServiceRequests ServiceRequest[]           @relation("ServiceRequestRequestedFor")
+  decidedServiceApprovals     ServiceRequestApproval[]   @relation("ServiceApprovalDecider")
+  uploadedRequestAttachments  ServiceRequestAttachment[] @relation("ServiceRequestAttachmentUploader")
+  actedRequestHistory         ServiceRequestHistory[]    @relation("ServiceRequestHistoryActor")
+  ownedAssets                 Asset[]                    @relation("AssetOwner")
+  assignedAssets              Asset[]                    @relation("AssetAssignedUser")
+  assetAssignmentsMade        AssetAssignment[]          @relation("AssetAssignmentActor")
+  receivedAssetAssignments    AssetAssignment[]          @relation("AssetAssignmentAssignee")
+  unassignedAssetAssignments  AssetAssignment[]          @relation("AssetAssignmentUnassigner")
+  createdAssetRelationships   AssetRelationship[]        @relation("AssetRelationshipCreator")
+  actedAssetHistory           AssetHistory[]             @relation("AssetHistoryActor")
+  createdAssetTicketLinks     AssetTicketLink[]          @relation("AssetTicketLinkCreator")
+  createdAssetTypeKbLinks     AssetTypeKbLink[]          @relation("AssetTypeKbLinkCreator")
+  uploadedAssetAttachments    AssetAttachment[]          @relation("AssetAttachmentUploader")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -443,33 +477,35 @@ enum TicketType {
 }
 
 model Ticket {
-  id              String         @id(map: "pk_tickets") @default(uuid()) @db.Uuid
-  tenantId        String         @map("tenant_id") @db.Uuid
-  publicRef       String         @map("public_ref") @db.VarChar(50)
-  title           String         @db.VarChar(255)
-  description     String         @db.Text
-  status          TicketStatus   @default(NEW)
-  priority        TicketPriority @default(MEDIUM)
-  channel         TicketChannel  @default(WEB)
-  type            TicketType     @default(QUESTION)
-  requesterUserId String         @map("requester_user_id") @db.Uuid
-  assigneeUserId  String?        @map("assignee_user_id") @db.Uuid
-  assignedGroupId String?        @map("assigned_group_id") @db.Uuid
-  solvedAt        DateTime?      @map("solved_at") @db.Timestamptz(3)
-  closedAt        DateTime?      @map("closed_at") @db.Timestamptz(3)
-  dueDate         DateTime?      @map("due_date") @db.Timestamptz(3)
-  version         Int            @default(1)
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz(3)
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_tickets__tenants__tenant_id")
-  requesterUser   User           @relation("TicketRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, map: "fk_tickets__users__requester_user_id")
-  assigneeUser    User?          @relation("TicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, map: "fk_tickets__users__assignee_user_id")
+  id              String            @id(map: "pk_tickets") @default(uuid()) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  publicRef       String            @map("public_ref") @db.VarChar(50)
+  title           String            @db.VarChar(255)
+  description     String            @db.Text
+  status          TicketStatus      @default(NEW)
+  priority        TicketPriority    @default(MEDIUM)
+  channel         TicketChannel     @default(WEB)
+  type            TicketType        @default(QUESTION)
+  requesterUserId String            @map("requester_user_id") @db.Uuid
+  assigneeUserId  String?           @map("assignee_user_id") @db.Uuid
+  assignedGroupId String?           @map("assigned_group_id") @db.Uuid
+  solvedAt        DateTime?         @map("solved_at") @db.Timestamptz(3)
+  closedAt        DateTime?         @map("closed_at") @db.Timestamptz(3)
+  dueDate         DateTime?         @map("due_date") @db.Timestamptz(3)
+  version         Int               @default(1)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?         @map("deleted_at") @db.Timestamptz(3)
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_tickets__tenants__tenant_id")
+  requesterUser   User              @relation("TicketRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, map: "fk_tickets__users__requester_user_id")
+  assigneeUser    User?             @relation("TicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, map: "fk_tickets__users__assignee_user_id")
   comments        Comment[]
   attachments     Attachment[]
   slaTargets      SlaTarget[]
   slaEvaluations  SlaEvaluation[]
   kbLinks         KbTicketLink[]
+  serviceRequests ServiceRequest[]
+  assetLinks      AssetTicketLink[]
 
   @@unique([tenantId, publicRef], map: "uq_tickets__tenant_id_public_ref")
   @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
@@ -506,9 +542,9 @@ model Comment {
   updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt    DateTime?         @map("deleted_at") @db.Timestamptz(3)
 
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_comments__tenants__tenant_id")
-  ticket       Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_comments__tickets__ticket_id")
-  authorUser   User              @relation("CommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, map: "fk_comments__users__author_user_id")
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_comments__tenants__tenant_id")
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_comments__tickets__ticket_id")
+  authorUser User   @relation("CommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, map: "fk_comments__users__author_user_id")
 
   @@index([tenantId, ticketId, createdAt], map: "idx_comments__tenant_id_ticket_id_created_at")
   @@index([tenantId, deletedAt], map: "idx_comments__tenant_id_deleted_at")
@@ -540,9 +576,9 @@ model Attachment {
   updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt        DateTime?       @map("deleted_at") @db.Timestamptz(3)
 
-  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_attachments__tenants__tenant_id")
-  ticket           Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_attachments__tickets__ticket_id")
-  uploader         User            @relation("AttachmentUploader", fields: [uploadedBy], references: [id], onDelete: Restrict, map: "fk_attachments__users__uploaded_by")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_attachments__tenants__tenant_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_attachments__tickets__ticket_id")
+  uploader User   @relation("AttachmentUploader", fields: [uploadedBy], references: [id], onDelete: Restrict, map: "fk_attachments__users__uploaded_by")
 
   @@index([tenantId, ticketId, sha256], map: "idx_attachments__tenant_id_ticket_id_sha256")
   @@index([tenantId, ticketId, createdAt], map: "idx_attachments__tenant_id_ticket_id_created_at")
@@ -551,16 +587,25 @@ model Attachment {
 }
 
 enum NotificationEventType {
-  TICKET_ASSIGNED            @map("ticket.assigned")
-  TICKET_REASSIGNED          @map("ticket.reassigned")
-  TICKET_STATUS_CHANGED      @map("ticket.status_changed")
-  COMMENT_CREATED_PUBLIC     @map("comment.created.public")
-  COMMENT_CREATED_INTERNAL   @map("comment.created.internal")
-  ATTACHMENT_UPLOADED        @map("attachment.uploaded")
-  AUTH_SESSION_REVOKED       @map("auth.session.revoked")
-  SETTINGS_SECURITY_UPDATED  @map("settings.security.updated")
-  SLA_WARNING                @map("sla.warning")
-  SLA_BREACHED               @map("sla.breached")
+  TICKET_ASSIGNED             @map("ticket.assigned")
+  TICKET_REASSIGNED           @map("ticket.reassigned")
+  TICKET_STATUS_CHANGED       @map("ticket.status_changed")
+  COMMENT_CREATED_PUBLIC      @map("comment.created.public")
+  COMMENT_CREATED_INTERNAL    @map("comment.created.internal")
+  ATTACHMENT_UPLOADED         @map("attachment.uploaded")
+  AUTH_SESSION_REVOKED        @map("auth.session.revoked")
+  SETTINGS_SECURITY_UPDATED   @map("settings.security.updated")
+  SLA_WARNING                 @map("sla.warning")
+  SLA_BREACHED                @map("sla.breached")
+  REQUEST_SUBMITTED           @map("request.submitted")
+  REQUEST_APPROVAL_REQUIRED   @map("request.approval_required")
+  REQUEST_APPROVAL_DECIDED    @map("request.approval_decided")
+  REQUEST_REJECTED            @map("request.rejected")
+  REQUEST_CHANGES_REQUESTED   @map("request.changes_requested")
+  REQUEST_FULFILLMENT_STARTED @map("request.fulfillment_started")
+  REQUEST_TICKET_CREATED      @map("request.ticket_created")
+  REQUEST_COMPLETED           @map("request.completed")
+  REQUEST_CANCELLED           @map("request.cancelled")
 
   @@map("notification_event_type")
 }
@@ -573,25 +618,25 @@ enum NotificationChannel {
 }
 
 model Notification {
-  id               String                @id(map: "pk_notifications") @default(uuid()) @db.Uuid
-  tenantId         String                @map("tenant_id") @db.Uuid
-  recipientUserId  String                @map("recipient_user_id") @db.Uuid
-  eventType        NotificationEventType @map("event_type")
-  title            String                @db.VarChar(255)
-  body             String?               @db.Text
-  resourceType     String?               @map("resource_type") @db.VarChar(100)
-  resourceId       String?               @map("resource_id") @db.Uuid
-  actorUserId      String?               @map("actor_user_id") @db.Uuid
-  payload          Json?
-  readAt           DateTime?             @map("read_at") @db.Timestamptz(3)
-  archivedAt       DateTime?             @map("archived_at") @db.Timestamptz(3)
-  version          Int                   @default(1)
-  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id              String                @id(map: "pk_notifications") @default(uuid()) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  recipientUserId String                @map("recipient_user_id") @db.Uuid
+  eventType       NotificationEventType @map("event_type")
+  title           String                @db.VarChar(255)
+  body            String?               @db.Text
+  resourceType    String?               @map("resource_type") @db.VarChar(100)
+  resourceId      String?               @map("resource_id") @db.Uuid
+  actorUserId     String?               @map("actor_user_id") @db.Uuid
+  payload         Json?
+  readAt          DateTime?             @map("read_at") @db.Timestamptz(3)
+  archivedAt      DateTime?             @map("archived_at") @db.Timestamptz(3)
+  version         Int                   @default(1)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notifications__tenants__tenant_id")
-  recipientUser    User                  @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade, map: "fk_notifications__users__recipient_user_id")
-  actorUser        User?                 @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_notifications__users__actor_user_id")
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notifications__tenants__tenant_id")
+  recipientUser User   @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade, map: "fk_notifications__users__recipient_user_id")
+  actorUser     User?  @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_notifications__users__actor_user_id")
 
   @@index([tenantId, recipientUserId, createdAt], map: "idx_notifications__tenant_id_recipient_user_id_created_at")
   @@index([tenantId, recipientUserId, readAt], map: "idx_notifications__tenant_id_recipient_user_id_read_at")
@@ -611,8 +656,8 @@ model NotificationPreference {
   createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__tenants__tenant_id")
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__users__user_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__tenants__tenant_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_notification_preferences__users__user_id")
 
   @@unique([tenantId, userId, eventType, channel], map: "uq_notification_preferences__tenant_user_event_channel")
   @@index([tenantId, userId], map: "idx_notification_preferences__tenant_id_user_id")
@@ -645,18 +690,18 @@ enum SlaTargetState {
 }
 
 model BusinessSchedule {
-  id                   String                    @id(map: "pk_business_schedules") @default(uuid()) @db.Uuid
-  tenantId             String                    @map("tenant_id") @db.Uuid
-  key                  String                    @db.VarChar(100)
-  name                 String                    @db.VarChar(200)
-  description          String?                   @db.Text
-  activeVersionNumber  Int?                      @map("active_version_number")
-  version              Int                       @default(1)
-  createdAt            DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt            DateTime?                 @map("deleted_at") @db.Timestamptz(3)
-  tenant               Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedules__tenants__tenant_id")
-  versions             BusinessScheduleVersion[]
+  id                  String                    @id(map: "pk_business_schedules") @default(uuid()) @db.Uuid
+  tenantId            String                    @map("tenant_id") @db.Uuid
+  key                 String                    @db.VarChar(100)
+  name                String                    @db.VarChar(200)
+  description         String?                   @db.Text
+  activeVersionNumber Int?                      @map("active_version_number")
+  version             Int                       @default(1)
+  createdAt           DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?                 @map("deleted_at") @db.Timestamptz(3)
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedules__tenants__tenant_id")
+  versions            BusinessScheduleVersion[]
 
   @@unique([tenantId, key], map: "uq_business_schedules__tenant_id_key")
   @@index([tenantId], map: "idx_business_schedules__tenant_id")
@@ -664,20 +709,20 @@ model BusinessSchedule {
 }
 
 model BusinessScheduleVersion {
-  id           String                  @id(map: "pk_business_schedule_versions") @default(uuid()) @db.Uuid
-  tenantId     String                  @map("tenant_id") @db.Uuid
-  scheduleId   String                  @map("schedule_id") @db.Uuid
-  versionNumber Int                    @map("version_number")
-  state        ConfigPublicationState  @default(DRAFT)
-  timeZone     String                  @map("time_zone") @db.VarChar(100)
-  weeklyHours  Json                    @map("weekly_hours")
-  holidays     Json                    @default("[]")
-  publishedAt  DateTime?               @map("published_at") @db.Timestamptz(3)
-  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant       Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedule_versions__tenants__tenant_id")
-  schedule     BusinessSchedule        @relation(fields: [scheduleId], references: [id], onDelete: Cascade, map: "fk_bs_versions__business_schedules__schedule_id")
-  slaTargets   SlaTarget[]
+  id             String                 @id(map: "pk_business_schedule_versions") @default(uuid()) @db.Uuid
+  tenantId       String                 @map("tenant_id") @db.Uuid
+  scheduleId     String                 @map("schedule_id") @db.Uuid
+  versionNumber  Int                    @map("version_number")
+  state          ConfigPublicationState @default(DRAFT)
+  timeZone       String                 @map("time_zone") @db.VarChar(100)
+  weeklyHours    Json                   @map("weekly_hours")
+  holidays       Json                   @default("[]")
+  publishedAt    DateTime?              @map("published_at") @db.Timestamptz(3)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_business_schedule_versions__tenants__tenant_id")
+  schedule       BusinessSchedule       @relation(fields: [scheduleId], references: [id], onDelete: Cascade, map: "fk_bs_versions__business_schedules__schedule_id")
+  slaTargets     SlaTarget[]
   slaEvaluations SlaEvaluation[]
 
   @@unique([tenantId, scheduleId, versionNumber], map: "uq_business_schedule_versions__tenant_schedule_version")
@@ -698,6 +743,7 @@ model SlaPolicy {
   deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(3)
   tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_policies__tenants__tenant_id")
   versions            SlaPolicyVersion[]
+  serviceItems        ServiceItem[]
 
   @@unique([tenantId, key], map: "uq_sla_policies__tenant_id_key")
   @@index([tenantId], map: "idx_sla_policies__tenant_id")
@@ -705,29 +751,29 @@ model SlaPolicy {
 }
 
 model SlaPolicyVersion {
-  id                           String                 @id(map: "pk_sla_policy_versions") @default(uuid()) @db.Uuid
-  tenantId                     String                 @map("tenant_id") @db.Uuid
-  policyId                     String                 @map("policy_id") @db.Uuid
-  versionNumber                Int                    @map("version_number")
-  state                        ConfigPublicationState @default(DRAFT)
-  priority                     Int
-  scheduleKey                  String                 @default("default") @map("schedule_key") @db.VarChar(100)
-  matchPriorities              Json                   @default("[]") @map("match_priorities")
-  matchTypes                   Json                   @default("[]") @map("match_types")
-  matchChannels                Json                   @default("[]") @map("match_channels")
-  responseMinutes              Int                    @map("response_minutes")
-  resolutionMinutes            Int                    @map("resolution_minutes")
-  pauseOnPending               Boolean                @default(true) @map("pause_on_pending")
-  pauseOnHold                  Boolean                @default(false) @map("pause_on_hold")
-  restartResolutionOnReopen    Boolean                @default(false) @map("restart_resolution_on_reopen")
-  warningThresholdPercent      Int                    @default(80) @map("warning_threshold_percent")
-  publishedAt                  DateTime?              @map("published_at") @db.Timestamptz(3)
-  createdAt                    DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant                       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__tenants__tenant_id")
-  policy                       SlaPolicy              @relation(fields: [policyId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__sla_policies__policy_id")
-  slaTargets                   SlaTarget[]
-  slaEvaluations               SlaEvaluation[]
+  id                        String                 @id(map: "pk_sla_policy_versions") @default(uuid()) @db.Uuid
+  tenantId                  String                 @map("tenant_id") @db.Uuid
+  policyId                  String                 @map("policy_id") @db.Uuid
+  versionNumber             Int                    @map("version_number")
+  state                     ConfigPublicationState @default(DRAFT)
+  priority                  Int
+  scheduleKey               String                 @default("default") @map("schedule_key") @db.VarChar(100)
+  matchPriorities           Json                   @default("[]") @map("match_priorities")
+  matchTypes                Json                   @default("[]") @map("match_types")
+  matchChannels             Json                   @default("[]") @map("match_channels")
+  responseMinutes           Int                    @map("response_minutes")
+  resolutionMinutes         Int                    @map("resolution_minutes")
+  pauseOnPending            Boolean                @default(true) @map("pause_on_pending")
+  pauseOnHold               Boolean                @default(false) @map("pause_on_hold")
+  restartResolutionOnReopen Boolean                @default(false) @map("restart_resolution_on_reopen")
+  warningThresholdPercent   Int                    @default(80) @map("warning_threshold_percent")
+  publishedAt               DateTime?              @map("published_at") @db.Timestamptz(3)
+  createdAt                 DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                    Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__tenants__tenant_id")
+  policy                    SlaPolicy              @relation(fields: [policyId], references: [id], onDelete: Cascade, map: "fk_sla_policy_versions__sla_policies__policy_id")
+  slaTargets                SlaTarget[]
+  slaEvaluations            SlaEvaluation[]
 
   @@unique([tenantId, policyId, versionNumber], map: "uq_sla_policy_versions__tenant_policy_version")
   @@index([tenantId, state, priority], map: "idx_sla_policy_versions__tenant_state_priority")
@@ -735,28 +781,28 @@ model SlaPolicyVersion {
 }
 
 model SlaTarget {
-  id                       String                   @id(map: "pk_sla_targets") @default(uuid()) @db.Uuid
-  tenantId                 String                   @map("tenant_id") @db.Uuid
-  ticketId                 String                   @map("ticket_id") @db.Uuid
-  type                     SlaTargetType
-  state                    SlaTargetState           @default(RUNNING)
-  policyVersionId          String                   @map("policy_version_id") @db.Uuid
-  scheduleVersionId        String                   @map("schedule_version_id") @db.Uuid
-  startedAt                DateTime                 @map("started_at") @db.Timestamptz(3)
-  dueAt                    DateTime                 @map("due_at") @db.Timestamptz(3)
-  pausedAt                 DateTime?                @map("paused_at") @db.Timestamptz(3)
-  accumulatedPauseMs       BigInt                   @default(0) @map("accumulated_pause_ms")
-  completedAt              DateTime?                @map("completed_at") @db.Timestamptz(3)
-  breachedAt               DateTime?                @map("breached_at") @db.Timestamptz(3)
-  warningNotifiedAt        DateTime?                @map("warning_notified_at") @db.Timestamptz(3)
-  version                  Int                      @default(1)
-  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant                   Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tenants__tenant_id")
-  ticket                   Ticket                   @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tickets__ticket_id")
-  policyVersion            SlaPolicyVersion         @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__sla_policy_versions__policy_version_id")
-  scheduleVersion          BusinessScheduleVersion  @relation(fields: [scheduleVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__schedule_versions__schedule_version_id")
-  evaluations              SlaEvaluation[]
+  id                 String                  @id(map: "pk_sla_targets") @default(uuid()) @db.Uuid
+  tenantId           String                  @map("tenant_id") @db.Uuid
+  ticketId           String                  @map("ticket_id") @db.Uuid
+  type               SlaTargetType
+  state              SlaTargetState          @default(RUNNING)
+  policyVersionId    String                  @map("policy_version_id") @db.Uuid
+  scheduleVersionId  String                  @map("schedule_version_id") @db.Uuid
+  startedAt          DateTime                @map("started_at") @db.Timestamptz(3)
+  dueAt              DateTime                @map("due_at") @db.Timestamptz(3)
+  pausedAt           DateTime?               @map("paused_at") @db.Timestamptz(3)
+  accumulatedPauseMs BigInt                  @default(0) @map("accumulated_pause_ms")
+  completedAt        DateTime?               @map("completed_at") @db.Timestamptz(3)
+  breachedAt         DateTime?               @map("breached_at") @db.Timestamptz(3)
+  warningNotifiedAt  DateTime?               @map("warning_notified_at") @db.Timestamptz(3)
+  version            Int                     @default(1)
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tenants__tenant_id")
+  ticket             Ticket                  @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_sla_targets__tickets__ticket_id")
+  policyVersion      SlaPolicyVersion        @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__sla_policy_versions__policy_version_id")
+  scheduleVersion    BusinessScheduleVersion @relation(fields: [scheduleVersionId], references: [id], onDelete: Restrict, map: "fk_sla_targets__schedule_versions__schedule_version_id")
+  evaluations        SlaEvaluation[]
 
   @@index([tenantId, state, dueAt], map: "idx_sla_targets__tenant_id_state_due_at")
   @@index([tenantId, ticketId, type], map: "idx_sla_targets__tenant_id_ticket_id_type")
@@ -785,21 +831,21 @@ model SlaEvaluation {
 }
 
 model Workflow {
-  id                  String             @id(map: "pk_workflows") @default(uuid()) @db.Uuid
-  tenantId            String             @map("tenant_id") @db.Uuid
-  key                 String             @db.VarChar(100)
-  name                String             @db.VarChar(200)
-  description         String?            @db.Text
+  id                  String              @id(map: "pk_workflows") @default(uuid()) @db.Uuid
+  tenantId            String              @map("tenant_id") @db.Uuid
+  key                 String              @db.VarChar(100)
+  name                String              @db.VarChar(200)
+  description         String?             @db.Text
   priority            Int
-  enabled             Boolean            @default(true)
-  pausedAt            DateTime?          @map("paused_at") @db.Timestamptz(3)
-  pausedReason        String?            @map("paused_reason") @db.VarChar(500)
-  activeVersionNumber Int?               @map("active_version_number")
-  version             Int                @default(1)
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(3)
-  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflows__tenants__tenant_id")
+  enabled             Boolean             @default(true)
+  pausedAt            DateTime?           @map("paused_at") @db.Timestamptz(3)
+  pausedReason        String?             @map("paused_reason") @db.VarChar(500)
+  activeVersionNumber Int?                @map("active_version_number")
+  version             Int                 @default(1)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(3)
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflows__tenants__tenant_id")
   versions            WorkflowVersion[]
   executions          WorkflowExecution[]
 
@@ -810,19 +856,19 @@ model Workflow {
 }
 
 model WorkflowVersion {
-  id            String                  @id(map: "pk_workflow_versions") @default(uuid()) @db.Uuid
-  tenantId      String                  @map("tenant_id") @db.Uuid
-  workflowId    String                  @map("workflow_id") @db.Uuid
-  versionNumber Int                     @map("version_number")
-  state         ConfigPublicationState  @default(DRAFT)
+  id            String                 @id(map: "pk_workflow_versions") @default(uuid()) @db.Uuid
+  tenantId      String                 @map("tenant_id") @db.Uuid
+  workflowId    String                 @map("workflow_id") @db.Uuid
+  versionNumber Int                    @map("version_number")
+  state         ConfigPublicationState @default(DRAFT)
   triggers      Json
-  conditions    Json                    @default("[]")
+  conditions    Json                   @default("[]")
   actions       Json
-  publishedAt   DateTime?               @map("published_at") @db.Timestamptz(3)
-  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__tenants__tenant_id")
-  workflow      Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__workflows__workflow_id")
+  publishedAt   DateTime?              @map("published_at") @db.Timestamptz(3)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__tenants__tenant_id")
+  workflow      Workflow               @relation(fields: [workflowId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__workflows__workflow_id")
   executions    WorkflowExecution[]
 
   @@unique([tenantId, workflowId, versionNumber], map: "uq_workflow_versions__tenant_workflow_version")
@@ -974,21 +1020,21 @@ enum KbArticleVisibility {
 }
 
 model KbCategory {
-  id           String       @id(map: "pk_kb_categories") @default(uuid()) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  parentId     String?      @map("parent_id") @db.Uuid
-  name         String       @db.VarChar(200)
-  slug         String       @db.VarChar(200)
-  description  String?      @db.Text
-  icon         String?      @db.VarChar(100)
-  displayOrder Int          @default(0) @map("display_order")
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id           String   @id(map: "pk_kb_categories") @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  parentId     String?  @map("parent_id") @db.Uuid
+  name         String   @db.VarChar(200)
+  slug         String   @db.VarChar(200)
+  description  String?  @db.Text
+  icon         String?  @db.VarChar(100)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_categories__tenants__tenant_id")
-  parent       KbCategory?  @relation("KbCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull, map: "fk_kb_categories__parents__parent_id")
-  children     KbCategory[] @relation("KbCategoryHierarchy")
-  articles     KbArticle[]
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_categories__tenants__tenant_id")
+  parent   KbCategory?  @relation("KbCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull, map: "fk_kb_categories__parents__parent_id")
+  children KbCategory[] @relation("KbCategoryHierarchy")
+  articles KbArticle[]
 
   @@unique([tenantId, slug], map: "uq_kb_categories__tenant_id_slug")
   @@index([tenantId, parentId], map: "idx_kb_categories__tenant_id_parent_id")
@@ -1015,12 +1061,13 @@ model KbArticle {
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_articles__tenants__tenant_id")
-  category       KbCategory          @relation(fields: [categoryId], references: [id], onDelete: Restrict, map: "fk_kb_articles__categories__category_id")
-  author         User                @relation("KbArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade, map: "fk_kb_articles__users__author_id")
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_articles__tenants__tenant_id")
+  category       KbCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict, map: "fk_kb_articles__categories__category_id")
+  author         User               @relation("KbArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade, map: "fk_kb_articles__users__author_id")
   versions       KbArticleVersion[]
   articleTags    KbArticleTag[]
   ticketLinks    KbTicketLink[]
+  assetTypeLinks AssetTypeKbLink[]
 
   @@unique([tenantId, slug], map: "uq_kb_articles__tenant_id_slug")
   @@index([tenantId, categoryId, status], map: "idx_kb_articles__tenant_category_status")
@@ -1029,19 +1076,19 @@ model KbArticle {
 }
 
 model KbArticleVersion {
-  id            String    @id(map: "pk_kb_article_versions") @default(uuid()) @db.Uuid
-  tenantId      String    @map("tenant_id") @db.Uuid
-  articleId     String    @map("article_id") @db.Uuid
-  versionNumber Int       @map("version_number")
-  title         String    @db.VarChar(300)
-  summary       String?   @db.Text
-  content       String    @db.Text
-  createdById   String    @map("created_by_id") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  id            String   @id(map: "pk_kb_article_versions") @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  articleId     String   @map("article_id") @db.Uuid
+  versionNumber Int      @map("version_number")
+  title         String   @db.VarChar(300)
+  summary       String?  @db.Text
+  content       String   @db.Text
+  createdById   String   @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__tenants__tenant_id")
-  article       KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__articles__article_id")
-  createdBy     User      @relation("KbVersionCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__users__created_by_id")
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__tenants__tenant_id")
+  article   KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__articles__article_id")
+  createdBy User      @relation("KbVersionCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_article_versions__users__created_by_id")
 
   @@unique([tenantId, articleId, versionNumber], map: "uq_kb_article_versions__tenant_article_version")
   @@index([tenantId, articleId], map: "idx_kb_article_versions__tenant_id_article_id")
@@ -1049,11 +1096,11 @@ model KbArticleVersion {
 }
 
 model KbTag {
-  id          String         @id(map: "pk_kb_tags") @default(uuid()) @db.Uuid
-  tenantId    String         @map("tenant_id") @db.Uuid
-  name        String         @db.VarChar(100)
-  slug        String         @db.VarChar(100)
-  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  id        String   @id(map: "pk_kb_tags") @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  slug      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_tags__tenants__tenant_id")
   articleTags KbArticleTag[]
@@ -1063,28 +1110,28 @@ model KbTag {
 }
 
 model KbArticleTag {
-  articleId String    @map("article_id") @db.Uuid
-  tagId     String    @map("tag_id") @db.Uuid
+  articleId String @map("article_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
 
-  article   KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__articles__article_id")
-  tag       KbTag     @relation(fields: [tagId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__tags__tag_id")
+  article KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__articles__article_id")
+  tag     KbTag     @relation(fields: [tagId], references: [id], onDelete: Cascade, map: "fk_kb_article_tags__tags__tag_id")
 
   @@id([articleId, tagId], map: "pk_kb_article_tags")
   @@map("kb_article_tags")
 }
 
 model KbTicketLink {
-  id          String    @id(map: "pk_kb_ticket_links") @default(uuid()) @db.Uuid
-  tenantId    String    @map("tenant_id") @db.Uuid
-  ticketId    String    @map("ticket_id") @db.Uuid
-  articleId   String    @map("article_id") @db.Uuid
-  createdById String    @map("created_by_id") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  id          String   @id(map: "pk_kb_ticket_links") @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  ticketId    String   @map("ticket_id") @db.Uuid
+  articleId   String   @map("article_id") @db.Uuid
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tenants__tenant_id")
-  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tickets__ticket_id")
-  article     KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__articles__article_id")
-  createdBy   User      @relation("KbTicketLinkCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__users__created_by_id")
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tenants__tenant_id")
+  ticket    Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__tickets__ticket_id")
+  article   KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__articles__article_id")
+  createdBy User      @relation("KbTicketLinkCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_kb_ticket_links__users__created_by_id")
 
   @@unique([tenantId, ticketId, articleId], map: "uq_kb_ticket_links__tenant_ticket_article")
   @@index([tenantId, ticketId], map: "idx_kb_ticket_links__tenant_ticket")
@@ -1092,3 +1139,526 @@ model KbTicketLink {
   @@map("kb_ticket_links")
 }
 
+enum ServiceKind {
+  BUSINESS  @map("business")
+  TECHNICAL @map("technical")
+
+  @@map("service_kind")
+}
+
+enum ServiceApprovalMode {
+  NONE   @map("none")
+  SINGLE @map("single")
+  ALL    @map("all")
+  ANY    @map("any")
+
+  @@map("service_approval_mode")
+}
+
+enum ServiceRequestStatus {
+  SUBMITTED         @map("submitted")
+  AWAITING_APPROVAL @map("awaiting_approval")
+  APPROVED          @map("approved")
+  REJECTED          @map("rejected")
+  CHANGES_REQUESTED @map("changes_requested")
+  IN_FULFILLMENT    @map("in_fulfillment")
+  COMPLETED         @map("completed")
+  CANCELLED         @map("cancelled")
+
+  @@map("service_request_status")
+}
+
+enum ServiceApprovalStatus {
+  PENDING           @map("pending")
+  APPROVED          @map("approved")
+  REJECTED          @map("rejected")
+  CHANGES_REQUESTED @map("changes_requested")
+
+  @@map("service_approval_status")
+}
+
+model ServiceCategory {
+  id           String    @id(map: "pk_service_categories") @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  parentId     String?   @map("parent_id") @db.Uuid
+  name         String    @db.VarChar(200)
+  slug         String    @db.VarChar(200)
+  description  String?   @db.Text
+  icon         String?   @db.VarChar(100)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_categories__tenants__tenant_id")
+  parent       ServiceCategory?  @relation("ServiceCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull, map: "fk_service_categories__parents__parent_id")
+  children     ServiceCategory[] @relation("ServiceCategoryHierarchy")
+  serviceItems ServiceItem[]
+
+  @@unique([tenantId, slug], map: "uq_service_categories__tenant_id_slug")
+  @@index([tenantId, parentId], map: "idx_service_categories__tenant_id_parent_id")
+  @@map("service_categories")
+}
+
+model ServiceItem {
+  id                          String                 @id(map: "pk_service_items") @default(uuid()) @db.Uuid
+  tenantId                    String                 @map("tenant_id") @db.Uuid
+  categoryId                  String                 @map("category_id") @db.Uuid
+  name                        String                 @db.VarChar(200)
+  slug                        String                 @db.VarChar(200)
+  description                 String?                @db.Text
+  kind                        ServiceKind            @default(BUSINESS)
+  state                       ConfigPublicationState @default(DRAFT)
+  approvalMode                ServiceApprovalMode    @default(NONE) @map("approval_mode")
+  approvalSteps               Json                   @default("[]") @map("approval_steps")
+  slaPolicyId                 String?                @map("sla_policy_id") @db.Uuid
+  defaultTicketType           TicketType             @default(FEATURE_REQUEST) @map("default_ticket_type")
+  defaultPriority             TicketPriority         @default(MEDIUM) @map("default_priority")
+  suggestedKbTags             Json                   @default("[]") @map("suggested_kb_tags")
+  generateTicketOnFulfillment Boolean                @default(true) @map("generate_ticket_on_fulfillment")
+  publishedAt                 DateTime?              @map("published_at") @db.Timestamptz(3)
+  createdAt                   DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?              @map("deleted_at") @db.Timestamptz(3)
+
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_items__tenants__tenant_id")
+  category         ServiceCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict, map: "fk_service_items__categories__category_id")
+  slaPolicy        SlaPolicy?          @relation(fields: [slaPolicyId], references: [id], onDelete: SetNull, map: "fk_service_items__sla_policies__sla_policy_id")
+  form             ServiceRequestForm?
+  requests         ServiceRequest[]
+  requestTemplates RequestTemplate[]
+
+  @@unique([tenantId, slug], map: "uq_service_items__tenant_id_slug")
+  @@index([tenantId, state, kind], map: "idx_service_items__tenant_id_state_kind")
+  @@index([tenantId, categoryId, state], map: "idx_service_items__tenant_id_category_state")
+  @@index([tenantId, slaPolicyId], map: "idx_service_items__tenant_id_sla_policy_id")
+  @@map("service_items")
+}
+
+model ServiceRequestForm {
+  id          String   @id(map: "pk_service_request_forms") @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  serviceId   String   @unique(map: "uq_service_request_forms__service_id") @map("service_id") @db.Uuid
+  formVersion Int      @default(1) @map("form_version")
+  schema      Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_request_forms__tenants__tenant_id")
+  service ServiceItem @relation(fields: [serviceId], references: [id], onDelete: Cascade, map: "fk_service_request_forms__services__service_id")
+
+  @@index([tenantId, serviceId], map: "idx_service_request_forms__tenant_id_service_id")
+  @@map("service_request_forms")
+}
+
+model RequestTemplate {
+  id          String    @id(map: "pk_request_templates") @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  serviceId   String?   @map("service_id") @db.Uuid
+  name        String    @db.VarChar(200)
+  description String?   @db.Text
+  fieldValues Json      @map("field_values")
+  isDefault   Boolean   @default(false) @map("is_default")
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_request_templates__tenants__tenant_id")
+  service   ServiceItem? @relation(fields: [serviceId], references: [id], onDelete: SetNull, map: "fk_request_templates__services__service_id")
+  createdBy User         @relation("RequestTemplateCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_request_templates__users__created_by_id")
+
+  @@index([tenantId, serviceId], map: "idx_request_templates__tenant_id_service_id")
+  @@index([tenantId, isDefault], map: "idx_request_templates__tenant_id_is_default")
+  @@map("request_templates")
+}
+
+model ServiceRequest {
+  id                   String               @id(map: "pk_service_requests") @default(uuid()) @db.Uuid
+  tenantId             String               @map("tenant_id") @db.Uuid
+  requestRef           String               @map("request_ref") @db.VarChar(30)
+  serviceId            String               @map("service_id") @db.Uuid
+  serviceName          String               @map("service_name") @db.VarChar(200)
+  serviceKind          ServiceKind          @default(BUSINESS) @map("service_kind")
+  submittedFormVersion Int                  @map("submitted_form_version")
+  answers              Json
+  requesterUserId      String               @map("requester_user_id") @db.Uuid
+  requestedForUserId   String?              @map("requested_for_user_id") @db.Uuid
+  status               ServiceRequestStatus @default(SUBMITTED)
+  priority             TicketPriority       @default(MEDIUM)
+  ticketId             String?              @map("ticket_id") @db.Uuid
+  submittedAt          DateTime             @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  approvedAt           DateTime?            @map("approved_at") @db.Timestamptz(3)
+  fulfillmentStartedAt DateTime?            @map("fulfillment_started_at") @db.Timestamptz(3)
+  completedAt          DateTime?            @map("completed_at") @db.Timestamptz(3)
+  cancelledAt          DateTime?            @map("cancelled_at") @db.Timestamptz(3)
+  cancelledReason      String?              @map("cancelled_reason") @db.VarChar(500)
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  version              Int                  @default(1)
+
+  tenant           Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_requests__tenants__tenant_id")
+  service          ServiceItem                @relation(fields: [serviceId], references: [id], onDelete: Restrict, map: "fk_service_requests__services__service_id")
+  requesterUser    User                       @relation("ServiceRequestRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, map: "fk_service_requests__users__requester_user_id")
+  requestedForUser User?                      @relation("ServiceRequestRequestedFor", fields: [requestedForUserId], references: [id], onDelete: SetNull, map: "fk_service_requests__users__requested_for_user_id")
+  ticket           Ticket?                    @relation(fields: [ticketId], references: [id], onDelete: SetNull, map: "fk_service_requests__tickets__ticket_id")
+  approvals        ServiceRequestApproval[]
+  attachments      ServiceRequestAttachment[]
+  history          ServiceRequestHistory[]
+
+  @@unique([tenantId, requestRef], map: "uq_service_requests__tenant_id_request_ref")
+  @@unique([tenantId, ticketId], map: "uq_service_requests__tenant_id_ticket_id")
+  @@index([tenantId, status, createdAt], map: "idx_service_requests__tenant_id_status_created_at")
+  @@index([tenantId, requesterUserId, createdAt], map: "idx_service_requests__tenant_id_requester_created_at")
+  @@map("service_requests")
+}
+
+model ServiceRequestApproval {
+  id              String                @id(map: "pk_service_request_approvals") @default(uuid()) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  requestId       String                @map("request_id") @db.Uuid
+  stepNumber      Int                   @map("step_number")
+  approverRole    String?               @map("approver_role") @db.VarChar(100)
+  approverUserId  String?               @map("approver_user_id") @db.Uuid
+  status          ServiceApprovalStatus @default(PENDING)
+  decidedByUserId String?               @map("decided_by_user_id") @db.Uuid
+  decidedAt       DateTime?             @map("decided_at") @db.Timestamptz(3)
+  decisionComment String?               @map("decision_comment") @db.VarChar(1000)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_request_approvals__tenants__tenant_id")
+  request   ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, map: "fk_service_request_approvals__requests__request_id")
+  decidedBy User?          @relation("ServiceApprovalDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull, map: "fk_service_request_approvals__users__decided_by_user_id")
+
+  @@unique([tenantId, requestId, stepNumber], map: "uq_service_request_approvals__tenant_request_step")
+  @@index([tenantId, requestId, status], map: "idx_service_request_approvals__tenant_request_status")
+  @@map("service_request_approvals")
+}
+
+model ServiceRequestAttachment {
+  id           String   @id(map: "pk_service_request_attachments") @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  requestId    String   @map("request_id") @db.Uuid
+  fileName     String   @map("file_name") @db.VarChar(255)
+  originalName String   @map("original_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(120)
+  sizeBytes    BigInt   @map("size_bytes")
+  storagePath  String   @map("storage_path") @db.VarChar(500)
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_request_attachments__tenants__tenant_id")
+  request    ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, map: "fk_service_request_attachments__requests__request_id")
+  uploadedBy User           @relation("ServiceRequestAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Cascade, map: "fk_service_request_attachments__users__uploaded_by_id")
+
+  @@index([tenantId, requestId], map: "idx_service_request_attachments__tenant_request")
+  @@map("service_request_attachments")
+}
+
+model ServiceRequestHistory {
+  id          String                @id(map: "pk_service_request_history") @default(uuid()) @db.Uuid
+  tenantId    String                @map("tenant_id") @db.Uuid
+  requestId   String                @map("request_id") @db.Uuid
+  action      String                @db.VarChar(100)
+  fromStatus  ServiceRequestStatus? @map("from_status")
+  toStatus    ServiceRequestStatus? @map("to_status")
+  actorUserId String?               @map("actor_user_id") @db.Uuid
+  comment     String?               @db.VarChar(1000)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_service_request_history__tenants__tenant_id")
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, map: "fk_service_request_history__requests__request_id")
+  actor   User?          @relation("ServiceRequestHistoryActor", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_service_request_history__users__actor_user_id")
+
+  @@index([tenantId, requestId, createdAt], map: "idx_service_request_history__tenant_request_created_at")
+  @@map("service_request_history")
+}
+
+enum AssetLifecycleState {
+  DRAFT     @map("draft")
+  IN_STOCK  @map("in_stock")
+  ASSIGNED  @map("assigned")
+  IN_REPAIR @map("in_repair")
+  RETIRED   @map("retired")
+  DISPOSED  @map("disposed")
+  LOST      @map("lost")
+  ARCHIVED  @map("archived")
+
+  @@map("asset_lifecycle_state")
+}
+
+enum AssetRelationshipType {
+  PARENT_CHILD        @map("parent_child")
+  DEPENDS_ON          @map("depends_on")
+  CONNECTED_TO        @map("connected_to")
+  INSTALLED_ON        @map("installed_on")
+  HOSTED_ON           @map("hosted_on")
+  LICENSE_ASSIGNED_TO @map("license_assigned_to")
+
+  @@map("asset_relationship_type")
+}
+
+enum AssetAssignmentKind {
+  USER       @map("user")
+  DEPARTMENT @map("department")
+  LOCATION   @map("location")
+
+  @@map("asset_assignment_kind")
+}
+
+enum AssetAttachmentKind {
+  PHOTO    @map("photo")
+  INVOICE  @map("invoice")
+  MANUAL   @map("manual")
+  WARRANTY @map("warranty")
+  OTHER    @map("other")
+
+  @@map("asset_attachment_kind")
+}
+
+model AssetType {
+  id                 String    @id(map: "pk_asset_types") @default(uuid()) @db.Uuid
+  tenantId           String?   @map("tenant_id") @db.Uuid
+  key                String    @db.VarChar(100)
+  name               String    @db.VarChar(200)
+  description        String?   @db.Text
+  isSystem           Boolean   @default(false) @map("is_system")
+  customFieldsSchema Json      @default("[]") @map("custom_fields_schema")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant  Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_types__tenants__tenant_id")
+  assets  Asset[]
+  kbLinks AssetTypeKbLink[]
+
+  @@unique([tenantId, key], map: "uq_asset_types__tenant_id_key")
+  @@index([tenantId, isSystem, deletedAt], map: "idx_asset_types__tenant_id_is_system_deleted_at")
+  @@map("asset_types")
+}
+
+model AssetCategory {
+  id           String    @id(map: "pk_asset_categories") @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  parentId     String?   @map("parent_id") @db.Uuid
+  name         String    @db.VarChar(200)
+  slug         String    @db.VarChar(200)
+  description  String?   @db.Text
+  icon         String?   @db.VarChar(100)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_categories__tenants__tenant_id")
+  parent   AssetCategory?  @relation("AssetCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull, map: "fk_asset_categories__parents__parent_id")
+  children AssetCategory[] @relation("AssetCategoryHierarchy")
+  assets   Asset[]
+
+  @@unique([tenantId, slug], map: "uq_asset_categories__tenant_id_slug")
+  @@index([tenantId, parentId], map: "idx_asset_categories__tenant_id_parent_id")
+  @@map("asset_categories")
+}
+
+model AssetLocation {
+  id          String    @id(map: "pk_asset_locations") @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  name        String    @db.VarChar(200)
+  description String?   @db.Text
+  address     String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_locations__tenants__tenant_id")
+  assets            Asset[]
+  assignmentHistory AssetAssignment[]
+
+  @@unique([tenantId, name], map: "uq_asset_locations__tenant_id_name")
+  @@map("asset_locations")
+}
+
+model Asset {
+  id                 String              @id(map: "pk_assets") @default(uuid()) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  assetRef           String              @map("asset_ref") @db.VarChar(50)
+  name               String              @db.VarChar(255)
+  assetTypeId        String              @map("asset_type_id") @db.Uuid
+  categoryId         String?             @map("category_id") @db.Uuid
+  serialNumber       String?             @map("serial_number") @db.VarChar(200)
+  assetTag           String?             @map("asset_tag") @db.VarChar(100)
+  barcode            String?             @db.VarChar(200)
+  manufacturer       String?             @db.VarChar(200)
+  model              String?             @db.VarChar(200)
+  vendor             String?             @db.VarChar(200)
+  purchaseDate       DateTime?           @map("purchase_date") @db.Date
+  warrantyExpiresAt  DateTime?           @map("warranty_expires_at") @db.Date
+  cost               Decimal?            @db.Decimal(12, 2)
+  lifecycleState     AssetLifecycleState @default(DRAFT) @map("lifecycle_state")
+  ownerUserId        String?             @map("owner_user_id") @db.Uuid
+  locationId         String?             @map("location_id") @db.Uuid
+  assignedUserId     String?             @map("assigned_user_id") @db.Uuid
+  assignedDepartment String?             @map("assigned_department") @db.VarChar(200)
+  notes              String?             @db.Text
+  customFields       Json                @default("{}") @map("custom_fields")
+  version            Int                 @default(1)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_assets__tenants__tenant_id")
+  assetType           AssetType           @relation(fields: [assetTypeId], references: [id], onDelete: Restrict, map: "fk_assets__asset_types__asset_type_id")
+  category            AssetCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull, map: "fk_assets__asset_categories__category_id")
+  location            AssetLocation?      @relation(fields: [locationId], references: [id], onDelete: SetNull, map: "fk_assets__asset_locations__location_id")
+  ownerUser           User?               @relation("AssetOwner", fields: [ownerUserId], references: [id], onDelete: SetNull, map: "fk_assets__users__owner_user_id")
+  assignedUser        User?               @relation("AssetAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull, map: "fk_assets__users__assigned_user_id")
+  assignments         AssetAssignment[]
+  relationships       AssetRelationship[] @relation("AssetRelationshipSource")
+  targetRelationships AssetRelationship[] @relation("AssetRelationshipTarget")
+  history             AssetHistory[]
+  ticketLinks         AssetTicketLink[]
+  attachments         AssetAttachment[]
+
+  @@unique([tenantId, assetRef], map: "uq_assets__tenant_id_asset_ref")
+  @@unique([tenantId, assetTag], map: "uq_assets__tenant_id_asset_tag")
+  @@index([tenantId, lifecycleState], map: "idx_assets__tenant_id_lifecycle_state")
+  @@index([tenantId, assetTypeId], map: "idx_assets__tenant_id_asset_type_id")
+  @@index([tenantId, categoryId], map: "idx_assets__tenant_id_category_id")
+  @@index([tenantId, locationId], map: "idx_assets__tenant_id_location_id")
+  @@index([tenantId, assignedUserId], map: "idx_assets__tenant_id_assigned_user_id")
+  @@index([tenantId, ownerUserId], map: "idx_assets__tenant_id_owner_user_id")
+  @@index([tenantId, createdAt], map: "idx_assets__tenant_id_created_at")
+  @@index([tenantId, deletedAt], map: "idx_assets__tenant_id_deleted_at")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_assets__name_trgm")
+  @@index([assetTag(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_assets__asset_tag_trgm")
+  @@index([serialNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_assets__serial_number_trgm")
+  @@index([barcode(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_assets__barcode_trgm")
+  @@map("assets")
+}
+
+model AssetAssignment {
+  id                 String              @id(map: "pk_asset_assignments") @default(uuid()) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  assetId            String              @map("asset_id") @db.Uuid
+  kind               AssetAssignmentKind
+  assignedToUserId   String?             @map("assigned_to_user_id") @db.Uuid
+  assignedDepartment String?             @map("assigned_department") @db.VarChar(200)
+  assignedLocationId String?             @map("assigned_location_id") @db.Uuid
+  assignedByUserId   String              @map("assigned_by_user_id") @db.Uuid
+  reason             String?             @db.VarChar(500)
+  assignedAt         DateTime            @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  unassignedAt       DateTime?           @map("unassigned_at") @db.Timestamptz(3)
+  unassignedByUserId String?             @map("unassigned_by_user_id") @db.Uuid
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_assignments__tenants__tenant_id")
+  asset            Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade, map: "fk_asset_assignments__assets__asset_id")
+  assignedToUser   User?          @relation("AssetAssignmentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull, map: "fk_asset_assignments__users__assigned_to_user_id")
+  assignedLocation AssetLocation? @relation(fields: [assignedLocationId], references: [id], onDelete: SetNull, map: "fk_asset_assignments__locations__assigned_location_id")
+  assignedBy       User           @relation("AssetAssignmentActor", fields: [assignedByUserId], references: [id], onDelete: Restrict, map: "fk_asset_assignments__users__assigned_by_user_id")
+  unassignedBy     User?          @relation("AssetAssignmentUnassigner", fields: [unassignedByUserId], references: [id], onDelete: SetNull, map: "fk_asset_assignments__users__unassigned_by_user_id")
+
+  @@index([tenantId, assetId, assignedAt], map: "idx_asset_assignments__tenant_asset_assigned_at")
+  @@map("asset_assignments")
+}
+
+model AssetRelationship {
+  id              String                @id(map: "pk_asset_relationships") @default(uuid()) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  sourceAssetId   String                @map("source_asset_id") @db.Uuid
+  targetAssetId   String                @map("target_asset_id") @db.Uuid
+  type            AssetRelationshipType
+  note            String?               @db.VarChar(500)
+  createdByUserId String                @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt       DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_relationships__tenants__tenant_id")
+  sourceAsset Asset  @relation("AssetRelationshipSource", fields: [sourceAssetId], references: [id], onDelete: Cascade, map: "fk_asset_relationships__assets__source_asset_id")
+  targetAsset Asset  @relation("AssetRelationshipTarget", fields: [targetAssetId], references: [id], onDelete: Cascade, map: "fk_asset_relationships__assets__target_asset_id")
+  createdBy   User   @relation("AssetRelationshipCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_asset_relationships__users__created_by_user_id")
+
+  @@unique([tenantId, sourceAssetId, targetAssetId, type], map: "uq_asset_relationships__tenant_source_target_type")
+  @@index([tenantId, targetAssetId], map: "idx_asset_relationships__tenant_id_target_asset_id")
+  @@index([tenantId, sourceAssetId], map: "idx_asset_relationships__tenant_id_source_asset_id")
+  @@map("asset_relationships")
+}
+
+model AssetHistory {
+  id          String   @id(map: "pk_asset_history") @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  assetId     String   @map("asset_id") @db.Uuid
+  action      String   @db.VarChar(100)
+  fromState   String?  @map("from_state") @db.VarChar(50)
+  toState     String?  @map("to_state") @db.VarChar(50)
+  metadata    Json?    @map("metadata")
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  comment     String?  @db.VarChar(1000)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_history__tenants__tenant_id")
+  asset  Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade, map: "fk_asset_history__assets__asset_id")
+  actor  User?  @relation("AssetHistoryActor", fields: [actorUserId], references: [id], onDelete: SetNull, map: "fk_asset_history__users__actor_user_id")
+
+  @@index([tenantId, assetId, createdAt], map: "idx_asset_history__tenant_asset_created_at")
+  @@map("asset_history")
+}
+
+model AssetTicketLink {
+  id              String   @id(map: "pk_asset_ticket_links") @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  assetId         String   @map("asset_id") @db.Uuid
+  ticketId        String   @map("ticket_id") @db.Uuid
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_ticket_links__tenants__tenant_id")
+  asset     Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade, map: "fk_asset_ticket_links__assets__asset_id")
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, map: "fk_asset_ticket_links__tickets__ticket_id")
+  createdBy User   @relation("AssetTicketLinkCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_asset_ticket_links__users__created_by_user_id")
+
+  @@unique([tenantId, assetId, ticketId], map: "uq_asset_ticket_links__tenant_asset_ticket")
+  @@index([tenantId, ticketId], map: "idx_asset_ticket_links__tenant_id_ticket_id")
+  @@index([tenantId, assetId], map: "idx_asset_ticket_links__tenant_id_asset_id")
+  @@map("asset_ticket_links")
+}
+
+model AssetTypeKbLink {
+  id              String   @id(map: "pk_asset_type_kb_links") @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  assetTypeId     String   @map("asset_type_id") @db.Uuid
+  articleId       String   @map("article_id") @db.Uuid
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_type_kb_links__tenants__tenant_id")
+  assetType AssetType @relation(fields: [assetTypeId], references: [id], onDelete: Cascade, map: "fk_asset_type_kb_links__asset_types__asset_type_id")
+  article   KbArticle @relation(fields: [articleId], references: [id], onDelete: Cascade, map: "fk_asset_type_kb_links__articles__article_id")
+  createdBy User      @relation("AssetTypeKbLinkCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_asset_type_kb_links__users__created_by_user_id")
+
+  @@unique([tenantId, assetTypeId, articleId], map: "uq_asset_type_kb_links__tenant_type_article")
+  @@index([tenantId, assetTypeId], map: "idx_asset_type_kb_links__tenant_type")
+  @@index([tenantId, articleId], map: "idx_asset_type_kb_links__tenant_article")
+  @@map("asset_type_kb_links")
+}
+
+model AssetAttachment {
+  id           String              @id(map: "pk_asset_attachments") @default(uuid()) @db.Uuid
+  tenantId     String              @map("tenant_id") @db.Uuid
+  assetId      String              @map("asset_id") @db.Uuid
+  kind         AssetAttachmentKind @default(OTHER)
+  fileName     String              @map("file_name") @db.VarChar(255)
+  originalName String              @map("original_name") @db.VarChar(255)
+  mimeType     String              @map("mime_type") @db.VarChar(120)
+  sizeBytes    BigInt              @map("size_bytes")
+  storagePath  String              @map("storage_path") @db.VarChar(500)
+  uploadedById String              @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_asset_attachments__tenants__tenant_id")
+  asset      Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade, map: "fk_asset_attachments__assets__asset_id")
+  uploadedBy User   @relation("AssetAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Cascade, map: "fk_asset_attachments__users__uploaded_by_id")
+
+  @@index([tenantId, assetId, createdAt], map: "idx_asset_attachments__tenant_asset_created_at")
+  @@map("asset_attachments")
+}

@@ -17,6 +17,15 @@ export const ALL_NOTIFICATION_EVENT_TYPES: readonly NotificationEventType[] = [
   NotificationEventType.SETTINGS_SECURITY_UPDATED,
   NotificationEventType.SLA_WARNING,
   NotificationEventType.SLA_BREACHED,
+  NotificationEventType.REQUEST_SUBMITTED,
+  NotificationEventType.REQUEST_APPROVAL_REQUIRED,
+  NotificationEventType.REQUEST_APPROVAL_DECIDED,
+  NotificationEventType.REQUEST_REJECTED,
+  NotificationEventType.REQUEST_CHANGES_REQUESTED,
+  NotificationEventType.REQUEST_FULFILLMENT_STARTED,
+  NotificationEventType.REQUEST_TICKET_CREATED,
+  NotificationEventType.REQUEST_COMPLETED,
+  NotificationEventType.REQUEST_CANCELLED,
 ];
 
 export const DEFAULT_NOTIFICATION_CHANNEL = NotificationChannel.IN_APP;

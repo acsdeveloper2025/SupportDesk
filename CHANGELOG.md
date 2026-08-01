@@ -21,6 +21,24 @@ Enterprise Knowledge Base module release. Git tag: `v1.1-knowledge-base`.
 - Next.js 15 Frontend Knowledge Base Portal & Admin UI (`/kb`, `/kb/categories/[slug]`, `/kb/articles/[slug]`, `/kb/articles/new`, `/kb/articles/[slug]/edit`, `/kb/admin/categories`).
 - Unit test suites and PostgreSQL end-to-end integration test suite (`kb.integration.spec.ts`) validating hierarchy, versioning, outbox integration, ticket linking, search, and tenant isolation negative cases.
 
+## [v1.3-asset-management] - 2026-08-01
+
+Enterprise Asset Management / CMDB module release.
+
+### Added
+
+- CMDB Asset Data Model & Database Migrations (`AssetType`, `AssetCategory`, `AssetLocation`, `Asset`, `AssetAssignment`, `AssetRelationship`, `AssetHistory`, `AssetTicketLink`, `AssetTypeKbLink`, `AssetAttachment`).
+- Asset Lifecycle State Machine (`DRAFT`, `IN_STOCK`, `ASSIGNED`, `IN_REPAIR`, `RETIRED`, `DISPOSED`, `LOST`, `ARCHIVED`) with transition validation and historical audit trails.
+- Dynamic Custom Fields Schema engine per Asset Type allowing custom key-value metadata attributes.
+- Asset Assignment engine supporting assignments to Users, Departments, or Locations.
+- Asset Relationship graph engine supporting `PARENT_CHILD`, `DEPENDS_ON`, `CONNECTED_TO`, `INSTALLED_ON`, `HOSTED_ON`, and `LICENSE_ASSIGNED_TO`.
+- Ticket & Knowledge Base integration for linking assets to support tickets and relating troubleshooting KB articles to asset types.
+- Transactional Outbox Events (`asset.created`, `asset.status_changed`, `asset.assigned`, `asset.unassigned`, `asset.deleted`) emitted inside database transactions.
+- Workflow Engine Integration (`change_asset_status` action executor).
+- 29 Asset Management RBAC permissions (`asset.*`) seeded and assigned across system roles.
+- Next.js 15 CMDB Portal & Administration UI (`/assets`, `/assets/new`, `/assets/[id]`, `/assets/types`, `/assets/categories`, `/assets/locations`) and same-origin BFF proxy routes (`/api/assets`, `/api/asset-types`, `/api/asset-categories`, `/api/asset-locations`).
+- Unit and PostgreSQL end-to-end integration test suites (`assets.service.spec.ts`, `assets.integration.spec.ts`, `assets.openapi.spec.ts`, `assets-pages.test.tsx`).
+
 ## [Unreleased]
 
 ### Added
