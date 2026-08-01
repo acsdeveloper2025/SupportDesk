@@ -300,6 +300,26 @@ describe("TicketsService (T-DOM & T-ISO Integration/Unit Tests)", () => {
     });
   });
 
+  it("assignTicket: rejects assignedGroupId until Organizations/Groups exist", async () => {
+    const created = await service.createTicket({
+      description: "Group assign blocked",
+      requesterUserId: userA,
+      tenantId: tenantA,
+      title: "Group Assign Guard",
+    });
+
+    await expect(
+      service.assignTicket({
+        actorUserId: userA,
+        assignedGroupId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        assigneeUserId: "33333333-3333-4333-8333-333333333333",
+        expectedVersion: created.version,
+        tenantId: tenantA,
+        ticketId: created.id,
+      }),
+    ).rejects.toThrow(/assignedGroupId is not supported/);
+  });
+
   it("unassignTicket: clears assignee and records ticket.unassigned audit event", async () => {
     const assigneeId = "55555555-5555-4555-8555-555555555555";
 

@@ -4,8 +4,19 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 
 ## [Unreleased]
 
+### Fixed
+
+- Pre-Workflow engineering audit remediation: added missing Prisma migration and `migration_lock.toml` for `tickets`/`comments`, corrected schema-guard assertions that previously false-greened business-table drift, and declared `zod` as an explicit API dependency.
+- Reject non-null `assignedGroupId` on ticket create/update/assign until Organizations/Groups exist (ADR-0008).
+- Added soft-delete indexes on `tickets` and `comments`.
+
 ### Added
 
+- Ticket Module v1.0 engineering audit report (`docs/ticket-module-v1-engineering-audit.md`) and final hardening report (`docs/ticket-module-v1-hardening-report.md`).
+- ADR-0006 (offset pagination), ADR-0007 (defer outbox), ADR-0008 (reject group assignment).
+- `pnpm migrate:verify` script and GitHub Actions workflow for fresh Postgres migrate deploy + schema drift check + integration tests.
+- Comments OpenAPI smoke coverage and PostgreSQL schema integration tests.
+- As-built synchronization for tickets/comments API docs, database table catalogue, UI component inventory, and REST pagination exception.
 - Documentation foundation for product requirements, architecture, security, domain behavior, quality, delivery, operations, and roadmap.
 - Shared glossary, architectural decision log, repository governance, contribution guidance, and license.
 - Final architecture foundation documentation: database design, API specification, permission/workflow/audit/notification/email/error catalogues, UI components, coding standards, ADR records, and GitHub project plan.

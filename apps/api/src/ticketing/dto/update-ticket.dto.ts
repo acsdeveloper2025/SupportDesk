@@ -162,9 +162,9 @@ export function validateUpdateTicketPayload(body: Record<string, unknown>): void
   }
 
   if (body.assignedGroupId !== undefined && body.assignedGroupId !== null) {
-    if (typeof body.assignedGroupId !== "string" || !uuidPattern.test(body.assignedGroupId)) {
-      throw new BadRequestException("assignedGroupId must be a valid UUID or null");
-    }
+    throw new BadRequestException(
+      "assignedGroupId is not supported until Organizations/Groups are implemented",
+    );
   }
 
   if (body.dueDate !== undefined && body.dueDate !== null) {

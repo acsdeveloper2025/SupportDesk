@@ -53,6 +53,15 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 - **Decision:** Apply the MIT License to current repository content.
 - **Validation:** Legal review before external distribution or M1, whichever occurs first; see OQ-13.
 
+## Detailed ADR folder cross-references (Ticket Module hardening)
+
+| File ADR                           | Summary                                               | Status                                       |
+| ---------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
+| [adr/ADR-0005.md](adr/ADR-0005.md) | Browser BFF + HttpOnly cookies + CSRF                 | Accepted                                     |
+| [adr/ADR-0006.md](adr/ADR-0006.md) | Offset pagination for Ticket Module v1 lists          | Accepted                                     |
+| [adr/ADR-0007.md](adr/ADR-0007.md) | Defer transactional outbox until automation consumers | Accepted (does not supersede ADR-004 target) |
+| [adr/ADR-0008.md](adr/ADR-0008.md) | Reject `assignedGroupId` until Organizations/Groups   | Accepted                                     |
+
 ## Open questions
 
 | ID    | Question                                                                                                                     | Owner                   | Resolve by          |

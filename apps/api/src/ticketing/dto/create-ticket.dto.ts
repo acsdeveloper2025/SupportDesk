@@ -45,8 +45,10 @@ export class CreateTicketRequestDto {
   assigneeUserId?: string;
 
   @ApiPropertyOptional({
-    description: "Optional group ID assigned to the ticket",
-    example: "22222222-2222-2222-2222-222222222222",
+    description:
+      "Reserved for future group assignment. Non-null values are rejected until Organizations/Groups ship (ADR-0008).",
+    example: null,
+    nullable: true,
   })
   assignedGroupId?: string;
 
@@ -92,8 +94,10 @@ export function validateCreateTicketPayload(body: CreateTicketRequestDto): void 
     throw new BadRequestException("assigneeUserId must be a valid UUID");
   }
 
-  if (body.assignedGroupId && !uuidPattern.test(body.assignedGroupId)) {
-    throw new BadRequestException("assignedGroupId must be a valid UUID");
+  if (body.assignedGroupId) {
+    throw new BadRequestException(
+      "assignedGroupId is not supported until Organizations/Groups are implemented",
+    );
   }
 
   if (body.dueDate) {

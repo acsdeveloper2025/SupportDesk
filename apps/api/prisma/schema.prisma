@@ -443,6 +443,7 @@ model Ticket {
   @@index([tenantId, status], map: "idx_tickets__tenant_id_status")
   @@index([tenantId, assigneeUserId], map: "idx_tickets__tenant_id_assignee_user_id")
   @@index([tenantId, requesterUserId], map: "idx_tickets__tenant_id_requester_user_id")
+  @@index([tenantId, deletedAt], map: "idx_tickets__tenant_id_deleted_at")
   @@map("tickets")
 }
 
@@ -470,5 +471,6 @@ model Comment {
   authorUser   User              @relation("CommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, map: "fk_comments__users__author_user_id")
 
   @@index([tenantId, ticketId, createdAt], map: "idx_comments__tenant_id_ticket_id_created_at")
+  @@index([tenantId, deletedAt], map: "idx_comments__tenant_id_deleted_at")
   @@map("comments")
 }

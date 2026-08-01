@@ -1,41 +1,30 @@
 # API specification
 
-This API specification expands [../13-rest-conventions.md](../13-rest-conventions.md). It documents the intended resource surface only; it does not implement APIs or generate OpenAPI.
+This API specification expands [../13-rest-conventions.md](../13-rest-conventions.md).
 
-## Global conventions
+**As-built vs target:** Resource docs below mark **As-built (Ticket Module v1 / Auth)** sections for implemented NestJS routes. Remaining tables describe the target catalogue and must not be treated as live contracts. Live OpenAPI is served at `/docs` on the API and is covered by OpenAPI smoke tests under `apps/api/src/**/*.openapi.spec.ts`.
+
+## Global conventions (as-built)
 
 - Base path: `/api/v1`
-- Transport: HTTPS only.
-- Format: JSON UTF-8 unless downloading attachments or exports.
-- Tenant context: derived from trusted tenant routing and active Tenant Membership, never from an untrusted body field.
-- Authentication: see [authentication.md](authentication.md).
-- Authorization: stable permissions from [../permissions-matrix.md](../permissions-matrix.md).
-- Errors: [../errors.md](../errors.md).
-- Audit: material actions emit events from [../audit-events.md](../audit-events.md).
-- Pagination: cursor pagination with `page[size]` and `page[after]`; max page size is resource-specific and bounded.
-- Filtering: allow-listed `filter[...]` fields only.
-- Sorting: allow-listed `sort` tokens only; default sort must be stable.
-- Rate limits: tenant, actor, IP, endpoint family, and burst windows may all apply.
-
-## Common response metadata
-
-Successful responses include a correlation ID in headers or body metadata. List responses include `data`, `page`, and `links`. Mutation responses include the new resource version/ETag when applicable. Async operations return `202 Accepted` with an operation resource.
+- Format: JSON UTF-8
+- Tenant context: derived from authenticated session/token claims, never from an untrusted body field
+- Authentication: see [authentication.md](authentication.md) and [ADR-0005](../adr/ADR-0005.md)
+- Authorization: permission keys from [../permissions-matrix.md](../permissions-matrix.md)
+- Errors: Nest HTTP exceptions; catalogue in [../errors.md](../errors.md)
+- Ticket/comment list pagination: offset `page` / `pageSize` ([ADR-0006](../adr/ADR-0006.md)); cursor pagination remains the long-term target in REST conventions
+- Rate limits: auth and selected ticket/comment mutations
 
 ## API document map
 
-- [Authentication](authentication.md)
-- [Organizations](organizations.md)
-- [Users and memberships](users.md)
-- [Roles](roles.md)
-- [Permissions](permissions.md)
-- [Tickets](tickets.md)
-- [Comments](comments.md)
-- [Attachments](attachments.md)
-- [Notifications](notifications.md)
-- [Reports](reports.md)
-- [Settings](settings.md)
-- [Admin/platform operations](admin.md)
+- [Authentication](authentication.md) — largely as-built
+- [Tickets](tickets.md) — as-built Ticket Module v1 + deferred catalogue
+- [Comments](comments.md) — as-built Ticket Module v1 + deferred catalogue
+- [Organizations](organizations.md) — target only
+- [Users and memberships](users.md) — target (identity exists via auth)
+- [Roles](roles.md) / [Permissions](permissions.md) — catalogue; RBAC evaluator as-built
+- [Attachments](attachments.md), [Notifications](notifications.md), [Reports](reports.md), [Settings](settings.md), [Admin](admin.md) — target only
 
 ## Endpoint table key
 
-Each endpoint table uses these columns: method and URI, authentication, authorization, request, response, validation, errors, pagination/filtering/sorting, rate limit, and example.
+Each endpoint table uses these columns: method and URI, authentication, authorization, request, response, validation, errors, pagination/filtering/sorting, rate limit, and example. As-built sections may use a condensed column set for readability.

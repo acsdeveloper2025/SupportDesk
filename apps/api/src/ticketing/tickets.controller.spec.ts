@@ -675,12 +675,28 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it("throws 400 when neither assigneeUserId nor assignedGroupId is provided", async () => {
+    it("throws 400 when assigneeUserId is missing", async () => {
       const req = createMockRequest();
 
-      await expect(controller.assignTicketById("tkt-id-001", { version: 1 }, req)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        controller.assignTicketById("tkt-id-001", { version: 1 } as never, req),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws 400 when assignedGroupId is provided", async () => {
+      const req = createMockRequest();
+
+      await expect(
+        controller.assignTicketById(
+          "tkt-id-001",
+          {
+            assigneeUserId: agentId,
+            assignedGroupId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            version: 1,
+          },
+          req,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it("throws 401 when request context is missing", async () => {

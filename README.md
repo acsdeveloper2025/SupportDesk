@@ -1,6 +1,6 @@
 # SupportDesk
 
-SupportDesk is the documentation-first foundation for an enterprise, multi-tenant ticketing SaaS. The repository now includes a production-ready monorepo bootstrap and is implementing Authentication & Identity issue-by-issue. Ticketing, workflows, SLA, notifications, reports, search, and other business features remain intentionally excluded until their milestones begin.
+SupportDesk is an enterprise, multi-tenant ticketing SaaS built as a modular monolith. The monorepo includes Authentication & Identity, deny-by-default RBAC, audit logging, and the Ticket Module (API + ticket detail UI). Attachments, organizations, notifications, SLA, Workflow Engine, search, and reports remain deferred until their milestones are approved.
 
 ## Project foundation
 
@@ -50,7 +50,7 @@ Default local URLs:
 
 Browser authentication uses same-origin Next.js route handlers under `/api/auth/*`. Those handlers call the NestJS API through server-only `SUPPORTDESK_API_URL`, store access/refresh material in `HttpOnly` cookies, and require CSRF tokens for cookie-authenticated mutations. Frontend components must not store auth tokens in `localStorage`, `sessionStorage`, or other browser-readable storage.
 
-Authentication pages are available at `/login`, `/forgot-password`, `/reset-password`, `/email-verification`, and `/profile`. They are intentionally limited to identity flows and do not introduce dashboard, ticket, report, workflow, SLA, notification, or search screens.
+Authentication pages are available at `/login`, `/forgot-password`, `/reset-password`, `/email-verification`, and `/profile`. Ticket detail is available at `/tickets/[ticketId]` (list/create UI and broader agent workspace remain deferred). Do not start Workflow Engine work until the [Ticket Module v1 engineering audit](docs/ticket-module-v1-engineering-audit.md) gate is approved.
 
 ## Docker Development
 
@@ -95,6 +95,8 @@ The root CI script runs linting, type checking, unit tests, build, and security 
 6. [Testing](docs/16-testing-quality.md), [deployment](docs/18-deployment-cicd.md), [operations](docs/19-operations-recovery.md), [GitHub backlog](docs/github-backlog.md), [implementation order](docs/implementation-order.md), and [sprint plan](docs/sprint-plan.md) — release and delivery expectations.
 7. [Roadmap](docs/20-roadmap.md), [decision log](docs/decision-log.md), and [ADRs](docs/adr/README.md) — delivery gates and architectural decisions.
 8. [Authentication quality gate](docs/authentication-milestone-quality-gate.md) — implemented auth surface, verification evidence, and remaining technical debt.
+9. [Ticket Module v1 engineering audit](docs/ticket-module-v1-engineering-audit.md) — pre-Workflow readiness review, debt register, and go/no-go recommendation.
+10. [Ticket Module v1 hardening report](docs/ticket-module-v1-hardening-report.md) — final pre-Workflow gate evidence and remaining debt.
 
 Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must”, “should”, and “may” carry their RFC 2119 meanings. Requirement IDs are stable and are linked through the [traceability matrix](docs/04-functional-requirements.md#traceability-matrix).
 
@@ -110,4 +112,4 @@ Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must
 
 ## Status
 
-This is a baseline specification expanded into a final architecture foundation and Authentication & Identity implementation. See the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md) for readiness, remaining open questions, and implementation recommendations. Accepted assumptions are explicitly labeled in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
+Architecture foundation, Authentication & Identity, and Ticket Module v1 (API + detail UI) are implemented. Pre-Workflow hardening evidence is in the [hardening report](docs/ticket-module-v1-hardening-report.md). See also the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md). Accepted assumptions are in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).

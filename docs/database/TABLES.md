@@ -23,11 +23,20 @@ This catalogue defines intended tables and invariants. It is not SQL. Naming fol
 
 ## Ticketing
 
+### As-built (Ticket Module v1)
+
+| Table      | Purpose                         | Primary key | Tenant key  | Key constraints                                                                                                                               |
+| ---------- | ------------------------------- | ----------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tickets`  | Canonical support aggregate.    | `id`        | `tenant_id` | Unique `(tenant_id, public_ref)`; requester FK; optional assignee FK; soft delete; version. Indexes: status, assignee, requester, deleted_at. |
+| `comments` | Public/internal ticket messages | `id`        | `tenant_id` | Ticket FK; author FK; soft delete; timeline index `(tenant_id, ticket_id, created_at)`; deleted_at index.                                     |
+
+`assigned_group_id` exists on `tickets` for forward compatibility but is rejected by APIs until Groups ship ([ADR-0008](../adr/ADR-0008.md)).
+
+### Target catalogue (not migrated)
+
 | Table                       | Purpose                                                            | Primary key | Tenant key  | Key constraints                                                                            |
 | --------------------------- | ------------------------------------------------------------------ | ----------- | ----------- | ------------------------------------------------------------------------------------------ |
 | `organizations`             | Optional requester/customer grouping inside a tenant.              | `id`        | `tenant_id` | Unique `(tenant_id, name)` or external reference.                                          |
-| `tickets`                   | Canonical support aggregate root.                                  | `id`        | `tenant_id` | Unique `(tenant_id, public_ref)`; requester, channel, status, priority, version required.  |
-| `comments`                  | Public/internal ticket messages.                                   | `id`        | `tenant_id` | Same-tenant ticket; immutable visibility after dispatch.                                   |
 | `attachments`               | Uploaded or inbound files linked to comments/tickets.              | `id`        | `tenant_id` | Same-tenant ticket/comment; immutable hash/storage identity; scan state controls download. |
 | `file_scan_results`         | Malware/content scan decisions and evidence.                       | `id`        | `tenant_id` | Same-tenant attachment; provider reference deduped.                                        |
 | `ticket_links`              | Follow-up, duplicate, related, blocked-by, or split relationships. | `id`        | `tenant_id` | Both tickets same tenant; no self-link.                                                    |

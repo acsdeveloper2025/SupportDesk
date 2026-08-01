@@ -29,7 +29,21 @@ This document defines reusable UI behavior and acceptance standards without impl
 | Skeleton loaders | Reserve layout during fetch.                                  | loading only.                                             | `aria-busy`; avoid infinite ambiguity.                     | Do not imply committed success before durable write.                   |
 | Charts           | Dashboard/report visualization.                               | loading, stale, no data, partial, error.                  | Data table alternative and descriptive labels.             | Tenant-scoped metrics only unless platform metadata approved.          |
 
-## Required screens
+## As-built Ticket Module v1 UI
+
+Implemented under `apps/web/app/tickets/`:
+
+| Component                           | Path                                                                  | Notes                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Ticket detail page                  | `app/tickets/[ticketId]/page.tsx`                                     | Load/error/forbidden/conflict states; inline edit; comments; timeline |
+| Status / priority badges            | `components/ticket-*-badge.tsx`                                       | Glossary-aligned labels                                               |
+| Comment form / item                 | `components/comment-*.tsx`                                            | Public/internal composer; author delete                               |
+| Timeline item                       | `components/timeline-item.tsx`                                        | Audit-derived activity                                                |
+| Edit form / skeleton / error banner | `components/edit-ticket-form.tsx`, `skeleton.tsx`, `error-banner.tsx` | Optimistic concurrency banner                                         |
+
+**Not implemented yet:** ticket list/queue, create ticket screen, permission-gated action chrome beyond HTTP 403, ticket Playwright/a11y journeys.
+
+## Required screens (target)
 
 - Requester portal: submit ticket, ticket detail, public comments, attachments, notification preferences.
 - Agent workspace: queues, ticket detail, timeline, public/internal reply composer, assignment, SLA panel.

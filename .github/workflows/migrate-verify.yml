@@ -1,0 +1,48 @@
+name: Migrate verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  migrate-verify:
+    name: Prisma migrate deploy (fresh Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: supportdesk
+          POSTGRES_PASSWORD: supportdesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U supportdesk -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify migrations
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: "5432"
+          DATABASE_USER: supportdesk
+          DATABASE_PASSWORD: supportdesk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          chmod +x scripts/verify-migrations.sh
+          ./scripts/verify-migrations.sh

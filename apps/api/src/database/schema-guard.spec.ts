@@ -1,14 +1,15 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
-describe("auth identity schema boundary", () => {
+describe("schema boundary", () => {
   const tableNames = Prisma.dmmf.datamodel.models.map((model) => model.dbName ?? model.name);
 
-  it("contains the auth and identity foundation tables", () => {
+  it("contains the auth, identity, and ticket foundation tables", () => {
     expect(tableNames).toEqual(
       expect.arrayContaining([
         "audit_events",
         "auth_tokens",
+        "comments",
         "permissions",
         "refresh_tokens",
         "role_permissions",
@@ -17,6 +18,7 @@ describe("auth identity schema boundary", () => {
         "tenant_domains",
         "tenant_settings",
         "tenants",
+        "tickets",
         "user_preferences",
         "user_profiles",
         "user_roles",
@@ -25,17 +27,18 @@ describe("auth identity schema boundary", () => {
     );
   });
 
-  it("does not introduce business feature tables", () => {
-    expect(tableNames).not.toEqual(
-      expect.arrayContaining([
-        "attachments",
-        "comments",
-        "notification_intents",
-        "reports",
-        "sla_policies",
-        "tickets",
-        "workflows",
-      ]),
-    );
+  it("does not introduce deferred business feature tables", () => {
+    const deferredTables = [
+      "attachments",
+      "notification_intents",
+      "organizations",
+      "reports",
+      "sla_policies",
+      "workflows",
+    ];
+
+    for (const tableName of deferredTables) {
+      expect(tableNames).not.toContain(tableName);
+    }
   });
 });

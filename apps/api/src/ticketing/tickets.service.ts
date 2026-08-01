@@ -304,6 +304,13 @@ export class TicketsService {
   async assignTicket(dto: AssignTicketDto): Promise<TicketAggregate> {
     const ticket = await this.getTicketById(dto.tenantId, dto.ticketId);
 
+    // Groups are not implemented yet (ADR-0008). Reject opaque group IDs.
+    if (dto.assignedGroupId !== undefined && dto.assignedGroupId !== null) {
+      throw new BadRequestException(
+        "assignedGroupId is not supported until Organizations/Groups are implemented",
+      );
+    }
+
     // Validate assignee user is active and belongs to this tenant
     if (dto.assigneeUserId) {
       const activeUser = await this.repository.findActiveUserInTenant(

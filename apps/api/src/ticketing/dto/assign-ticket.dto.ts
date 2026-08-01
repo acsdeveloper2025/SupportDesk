@@ -7,8 +7,8 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
  * Request body for POST /api/v1/tickets/:id/assign
  * and POST /api/v1/tickets/reference/:publicRef/assign.
  *
- * At least one of {@link assigneeUserId} or {@link assignedGroupId} must be
- * provided (or both).  Use the unassign endpoint to clear assignments.
+ * Ticket Module v1 requires {@link assigneeUserId}. Non-null {@link assignedGroupId}
+ * is rejected until Organizations/Groups ship (ADR-0008).
  * {@link version} is required for optimistic concurrency.
  */
 export class AssignTicketRequestDto {
@@ -20,17 +20,16 @@ export class AssignTicketRequestDto {
   })
   version!: number;
 
-  @ApiPropertyOptional({
-    description: "UUID of the user to assign the ticket to, or null to clear the user assignment.",
+  @ApiProperty({
+    description: "UUID of the user to assign the ticket to.",
     example: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    nullable: true,
   })
-  assigneeUserId?: string | null;
+  assigneeUserId!: string;
 
   @ApiPropertyOptional({
     description:
-      "UUID of the group/team to assign the ticket to, or null to clear group assignment.",
-    example: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "Reserved for future group assignment. Non-null values are rejected until Organizations/Groups ship (ADR-0008).",
+    example: null,
     nullable: true,
   })
   assignedGroupId?: string | null;
@@ -55,28 +54,22 @@ export function validateAssignTicketPayload(body: Record<string, unknown>): void
     throw new BadRequestException("expected version number (integer >= 1) is required");
   }
 
-  const hasAssignee =
-    Object.prototype.hasOwnProperty.call(body, "assigneeUserId") &&
-    body["assigneeUserId"] !== undefined;
-  const hasGroup =
+  if (
+    body["assigneeUserId"] === undefined ||
+    body["assigneeUserId"] === null ||
+    typeof body["assigneeUserId"] !== "string" ||
+    !uuidPattern.test(body["assigneeUserId"])
+  ) {
+    throw new BadRequestException("assigneeUserId is required and must be a valid UUID");
+  }
+
+  if (
     Object.prototype.hasOwnProperty.call(body, "assignedGroupId") &&
-    body["assignedGroupId"] !== undefined;
-
-  if (!hasAssignee && !hasGroup) {
+    body["assignedGroupId"] !== undefined &&
+    body["assignedGroupId"] !== null
+  ) {
     throw new BadRequestException(
-      "At least one of assigneeUserId or assignedGroupId must be provided",
+      "assignedGroupId is not supported until Organizations/Groups are implemented",
     );
-  }
-
-  if (hasAssignee && body["assigneeUserId"] !== null) {
-    if (typeof body["assigneeUserId"] !== "string" || !uuidPattern.test(body["assigneeUserId"])) {
-      throw new BadRequestException("assigneeUserId must be a valid UUID or null");
-    }
-  }
-
-  if (hasGroup && body["assignedGroupId"] !== null) {
-    if (typeof body["assignedGroupId"] !== "string" || !uuidPattern.test(body["assignedGroupId"])) {
-      throw new BadRequestException("assignedGroupId must be a valid UUID or null");
-    }
   }
 }

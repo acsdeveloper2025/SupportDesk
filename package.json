@@ -23,6 +23,7 @@
     "audit:deps": "pnpm audit --audit-level high",
     "docker:dev": "docker compose -f docker/docker-compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f docker/docker-compose.dev.yml down",
+    "migrate:verify": "bash scripts/verify-migrations.sh",
     "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:scan",
     "prepare": "husky"
   },

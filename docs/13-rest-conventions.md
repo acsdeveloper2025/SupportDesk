@@ -6,7 +6,8 @@ This is a style contract. The endpoint inventory and resource-specific contracts
 - Authenticate every non-public request. Tenant context derives from trusted routing plus Tenant Membership and is verified against every resource.
 - Use opaque stable identifiers. Never encode sensitive data or sequential cross-Tenant identifiers.
 - `GET` is safe; `PUT` is idempotent replacement where supported; `PATCH` uses a declared patch format; `DELETE` follows documented lifecycle semantics. Mutations supporting retries require an `Idempotency-Key` scoped to Tenant, actor, operation, and canonical payload.
-- Use cursor pagination with stable ordering, bounded page size, and opaque cursors. Filtering and sorting use allow-listed fields. Search is explicitly eventually consistent.
+- Use cursor pagination with stable ordering, bounded page size, and opaque cursors for search and high-volume queues. Filtering and sorting use allow-listed fields. Search is explicitly eventually consistent.
+- **Exception (Ticket Module v1):** Ticket and Comment list/count APIs use offset pagination (`page`, `pageSize`) per [ADR-0006](adr/ADR-0006.md).
 - Use UTC RFC 3339 instants; enum values are lowercase stable tokens; money, durations, locale, and time zones use documented standards.
 - Optimistic concurrency uses a version/ETag and conditional mutation; stale writes return conflict/precondition failure without mutation.
 - Success returns appropriate 2xx semantics and correlation metadata. Async work returns a monitorable operation resource rather than pretending completion.
