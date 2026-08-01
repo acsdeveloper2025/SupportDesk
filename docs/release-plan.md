@@ -2,6 +2,12 @@
 
 This release plan maps [milestones.md](milestones.md) and [sprint-plan.md](sprint-plan.md) into controlled delivery phases. It is planning only.
 
+## Engineering baseline tags
+
+| Tag                  | Purpose                                            | Notes                                                                                        |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `v1.0-ticket-module` | Freeze Auth + Ticket Module before Workflow Engine | See [ready-for-workflow-engine.md](ready-for-workflow-engine.md). Not a GA customer release. |
+
 ## Release phases
 
 | Phase               | Milestones | Audience                    | Goal                                                               | Promotion gate                                            |

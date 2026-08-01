@@ -97,6 +97,7 @@ The root CI script runs linting, type checking, unit tests, build, and security 
 8. [Authentication quality gate](docs/authentication-milestone-quality-gate.md) — implemented auth surface, verification evidence, and remaining technical debt.
 9. [Ticket Module v1 engineering audit](docs/ticket-module-v1-engineering-audit.md) — pre-Workflow readiness review, debt register, and go/no-go recommendation.
 10. [Ticket Module v1 hardening report](docs/ticket-module-v1-hardening-report.md) — final pre-Workflow gate evidence and remaining debt.
+11. [Ready for Workflow Engine](docs/ready-for-workflow-engine.md) — baseline freeze and E11-I02 approval gate.
 
 Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must”, “should”, and “may” carry their RFC 2119 meanings. Requirement IDs are stable and are linked through the [traceability matrix](docs/04-functional-requirements.md#traceability-matrix).
 
@@ -112,4 +113,4 @@ Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must
 
 ## Status
 
-Architecture foundation, Authentication & Identity, and Ticket Module v1 (API + detail UI) are implemented. Pre-Workflow hardening evidence is in the [hardening report](docs/ticket-module-v1-hardening-report.md). See also the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md). Accepted assumptions are in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
+Architecture foundation, Authentication & Identity, and Ticket Module v1 (API + detail UI) are implemented and frozen at tag `v1.0-ticket-module`. Pre-Workflow evidence: [hardening report](docs/ticket-module-v1-hardening-report.md) and [Ready for Workflow Engine](docs/ready-for-workflow-engine.md). See also the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md). Accepted assumptions are in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).

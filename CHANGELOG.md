@@ -4,6 +4,16 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 
 ## [Unreleased]
 
+### Added
+
+- (none yet — post–Ticket Module baseline)
+
+## [v1.0-ticket-module] - 2026-08-01
+
+Ticket Module baseline freeze before Workflow Engine work. Git tag: `v1.0-ticket-module`.
+
+Evidence: [docs/ticket-module-v1-hardening-report.md](docs/ticket-module-v1-hardening-report.md), [docs/ready-for-workflow-engine.md](docs/ready-for-workflow-engine.md).
+
 ### Fixed
 
 - Pre-Workflow engineering audit remediation: added missing Prisma migration and `migration_lock.toml` for `tickets`/`comments`, corrected schema-guard assertions that previously false-greened business-table drift, and declared `zod` as an explicit API dependency.
@@ -13,6 +23,7 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 ### Added
 
 - Ticket Module v1.0 engineering audit report (`docs/ticket-module-v1-engineering-audit.md`) and final hardening report (`docs/ticket-module-v1-hardening-report.md`).
+- Ready-for-Workflow gate note (`docs/ready-for-workflow-engine.md`).
 - ADR-0006 (offset pagination), ADR-0007 (defer outbox), ADR-0008 (reject group assignment).
 - `pnpm migrate:verify` script and GitHub Actions workflow for fresh Postgres migrate deploy + schema drift check + integration tests.
 - Comments OpenAPI smoke coverage and PostgreSQL schema integration tests.
