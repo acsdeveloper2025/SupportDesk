@@ -6,7 +6,8 @@ All notable changes are recorded here. This project follows Keep a Changelog con
 
 ### Added
 
-- (none yet — post–Ticket Module baseline on `main`; WIP branch adds attachments/search/notifications/SLA below)
+- Workflow Validation & Governance (`E11-I02`) with publish validation gate, validate/clone-draft/diff APIs, ADR-0011.
+- (prior WIP on this stack: attachments/search/notifications/SLA/workflow definition)
 
 ## [v1.0-ticket-module] - 2026-08-01
 

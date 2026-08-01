@@ -1,6 +1,6 @@
 # Architecture decision records
 
-This folder contains detailed ADRs for implementation-driving architecture decisions. [../decision-log.md](../decision-log.md) remains the summary register and open-question tracker.
+This folder contains detailed ADR records for implementation-driving architecture decisions. [../decision-log.md](../decision-log.md) remains the summary register and open-question tracker.
 
 The original decision log uses `ADR-001` style IDs from the first documentation foundation. This folder uses `ADR-0001` style file names for detailed records requested in the final architecture task. The two registers are intentionally cross-referenced rather than silently renumbered.
 
@@ -17,6 +17,8 @@ The original decision log uses `ADR-001` style IDs from the first documentation 
 | [ADR-0007](ADR-0007.md) | Defer transactional outbox until automation consumers exist |
 | [ADR-0008](ADR-0008.md) | Reject group assignment until Organizations/Groups exist    |
 | [ADR-0009](ADR-0009.md) | MVP SLA calendar and timer semantics (OQ-08)                |
+| [ADR-0010](ADR-0010.md) | Workflow definition MVP (E11-I01)                           |
+| [ADR-0011](ADR-0011.md) | Workflow validation & governance (E11-I02)                  |
 
 ## Status values
 

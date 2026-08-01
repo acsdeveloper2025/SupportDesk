@@ -122,6 +122,8 @@ model Tenant {
   slaPolicyVersions           SlaPolicyVersion[]
   slaTargets                  SlaTarget[]
   slaEvaluations              SlaEvaluation[]
+  workflows                   Workflow[]
+  workflowVersions            WorkflowVersion[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -766,4 +768,48 @@ model SlaEvaluation {
 
   @@index([tenantId, ticketId, createdAt], map: "idx_sla_evaluations__tenant_id_ticket_id_created_at")
   @@map("sla_evaluations")
+}
+
+model Workflow {
+  id                  String             @id(map: "pk_workflows") @default(uuid()) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  key                 String             @db.VarChar(100)
+  name                String             @db.VarChar(200)
+  description         String?            @db.Text
+  priority            Int
+  enabled             Boolean            @default(true)
+  pausedAt            DateTime?          @map("paused_at") @db.Timestamptz(3)
+  pausedReason        String?            @map("paused_reason") @db.VarChar(500)
+  activeVersionNumber Int?               @map("active_version_number")
+  version             Int                @default(1)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflows__tenants__tenant_id")
+  versions            WorkflowVersion[]
+
+  @@unique([tenantId, key], map: "uq_workflows__tenant_id_key")
+  @@index([tenantId, deletedAt], map: "idx_workflows__tenant_id_deleted_at")
+  @@index([tenantId, enabled, priority], map: "idx_workflows__tenant_id_enabled_priority")
+  @@map("workflows")
+}
+
+model WorkflowVersion {
+  id            String                  @id(map: "pk_workflow_versions") @default(uuid()) @db.Uuid
+  tenantId      String                  @map("tenant_id") @db.Uuid
+  workflowId    String                  @map("workflow_id") @db.Uuid
+  versionNumber Int                     @map("version_number")
+  state         ConfigPublicationState  @default(DRAFT)
+  triggers      Json
+  conditions    Json                    @default("[]")
+  actions       Json
+  publishedAt   DateTime?               @map("published_at") @db.Timestamptz(3)
+  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__tenants__tenant_id")
+  workflow      Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade, map: "fk_workflow_versions__workflows__workflow_id")
+
+  @@unique([tenantId, workflowId, versionNumber], map: "uq_workflow_versions__tenant_workflow_version")
+  @@index([tenantId, workflowId, state], map: "idx_workflow_versions__tenant_workflow_state")
+  @@map("workflow_versions")
 }

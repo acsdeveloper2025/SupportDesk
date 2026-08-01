@@ -69,6 +69,20 @@ Numbering note: this summary log uses the initial `ADR-001` sequence. The detail
 - **Decision:** One published `default` Business Schedule per Tenant (IANA TZ, weekly windows, explicit holiday dates); pause/reopen and sync breach rules per [adr/ADR-0009.md](adr/ADR-0009.md). Use pinned `luxon` for DST-aware business-time arithmetic.
 - **Consequences:** SLA engine can ship without workers or multi-calendar admin; remaining calendar complexity stays deferred.
 
+## ADR-010 — Workflow definition MVP (E11-I01)
+
+- **Status:** Accepted
+- **Context:** Workflow automation requires versioned definitions before runtime execution; deep validation and dispatch are split across E11-I02 and E11-I03.
+- **Decision:** JSON-on-version storage with full declared trigger/condition/action catalog; draft/published/retired lifecycle; pause vs soft-delete semantics; AND conditions; structural validation only; no execution engine in E11-I01 per [adr/ADR-0010.md](adr/ADR-0010.md).
+- **Consequences:** Definition APIs and audit events ship under `/api/v1/workflows`; execution and deep publish validation remain explicitly deferred.
+
+## ADR-011 — Workflow validation & governance (E11-I02)
+
+- **Status:** Accepted
+- **Context:** Publish needed fail-closed semantic/reference/cycle checks and governance APIs without runtime execution.
+- **Decision:** `schemaVersion: 1` validation reports; sorted issues; warnings non-blocking; group refs rejected; user refs tenant-active; limits + cycle-risk; validate/clone-draft/diff APIs; snapshot diffs per [adr/ADR-0011.md](adr/ADR-0011.md).
+- **Consequences:** Invalid drafts cannot publish; dry-run validate available; execution/outbox remain E11-I03.
+
 ## Open questions
 
 | ID    | Question                                                                                                                     | Owner                   | Resolve by          |

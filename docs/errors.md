@@ -66,6 +66,24 @@ This catalogue expands [api/README.md](api/README.md), [13-rest-conventions.md](
 | `DOMAIN_UNVERIFIED`             | Email/domain setting cannot activate.                     |          422 | Complete verification.                    |
 | `REPLAY_DETECTED`               | Webhook/token/idempotency replay rejected.                |          409 | Do not retry same replay.                 |
 
+## Workflow validation codes (E11-I02)
+
+Returned inside `VALIDATION_FAILED` report bodies (`schemaVersion: 1`). Errors block publish; warnings do not.
+
+| Code                                                                                  | Meaning                                    |
+| ------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `WORKFLOW_REQUIRED_FIELD`                                                             | Missing required triggers/actions/fields   |
+| `WORKFLOW_UNKNOWN_TRIGGER` / `WORKFLOW_UNKNOWN_CONDITION` / `WORKFLOW_UNKNOWN_ACTION` | Catalog membership failure                 |
+| `WORKFLOW_DUPLICATE_ORDINAL`                                                          | Duplicate condition/action ordinal         |
+| `WORKFLOW_INVALID_PARAM`                                                              | Action/trigger param type or enum invalid  |
+| `WORKFLOW_ILLEGAL_TRANSITION`                                                         | Status transition not in ticket matrix     |
+| `WORKFLOW_UNKNOWN_USER`                                                               | User missing/inactive/not in tenant        |
+| `WORKFLOW_GROUP_UNSUPPORTED`                                                          | Group ref until Organizations/Groups exist |
+| `WORKFLOW_LIMIT_EXCEEDED`                                                             | Triggers/conditions/actions/size limit     |
+| `WORKFLOW_NESTING_UNSUPPORTED`                                                        | Nested condition trees rejected            |
+| `WORKFLOW_CYCLE_RISK`                                                                 | Same-definition status_changed loop risk   |
+| `WORKFLOW_INVALID_UUID`                                                               | Malformed UUID                             |
+
 ## Database errors
 
 Database internals are never exposed. Map uniqueness violations to `CONFLICT`, optimistic version misses to `PRECONDITION_FAILED`, unavailable datastore to `DEPENDENCY_UNAVAILABLE`, and migration/constraint surprises to `INTERNAL_ERROR` plus high-severity telemetry.
