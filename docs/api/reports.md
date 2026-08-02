@@ -1,15 +1,37 @@
-# Reports and exports API
+# Reports & Analytics API Specification
 
-Related: [../17-observability.md](../17-observability.md), [../06-tenant-isolation.md](../06-tenant-isolation.md), [../audit-events.md](../audit-events.md).
+## As-built API Endpoints (`/api/v1/reports`)
 
-| Method / URI                               | Authentication        | Authorization                       | Request                                  | Response                                   | Validation                                                   | Errors                                  | Page/filter/sort                                             | Rate limit             | Example            |
-| ------------------------------------------ | --------------------- | ----------------------------------- | ---------------------------------------- | ------------------------------------------ | ------------------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------ | ---------------------- | ------------------ |
-| `GET /api/v1/reports/catalog`              | Active tenant session | `report.read`                       | None                                     | Available reports and required permissions | Tenant context                                               | `AUTH_FORBIDDEN`                        | None                                                         | Normal read            | Build reports nav. |
-| `GET /api/v1/reports/ticket-summary`       | Active tenant session | `report.ticket.read`                | Date range, group, agent, status         | Aggregated ticket metrics with freshness   | Bounded date range; allowed filters                          | `VALIDATION_FAILED`                     | Filter date/group/agent/status; sort metric where applicable | Report throttle        | Dashboard cards.   |
-| `GET /api/v1/reports/sla`                  | Active tenant session | `report.sla.read`                   | Date range, policy, group                | SLA compliance metrics                     | Bounded range; tenant schedule visibility                    | `VALIDATION_FAILED`                     | Filter policy/group/date; sort breach_rate                   | Report throttle        | SLA report.        |
-| `GET /api/v1/reports/audit`                | Active tenant session | `audit.read`                        | Date/action/actor/target filters         | Audit event list                           | Safe filters; content access policy                          | `AUTH_FORBIDDEN`                        | Cursor; filter action/actor/target/date; sort instant        | Audit throttle         | Audit search.      |
-| `POST /api/v1/exports`                     | Active tenant session | Resource-specific export permission | Report/resource, filters, format, reason | Async export job                           | Row/file limits; authorization; reason for sensitive exports | `VALIDATION_FAILED`, `EXPORT_TOO_LARGE` | None                                                         | Strict export throttle | Start CSV export.  |
-| `GET /api/v1/exports`                      | Active tenant session | Own exports or `export.read`        | None                                     | Export jobs                                | Tenant context                                               | `AUTH_FORBIDDEN`                        | Cursor; filter state/resource; sort created_at               | Normal read            | Export history.    |
-| `GET /api/v1/exports/{export_id}/download` | Active tenant session | Own export or `export.download`     | None                                     | Short-lived download                       | Export complete; not expired; authorization rechecked        | `EXPORT_NOT_READY`, `AUTH_FORBIDDEN`    | None                                                         | Download throttle      | Download report.   |
+All endpoints enforce multi-tenant boundary checks and require appropriate `report.*` permissions.
 
-Reports must disclose freshness and cannot return cross-tenant aggregates unless approved as platform metadata.
+| Method   | Endpoint                               | Required Permission      | Description                                                                                                  |
+| :------- | :------------------------------------- | :----------------------- | :----------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/reports/executive`            | `report.read`            | Executive Dashboard high-level KPIs and system health summary                                                |
+| `GET`    | `/api/v1/reports/tickets`              | `report.ticket.read`     | Ticket volume, status, priority, MTTR, MTTA, open ticket aging, reopened, escalations, backlog               |
+| `GET`    | `/api/v1/reports/sla`                  | `report.sla.read`        | SLA compliance %, breaches, response vs resolution SLA, breach priority breakdown, business hours vs actual  |
+| `GET`    | `/api/v1/reports/workflows`            | `report.workflow.read`   | Workflow executions, success/failure rate, retries, dead letter events, automation time saved, runtime stats |
+| `GET`    | `/api/v1/reports/assets`               | `report.asset.read`      | Asset inventory count, assets by type & status, warranty expiry (30/60/90d), utilization %                   |
+| `GET`    | `/api/v1/reports/catalog`              | `report.catalog.read`    | Service catalog request volume, top services, approval stats, fulfillment completion times                   |
+| `GET`    | `/api/v1/reports/kb`                   | `report.kb.read`         | Knowledge base article counts, views, ticket/asset linking, helpfulness rating, most viewed/linked articles  |
+| `GET`    | `/api/v1/reports/agents`               | `report.agent.read`      | Agent productivity: assigned/closed tickets, response/resolution times, comment counts, workload ranking     |
+| `POST`   | `/api/v1/reports/export`               | `report.export.create`   | Generate and export report data in CSV (UTF-8 BOM), PDF, or Excel (XLSX) format                              |
+| `GET`    | `/api/v1/reports/saved`                | `report.saved.read`      | List custom saved report definitions for tenant                                                              |
+| `POST`   | `/api/v1/reports/saved`                | `report.saved.create`    | Create custom saved report configuration                                                                     |
+| `GET`    | `/api/v1/reports/saved/:id`            | `report.saved.read`      | Get saved report definition by ID                                                                            |
+| `DELETE` | `/api/v1/reports/saved/:id`            | `report.saved.delete`    | Delete custom saved report definition                                                                        |
+| `GET`    | `/api/v1/reports/scheduled`            | `report.schedule.read`   | List scheduled report delivery jobs                                                                          |
+| `POST`   | `/api/v1/reports/scheduled`            | `report.schedule.create` | Create scheduled report delivery job (Daily, Weekly, Monthly, Custom)                                        |
+| `DELETE` | `/api/v1/reports/scheduled/:id`        | `report.schedule.delete` | Delete scheduled report job                                                                                  |
+| `GET`    | `/api/v1/reports/exports`              | `report.export.read`     | List past generated report export files                                                                      |
+| `GET`    | `/api/v1/reports/exports/:id/download` | `report.export.download` | Download generated report export file                                                                        |
+
+## Query Filters Schema
+
+All report GET endpoints accept query filters:
+
+- `range`: Time range shortcut (`7d`, `30d`, `90d`, `12M`, `custom`)
+- `startDate`: ISO 8601 UTC timestamp
+- `endDate`: ISO 8601 UTC timestamp
+- `groupId`: Optional assigned group filter ID
+- `agentId`: Optional assigned agent filter ID
+- `category`: Optional domain category filter

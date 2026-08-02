@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
+import { AdminModule } from "./admin/admin.module";
 import { AppController } from "./app.controller";
 import { AssetsModule } from "./assets/assets.module";
 import { AuthModule } from "./auth/auth.module";
@@ -12,6 +13,7 @@ import { KbModule } from "./kb/kb.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { OutboxModule } from "./outbox/outbox.module";
 import { RbacModule } from "./rbac/rbac.module";
+import { ReportsModule } from "./reports/reports.module";
 import { SlaModule } from "./sla/sla.module";
 import { TicketsModule } from "./ticketing/tickets.module";
 import { WorkflowsModule } from "./workflows/workflows.module";
@@ -22,6 +24,7 @@ import { WorkflowsModule } from "./workflows/workflows.module";
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    AdminModule,
     AuthModule,
     AssetsModule,
     CatalogModule,
@@ -32,6 +35,7 @@ import { WorkflowsModule } from "./workflows/workflows.module";
     NotificationsModule,
     OutboxModule,
     RbacModule,
+    ReportsModule,
     SlaModule,
     TicketsModule,
     WorkflowsModule,

@@ -106,6 +106,13 @@ The system is architected as a **Modular Monolith** with explicit context bounda
   - `apply_sla`: Overrides or attaches SLA policies dynamically.
 - **Governance**: Maximum automation recursion depth budget (`MAX_RECURSION_DEPTH = 3`) to prevent infinite cascades.
 
+### 3.7 Enterprise Reports & Analytics Module (v1.3)
+
+- **Capabilities**: Cross-domain analytics for Executive Dashboard, Ticket Analytics (volume, MTTR, MTTA, open ticket aging, reopened tickets, escalations), SLA Reports (compliance %, breach priority breakdown, business hours vs actual elapsed time), Workflow Reports (executions, success/failure rate, retries, dead letter events, automation time saved), Asset Reports (inventory, status, warranty expiry, utilization), Service Catalog Reports (request volume, top services, approval stats, completion times), KB Reports (published/draft counts, view counts, ticket/asset linking, helpfulness rate), and Agent Productivity (assigned/closed tickets, response/resolution times, comment counts, workload ranking).
+- **Export Engine**: Export report data into CSV, PDF, and Excel (XLSX) formats.
+- **Scheduled Reports**: Automated report execution delivering export snapshots via the existing Outbox/Notification intent pipeline.
+- **No Data Duplication**: All metrics are dynamically computed via optimized SQL/Prisma aggregations directly against operational database tables.
+
 ---
 
 ## 4. Database Schema & Multi-Tenant Data Model
@@ -118,6 +125,7 @@ The schema uses PostgreSQL with UUID primary keys and strict foreign key relatio
 - `kb_categories`, `kb_articles`, `kb_article_versions`, `kb_tags`, `kb_article_tags`, `kb_ticket_links`: Knowledge base hierarchy, versioning, tagging, and ticket linking.
 - `sla_policy_versions`, `ticket_sla_targets`: SLA policy definitions and runtime target trackers.
 - `workflows`, `workflow_versions`, `workflow_executions`, `workflow_action_attempts`: Workflow definition and runtime execution logs.
+- `saved_reports`, `scheduled_reports`, `report_exports`: Custom saved reports, automated report schedule jobs, and export history.
 - `outbox_events`: Transactional outbox event stream.
 - `audit_events`: Append-only security and operational audit trail.
 

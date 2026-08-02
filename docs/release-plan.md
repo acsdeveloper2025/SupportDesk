@@ -7,6 +7,8 @@ This release plan maps [milestones.md](milestones.md) and [sprint-plan.md](sprin
 | Tag                  | Purpose                                            | Notes                                                                                        |
 | -------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `v1.0-ticket-module` | Freeze Auth + Ticket Module before Workflow Engine | See [ready-for-workflow-engine.md](ready-for-workflow-engine.md). Not a GA customer release. |
+| `v1.0.0-rc1`         | Release Candidate 1 Hardening & Verification Tag   | Full RC1 hardening sprint, performance benchmarks, and DR restore verification complete.     |
+| `v1.0.0`             | Production Release Tag                             | Enterprise v1.0.0 GA release approved. All quality gates green.                              |
 
 ## Release phases
 

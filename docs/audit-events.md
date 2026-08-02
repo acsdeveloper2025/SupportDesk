@@ -131,6 +131,38 @@ Authentication audit writes pass through one envelope builder. It recursively re
 | `kb.article.deleted`                       | Knowledge Base | Tenant Admin                   | KB Article           | Title, slug                             | None.                                   |
 | `kb.article.ticket_linked`                 | Knowledge Base | Agent                          | KB Article           | Ticket ID                               | None.                                   |
 | `kb.article.ticket_unlinked`               | Knowledge Base | Agent                          | KB Article           | Ticket ID                               | None.                                   |
+| `report.executive.viewed`                  | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.tickets.viewed`                    | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.sla.viewed`                        | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.workflows.viewed`                  | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.assets.viewed`                     | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.catalog.viewed`                    | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.kb.viewed`                         | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.agents.viewed`                     | Analytics      | User                           | Report               | Range, filters                          | None.                                   |
+| `report.exported`                          | Analytics      | User                           | Report Export        | Export ID, format, type                 | Audit & file download.                  |
+| `report.saved.created`                     | Analytics      | User                           | Saved Report         | Report ID, name                         | None.                                   |
+| `report.saved.deleted`                     | Analytics      | User                           | Saved Report         | Report ID                               | None.                                   |
+| `report.scheduled.created`                 | Analytics      | User                           | Scheduled Report     | Schedule ID, frequency                  | Outbox notification.                    |
+| `report.scheduled.deleted`                 | Analytics      | User                           | Scheduled Report     | Schedule ID                             | None.                                   |
+| `admin.global_setting.update`              | Administration | Super Admin / Tenant Admin     | Global Setting       | Key, value summary                      | Audit notice.                           |
+| `admin.feature_flag.update`                | Administration | Admin                          | Feature Flag         | Key, enabled status                     | Audit notice.                           |
+| `admin.maintenance_window.create`          | Administration | Admin                          | Maintenance Window   | Window ID, startsAt, endsAt             | Platform notification.                  |
+| `admin.tenant.create`                      | Administration | Super Admin                    | Tenant               | Tenant ID, slug                         | Outbox event.                           |
+| `admin.tenant.update`                      | Administration | Super Admin / Tenant Admin     | Tenant               | Updated fields                          | Audit notice.                           |
+| `admin.tenant_quotas.update`               | Administration | Super Admin                    | Tenant Setting       | Quotas payload                          | Audit notice.                           |
+| `admin.tenant_lifecycle.transition`        | Administration | Super Admin                    | Tenant               | Previous state, new state               | Outbox event.                           |
+| `admin.user.invite`                        | Administration | Tenant Admin                   | User                 | Email, roles                            | Email invitation dispatch.              |
+| `admin.user.status_update`                 | Administration | Tenant Admin                   | User                 | New state (ACTIVE/SUSPENDED)            | Security audit.                         |
+| `admin.user.lock`                          | Administration | Tenant Admin                   | User                 | Lockout duration                        | Security audit notice.                  |
+| `admin.user.unlock`                        | Administration | Tenant Admin                   | User                 | Unlock event                            | Security audit notice.                  |
+| `admin.user.password_reset`                | Administration | Tenant Admin                   | User                 | User ID                                 | Security audit notice.                  |
+| `admin.session.revoke`                     | Administration | Admin                          | Session              | Session ID                              | Session invalidation.                   |
+| `admin.user.force_logout`                  | Administration | Admin                          | User                 | Revoked session count                   | Force session purge.                    |
+| `admin.role.create`                        | Administration | Tenant Admin                   | Role                 | Role key, permissions                   | RBAC change notice.                     |
+| `admin.workflow.retry`                     | Administration | Admin                          | Workflow Execution   | Execution ID                            | Workflow re-trigger.                    |
+| `admin.outbox.replay`                      | Administration | Admin                          | Outbox Event         | Event ID                                | Outbox re-publish.                      |
+| `admin.outbox.batch_retry`                 | Administration | Admin                          | Outbox Events        | Reset count                             | Outbox re-publish.                      |
+| `admin.notification.retry`                 | Administration | Admin                          | Notification Intent  | Intent ID                               | Notification retry.                     |
 
 ## Retention and access
 

@@ -26,10 +26,11 @@ This API specification expands [../13-rest-conventions.md](../13-rest-convention
 - [SLA](sla.md) — as-built on this branch
 - [Workflows](workflows.md) — as-built through E11-I02 (definition + validation/governance; execution deferred)
 - [Asset Management / CMDB](assets.md) — as-built on this branch
+- [Reports](reports.md) — as-built on this branch
 - [Organizations](organizations.md) — target only
 - [Users and memberships](users.md) — target (identity exists via auth)
 - [Roles](roles.md) / [Permissions](permissions.md) — catalogue; RBAC evaluator as-built
-- [Reports](reports.md), [Settings](settings.md), [Admin](admin.md) — target only
+- [Settings](settings.md), [Admin](admin.md) — target only
 
 ## Endpoint table key
 

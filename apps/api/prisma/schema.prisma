@@ -151,6 +151,11 @@ model Tenant {
   assetTicketLinks            AssetTicketLink[]
   assetTypeKbLinks            AssetTypeKbLink[]
   assetAttachments            AssetAttachment[]
+  savedReports                SavedReport[]
+  scheduledReports            ScheduledReport[]
+  reportExports               ReportExport[]
+  featureFlags                FeatureFlag[]
+  maintenanceWindows          SystemMaintenanceWindow[]
 
   @@index([state], map: "idx_tenants__state")
   @@map("tenants")
@@ -238,6 +243,12 @@ model User {
   createdAssetTicketLinks     AssetTicketLink[]          @relation("AssetTicketLinkCreator")
   createdAssetTypeKbLinks     AssetTypeKbLink[]          @relation("AssetTypeKbLinkCreator")
   uploadedAssetAttachments    AssetAttachment[]          @relation("AssetAttachmentUploader")
+  createdSavedReports         SavedReport[]              @relation("SavedReportCreator")
+  createdScheduledReports     ScheduledReport[]          @relation("ScheduledReportCreator")
+  requestedReportExports      ReportExport[]             @relation("ReportExportRequester")
+  modifiedGlobalSettings      GlobalSetting[]            @relation("GlobalSettingModifier")
+  createdFeatureFlags         FeatureFlag[]              @relation("FeatureFlagCreator")
+  createdMaintenanceWindows   SystemMaintenanceWindow[]  @relation("MaintenanceWindowCreator")
 
   @@index([state], map: "idx_users__state")
   @@index([emailNormalized, state], map: "idx_users__email_normalized_state")
@@ -1662,3 +1673,132 @@ model AssetAttachment {
   @@index([tenantId, assetId, createdAt], map: "idx_asset_attachments__tenant_asset_created_at")
   @@map("asset_attachments")
 }
+
+model SavedReport {
+  id          String   @id(map: "pk_saved_reports") @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  createdById String   @map("created_by_id") @db.Uuid
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  reportType  String   @map("report_type") @db.VarChar(100)
+  config      Json     @default("{}")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_saved_reports__tenants__tenant_id")
+  createdBy        User              @relation("SavedReportCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_saved_reports__users__created_by_id")
+  scheduledReports ScheduledReport[]
+
+  @@index([tenantId, reportType], map: "idx_saved_reports__tenant_report_type")
+  @@index([tenantId, createdById], map: "idx_saved_reports__tenant_created_by")
+  @@map("saved_reports")
+}
+
+model ScheduledReport {
+  id               String    @id(map: "pk_scheduled_reports") @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  createdById      String    @map("created_by_id") @db.Uuid
+  savedReportId    String?   @map("saved_report_id") @db.Uuid
+  name             String    @db.VarChar(200)
+  reportType       String    @map("report_type") @db.VarChar(100)
+  config           Json      @default("{}")
+  frequency        String    @db.VarChar(50)
+  cronExpression   String?   @map("cron_expression") @db.VarChar(100)
+  exportFormat     String    @default("csv") @map("export_format") @db.VarChar(20)
+  recipientUserIds Json      @default("[]") @map("recipient_user_ids")
+  enabled          Boolean   @default(true)
+  lastRunAt        DateTime? @map("last_run_at") @db.Timestamptz(3)
+  nextRunAt        DateTime? @map("next_run_at") @db.Timestamptz(3)
+  lastStatus       String?   @map("last_status") @db.VarChar(50)
+  lastError        Json?     @map("last_error")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_scheduled_reports__tenants__tenant_id")
+  createdBy   User         @relation("ScheduledReportCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_scheduled_reports__users__created_by_id")
+  savedReport SavedReport? @relation(fields: [savedReportId], references: [id], onDelete: SetNull, map: "fk_scheduled_reports__saved_reports__saved_report_id")
+
+  @@index([tenantId, enabled], map: "idx_scheduled_reports__tenant_enabled")
+  @@index([tenantId, nextRunAt], map: "idx_scheduled_reports__tenant_next_run_at")
+  @@map("scheduled_reports")
+}
+
+model ReportExport {
+  id            String    @id(map: "pk_report_exports") @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  createdById   String    @map("created_by_id") @db.Uuid
+  reportType    String    @map("report_type") @db.VarChar(100)
+  exportFormat  String    @map("export_format") @db.VarChar(20)
+  status        String    @default("pending") @db.VarChar(50)
+  fileName      String    @map("file_name") @db.VarChar(255)
+  fileSizeBytes BigInt?   @map("file_size_bytes")
+  filters       Json      @default("{}")
+  errorDetails  Json?     @map("error_details")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_report_exports__tenants__tenant_id")
+  createdBy User   @relation("ReportExportRequester", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_report_exports__users__created_by_id")
+
+  @@index([tenantId, createdById, createdAt], map: "idx_report_exports__tenant_created_by_created_at")
+  @@index([tenantId, status], map: "idx_report_exports__tenant_status")
+  @@map("report_exports")
+}
+
+model GlobalSetting {
+  id              String   @id(map: "pk_global_settings") @default(uuid()) @db.Uuid
+  key             String   @unique(map: "uq_global_settings__key") @db.VarChar(100)
+  value           Json     @default("{}")
+  description     String?  @db.VarChar(500)
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedByUser User? @relation("GlobalSettingModifier", fields: [updatedByUserId], references: [id], onDelete: SetNull, map: "fk_global_settings__users__updated_by_user_id")
+
+  @@map("global_settings")
+}
+
+model FeatureFlag {
+  id              String   @id(map: "pk_feature_flags") @default(uuid()) @db.Uuid
+  tenantId        String?  @map("tenant_id") @db.Uuid
+  key             String   @db.VarChar(100)
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  isEnabled       Boolean  @default(false) @map("is_enabled")
+  rules           Json     @default("{}")
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_feature_flags__tenants__tenant_id")
+  createdBy User    @relation("FeatureFlagCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_feature_flags__users__created_by_user_id")
+
+  @@unique([tenantId, key], map: "uq_feature_flags__tenant_key")
+  @@index([key], map: "idx_feature_flags__key")
+  @@map("feature_flags")
+}
+
+model SystemMaintenanceWindow {
+  id               String   @id(map: "pk_system_maintenance_windows") @default(uuid()) @db.Uuid
+  title            String   @db.VarChar(200)
+  description      String?  @db.Text
+  isPlatformWide   Boolean  @default(true) @map("is_platform_wide")
+  tenantId         String?  @map("tenant_id") @db.Uuid
+  startsAt         DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt           DateTime @map("ends_at") @db.Timestamptz(3)
+  status           String   @default("SCHEDULED") @db.VarChar(50)
+  allowAdminAccess Boolean  @default(true) @map("allow_admin_access")
+  createdByUserId  String   @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_system_maintenance_windows__tenants__tenant_id")
+  createdBy User    @relation("MaintenanceWindowCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_system_maintenance_windows__users__created_by_user_id")
+
+  @@index([status, startsAt], map: "idx_maintenance_windows__status_starts_at")
+  @@map("system_maintenance_windows")
+}
+
+

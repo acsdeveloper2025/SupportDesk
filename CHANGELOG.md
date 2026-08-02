@@ -2,6 +2,66 @@
 
 All notable changes are recorded here. This project follows Keep a Changelog concepts and will adopt semantic versioning when a deployable product exists.
 
+## [v1.0.0] - 2026-08-02
+
+SupportDesk Enterprise v1.0.0 Production Release & RC1 Hardening Package.
+
+### Added
+
+- **RC1 Verification & Hardening Suite**: Automated end-to-end multi-tenant business flow test (`rc1-e2e-business-flow.spec.ts`), performance/load benchmark test (`rc1-load-performance.spec.ts`), disaster recovery backup & restore verification script (`rc1-backup-restore-dr.sh`), and audit report (`docs/rc1-hardening-report.md`).
+- **Complete Enterprise Documentation Suite**: 10 comprehensive documentation guides in `docs/`:
+  - `release-notes-v1.0.0.md` (v1.0.0 Release Notes)
+  - `installation-guide.md` (Installation Guide)
+  - `deployment-guide.md` (Deployment Guide)
+  - `backup-restore-guide.md` (Backup & Restore Guide)
+  - `upgrade-guide.md` (Upgrade Guide)
+  - `administrator-manual.md` (Administrator Manual)
+  - `user-manual.md` (User & Agent Manual)
+  - `api-reference.md` (API Reference)
+  - `developer-guide.md` (Developer Guide)
+  - `operations-runbook.md` (Operations Runbook)
+- **Release Candidate Approval**: Verified all 9 platform modules, 27 Prisma DB migrations with zero schema drift, 454 passing unit/integration tests, zero high/critical security vulnerabilities, and full disaster recovery restore verification.
+
+## [v1.0-production-release] - 2026-08-02
+
+Enterprise Administration & Platform Management module release. Complete v1.0 platform release.
+
+### Added
+
+- **Global Administration Console**: Global platform settings, system maintenance mode scheduling, and dynamic feature flag controls (`global_settings`, `feature_flags`, `system_maintenance_windows`).
+- **Tenant Administration & Lifecycle**: Tenant directory, tenant detail inspector, custom resource quota management, and lifecycle state transitions (`ACTIVE`, `SUSPENDED`, `DEACTIVATED`) with tenant audit history.
+- **User & Session Administration**: User directory, email invitations, account lockout/unlock management, admin password reset, login history explorer, live session inspector, and force logout across all connected devices.
+- **Role & Permission Matrix**: Custom role creation, role permission grants, complete platform permission matrix viewer, and user effective permission calculation engine.
+- **Workflow Administration**: Workflow execution monitoring, running/failed/paused workflow statistics, step attempt inspector, and execution retries.
+- **Outbox Administration**: Transactional outbox queue depth statistics, pending/failed/dead-letter queue browser, single event replay, and batch failed event retries.
+- **SLA Engine Administration**: SLA compliance monitoring, active SLA timers, breach tracking, and business schedule configuration.
+- **Notification Administration**: Delivery monitoring, intent queue depth tracking, template management, and notification dispatch retries.
+- **Audit & Security Dashboard**: 24-hour security metric tracking (failed logins, lockouts, permission changes), and append-only audit trail search explorer.
+- **System Health & Runtime Diagnostics**: Real-time component health checks (PostgreSQL latency, outbox depth, scheduler status, worker count, cache hit rate, storage, migrations) and automated environment diagnostics validator.
+- **Admin Console Frontend**: Responsive web UI (`/admin/*`) with top-level header navigation (`AdminHeaderNav`), overview dashboard, management pages, and catch-all BFF proxy API handlers.
+- **Permissions & Security**: 24 canonical administration RBAC permissions (`admin.*`) seeded and assigned to `super_admin` and `tenant_admin` roles.
+- **Documentation & Operations Guides**: Administration Guide (`docs/administration-guide.md`), Operations Guide (`docs/operations-guide.md`), updated permissions matrix, audit events, table schemas, indexing specs, and Platform Architecture Book.
+
+## [v1.3-reports-analytics] - 2026-08-01
+
+Enterprise Reports & Analytics module release.
+
+### Added
+
+- **Executive Dashboard**: High-level platform KPIs, system health status, and cross-domain operational summary metrics across tickets, SLA compliance, workflow runs, asset summary, service requests, and KB usage.
+- **Ticket Analytics & Aging**: Ticket volume, status, priority, category/type distributions, resolution time (MTTR), first response time (MTTA), open ticket aging report brackets (<1d, 1-3d, 3-7d, 7-14d, 14-30d, >30d), reopened tickets, escalations, and backlog trends.
+- **SLA Performance Reports**: SLA compliance %, SLA breaches, response vs resolution SLA, breach priority breakdown, breaches by team, and business hours vs actual calendar elapsed time comparison.
+- **Workflow & Automation Analytics**: Workflow execution volume, success/failure rate, retries count, dead letter events, estimated automation time saved, top workflows, and runtime performance statistics.
+- **Asset Management (CMDB) Reports**: Asset inventory count, assets by type, assets by status, warranty & license expiry schedule (30/60/90 days), assignment distribution, and asset utilization.
+- **Service Catalog Reports**: Request volume, most requested service items, approval statistics, request completion time, and request trends.
+- **Knowledge Base Reports**: Article counts by status/visibility, most viewed articles, most linked articles to tickets/assets, helpfulness feedback rating, and article usage.
+- **Agent Productivity Reports**: Assigned and closed tickets per agent, avg response & resolution times, SLA compliance per agent, comment counts, workload distribution, and productivity ranking table.
+- **Report Export Engine**: Universal export of all domain report datasets into CSV (UTF-8 BOM), PDF (formatted document), and Excel (XLSX SpreadsheetML) formats.
+- **Saved Reports & Scheduled Reports Engine**: Database schema tables (`saved_reports`, `scheduled_reports`, `report_exports`), REST APIs, and UI managers for saving report definitions and scheduling automated report delivery via Outbox/Notification intents.
+- **Reusable Chart & Widget Component Library**: Pure SVG chart components (`KPICard`, `LineChart`, `BarChart`, `PieChart`, `AreaChart`, `DataTable`, `ReportFilterBar`, `ExportModal`).
+- **Permissions & Security**: 19 report RBAC permissions (`report.*`) seeded and granted across system roles, enforcing multi-tenant isolation on all aggregation queries.
+- **Documentation & Tests**: OpenAPI 3.0 specs, unit test suite (`reports.service.spec.ts`), PostgreSQL end-to-end integration test suite (`reports.integration.spec.ts`), and complete architecture documentation updates.
+
 ## [v1.1-knowledge-base] - 2026-08-01
 
 Enterprise Knowledge Base module release. Git tag: `v1.1-knowledge-base`.

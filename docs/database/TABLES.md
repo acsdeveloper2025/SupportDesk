@@ -74,18 +74,24 @@ This catalogue defines intended tables and invariants. It is not SQL. Naming fol
 | `kb_tags`                        | Knowledge base article tags.                       | `id`        | `tenant_id` | Unique `(tenant_id, slug)`.                                                                                                                                                                                         |
 | `kb_article_tags`                | Many-to-many join between articles and tags.       | Composite   | Inherited   | Primary key `(article_id, tag_id)`.                                                                                                                                                                                 |
 | `kb_ticket_links`                | Article-to-ticket resolution linkages.             | `id`        | `tenant_id` | Unique `(tenant_id, ticket_id, article_id)`.                                                                                                                                                                        |
+| `saved_reports`                  | Custom saved report configurations.                | `id`        | `tenant_id` | Creator & Tenant FKs; report_type and created_by indexes.                                                                                                                                                           |
+| `scheduled_reports`              | Automated report delivery schedules.               | `id`        | `tenant_id` | Creator, Tenant & optional SavedReport FKs; frequency & export_format required.                                                                                                                                     |
+| `report_exports`                 | Report export job history and download metadata.   | `id`        | `tenant_id` | Creator & Tenant FKs; format (csv/pdf/xlsx), status, filename recorded.                                                                                                                                             |
 
 ## Governance, operations, and projections
 
-| Table                | Purpose                                            | Primary key | Tenant key  | Key constraints                                                      |
-| -------------------- | -------------------------------------------------- | ----------- | ----------- | -------------------------------------------------------------------- |
-| `audit_events`       | Immutable business/security evidence.              | `id`        | `tenant_id` | Append-only; actor, action, target, outcome, instant required.       |
-| `outbox_events`      | Durable event publication and side-effect trigger. | `id`        | `tenant_id` | Unique event/deduplication key; monotonic processing state.          |
-| `export_jobs`        | Async tenant-scoped exports and reports.           | `id`        | `tenant_id` | Requester, filters, format, state, expiry, and audit link required.  |
-| `retention_policies` | Tenant/data-class retention configuration.         | `id`        | `tenant_id` | Unique data class per tenant/version.                                |
-| `legal_holds`        | Preservation exceptions.                           | `id`        | `tenant_id` | Scope, authority, expiry/review date, and release evidence required. |
-| `idempotency_keys`   | Mutation dedupe records.                           | `id`        | `tenant_id` | Unique `(tenant_id, actor_id, operation, key_hash)`.                 |
-| `webhook_deliveries` | Future outbound webhook delivery state.            | `id`        | `tenant_id` | Dedupe and signature material references required.                   |
+| Table                        | Purpose                                            | Primary key | Tenant key  | Key constraints                                                      |
+| ---------------------------- | -------------------------------------------------- | ----------- | ----------- | -------------------------------------------------------------------- |
+| `audit_events`               | Immutable business/security evidence.              | `id`        | `tenant_id` | Append-only; actor, action, target, outcome, instant required.       |
+| `outbox_events`              | Durable event publication and side-effect trigger. | `id`        | `tenant_id` | Unique event/deduplication key; monotonic processing state.          |
+| `export_jobs`                | Async tenant-scoped exports and reports.           | `id`        | `tenant_id` | Requester, filters, format, state, expiry, and audit link required.  |
+| `retention_policies`         | Tenant/data-class retention configuration.         | `id`        | `tenant_id` | Unique data class per tenant/version.                                |
+| `legal_holds`                | Preservation exceptions.                           | `id`        | `tenant_id` | Scope, authority, expiry/review date, and release evidence required. |
+| `idempotency_keys`           | Mutation dedupe records.                           | `id`        | `tenant_id` | Unique `(tenant_id, actor_id, operation, key_hash)`.                 |
+| `webhook_deliveries`         | Future outbound webhook delivery state.            | `id`        | `tenant_id` | Dedupe and signature material references required.                   |
+| `global_settings`            | Platform-wide system configuration settings.       | `id`        | none        | Unique `key`; updated_by_user_id FK constraint.                      |
+| `feature_flags`              | Platform & tenant-level feature flag rules.        | `id`        | `tenant_id` | Unique `(tenant_id, key)`; created_by_user_id FK constraint.         |
+| `system_maintenance_windows` | Platform and tenant maintenance window schedules.  | `id`        | `tenant_id` | Status, starts_at index; created_by_user_id FK constraint.           |
 
 ## Soft delete and retention
 
