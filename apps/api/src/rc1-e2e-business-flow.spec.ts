@@ -104,7 +104,7 @@ describeIntegration("RC1 End-to-End Business Flow Hardening Test", () => {
     });
 
     expect(ticket.id).toBeDefined();
-    expect(ticket.status).toBe("OPEN");
+    expect(ticket.status).toBe("NEW");
     expect(ticket.priority).toBe("HIGH");
 
     // 2. Verify Transactional Outbox Event Enqueueing

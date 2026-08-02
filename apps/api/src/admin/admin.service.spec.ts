@@ -112,6 +112,8 @@ describe("AdminService", () => {
     session: { findMany: sessionFindMany, updateMany: sessionUpdateMany },
     refreshToken: { updateMany: refreshTokenUpdateMany },
     authToken: { create: authTokenCreate, updateMany: authTokenUpdateMany },
+    outboxEvent: { count: vi.fn().mockResolvedValue(0) },
+    businessSchedule: { count: vi.fn().mockResolvedValue(0) },
     $queryRaw: queryRaw,
   } as unknown as PrismaService;
 

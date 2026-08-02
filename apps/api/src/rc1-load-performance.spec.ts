@@ -54,6 +54,8 @@ describeIntegration("RC1 Performance & Load Hardening Test", () => {
     if (prisma && tenantId) {
       await prisma.outboxEvent.deleteMany({ where: { tenantId } });
       await prisma.auditEvent.deleteMany({ where: { tenantId } });
+      await prisma.comment.deleteMany({ where: { tenantId } });
+      await prisma.attachment.deleteMany({ where: { tenantId } });
       await prisma.ticket.deleteMany({ where: { tenantId } });
       await prisma.user.deleteMany({ where: { id: userId } });
       await prisma.tenant.deleteMany({ where: { id: tenantId } });

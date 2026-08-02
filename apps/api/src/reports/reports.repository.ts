@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
 import { PrismaService } from "../database/prisma.service";
@@ -6,7 +6,7 @@ import { CreateSavedReportDto, CreateScheduledReportDto, ReportQueryDto } from "
 
 @Injectable()
 export class ReportsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   // Helper method to parse date filters from query
   private getDateRange(query: ReportQueryDto): { start: Date; end: Date } {

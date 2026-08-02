@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
   AuditOutcome,
   ExecutionState,
@@ -28,8 +28,8 @@ import {
 @Injectable()
 export class AdminService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly rbacService: RbacService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RbacService) private readonly rbacService: RbacService,
   ) {}
 
   // ---------------------------------------------------------------------------

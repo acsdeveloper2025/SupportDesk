@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
 import { PrismaService } from "../database/prisma.service";
@@ -25,8 +25,8 @@ interface AgentItem {
 @Injectable()
 export class ReportsService {
   constructor(
-    private readonly repo: ReportsRepository,
-    private readonly prisma: PrismaService,
+    @Inject(ReportsRepository) private readonly repo: ReportsRepository,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   async getExecutiveDashboard(tenantId: string, filters: ReportQueryDto) {

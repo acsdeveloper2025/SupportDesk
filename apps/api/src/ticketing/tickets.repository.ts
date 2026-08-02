@@ -95,58 +95,81 @@ export class TicketsRepository {
     audit: AuditEventInput,
   ): Promise<TicketAggregate> {
     const props = aggregate.toProps();
+    const maxRetries = 15;
+    let attempt = 0;
 
-    const created = await this.prisma.$transaction(
-      async (tx) => {
-        const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
-        const publicRef = `TKT-${count + 1001}`;
+    while (true) {
+      try {
+        const created = await this.prisma.$transaction(
+          async (tx) => {
+            const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
+            const publicRef = `TKT-${count + 1001}`;
 
-        const ticket = await tx.ticket.create({
-          data: this.toCreateData({ ...props, publicRef }),
-        });
-        await tx.auditEvent.create({
-          data: buildAuditEventData({
-            ...audit,
-            metadata: {
-              ...audit.metadata,
-              publicRef,
-            },
-          }),
-        });
+            const ticket = await tx.ticket.create({
+              data: this.toCreateData({ ...props, publicRef }),
+            });
+            await tx.auditEvent.create({
+              data: buildAuditEventData({
+                ...audit,
+                metadata: {
+                  ...audit.metadata,
+                  publicRef,
+                },
+              }),
+            });
 
-        if (this.outboxPublisher) {
-          await this.outboxPublisher.appendOutboxEvent(tx, {
-            tenantId: props.tenantId,
-            eventType: "ticket.created",
-            aggregateType: "ticket",
-            aggregateId: ticket.id,
-            payload: {
-              ticket: {
-                id: ticket.id,
-                tenantId: ticket.tenantId,
-                publicRef: ticket.publicRef,
-                title: ticket.title,
-                description: ticket.description,
-                status: ticket.status,
-                priority: ticket.priority,
-                channel: ticket.channel,
-                type: ticket.type,
-                requesterUserId: ticket.requesterUserId,
-                assigneeUserId: ticket.assigneeUserId,
-                assignedGroupId: ticket.assignedGroupId,
-                ticketVersion: ticket.version,
-              },
-            },
-            correlationId: audit.correlationId,
-          });
+            if (this.outboxPublisher) {
+              await this.outboxPublisher.appendOutboxEvent(tx, {
+                tenantId: props.tenantId,
+                eventType: "ticket.created",
+                aggregateType: "ticket",
+                aggregateId: ticket.id,
+                payload: {
+                  ticket: {
+                    id: ticket.id,
+                    tenantId: ticket.tenantId,
+                    publicRef: ticket.publicRef,
+                    title: ticket.title,
+                    description: ticket.description,
+                    status: ticket.status,
+                    priority: ticket.priority,
+                    channel: ticket.channel,
+                    type: ticket.type,
+                    requesterUserId: ticket.requesterUserId,
+                    assigneeUserId: ticket.assigneeUserId,
+                    assignedGroupId: ticket.assignedGroupId,
+                    ticketVersion: ticket.version,
+                  },
+                },
+                correlationId: audit.correlationId,
+              });
+            }
+
+            return ticket;
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+
+        return this.toDomain(created);
+      } catch (err: unknown) {
+        attempt++;
+        const errorObj = err as { code?: string; message?: string };
+        const msg = String(errorObj.message || "").toLowerCase();
+        if (
+          attempt < maxRetries &&
+          (errorObj.code === "P2034" ||
+            errorObj.code === "P2002" ||
+            msg.includes("write conflict") ||
+            msg.includes("deadlock") ||
+            msg.includes("unique constraint") ||
+            msg.includes("transaction failed"))
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * (attempt * 80) + 20));
+          continue;
         }
-
-        return ticket;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
-
-    return this.toDomain(created);
+        throw err;
+      }
+    }
   }
 
   async findById(tenantId: string, id: string): Promise<TicketAggregate | null> {
