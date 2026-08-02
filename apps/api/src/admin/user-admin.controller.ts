@@ -15,13 +15,15 @@ import { InviteUserDto } from "./admin.types";
 
 interface AuthUser {
   userId: string;
-  tenantId?: string;
+  tenantId: string;
 }
 
 function getUserContext(req: Request): AuthUser {
-  const user = (req as unknown as { user?: AuthUser }).user;
-  if (!user) throw new UnauthorizedException("Authentication required");
-  return user;
+  const user = (req as unknown as { user?: { userId?: string; tenantId?: string } }).user;
+  if (!user || !user.userId || !user.tenantId) {
+    throw new UnauthorizedException("Authentication required");
+  }
+  return { userId: user.userId, tenantId: user.tenantId };
 }
 
 @Controller("api/v1/admin/users")
