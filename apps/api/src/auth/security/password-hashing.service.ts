@@ -14,12 +14,12 @@ const argon2idAlgorithm = 2;
 export class PasswordHashingService {
   private readonly settings: Argon2Settings;
 
-  constructor(settings: Partial<Argon2Settings> = {}) {
+  constructor() {
     this.settings = {
-      hashLength: settings.hashLength ?? readPositiveInteger("ARGON2_HASH_LENGTH", 32),
-      memoryCost: settings.memoryCost ?? readPositiveInteger("ARGON2_MEMORY_COST_KIB", 65_536),
-      parallelism: settings.parallelism ?? readPositiveInteger("ARGON2_PARALLELISM", 1),
-      timeCost: settings.timeCost ?? readPositiveInteger("ARGON2_TIME_COST", 3),
+      hashLength: readPositiveInteger("ARGON2_HASH_LENGTH", 32),
+      memoryCost: readPositiveInteger("ARGON2_MEMORY_COST_KIB", 65_536),
+      parallelism: readPositiveInteger("ARGON2_PARALLELISM", 1),
+      timeCost: readPositiveInteger("ARGON2_TIME_COST", 3),
     };
   }
 

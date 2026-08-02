@@ -211,7 +211,7 @@ export default function ReportsHubPage() {
                   {card.desc}
                 </p>
                 <div className="mt-4 flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400">
-                  View Dashboard &rrarr;
+                  View Dashboard →
                 </div>
               </Link>
             ))}

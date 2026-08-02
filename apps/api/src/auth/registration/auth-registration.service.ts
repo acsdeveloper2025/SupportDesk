@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 
 import type { IdentityLookupService } from "../../identity/identity-lookup.service";
 import { PasswordHashingService } from "../security/password-hashing.service";
@@ -25,17 +25,27 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Injectable()
 export class AuthRegistrationService {
+  private readonly now: () => Date;
+
   constructor(
     @Inject("IdentityLookupService")
     private readonly identityLookup: Pick<IdentityLookupService, "resolveTenant">,
     @Inject(AuthRegistrationRepository)
     private readonly repository: AuthRegistrationRepository,
+    @Inject(PasswordPolicyService)
     private readonly passwordPolicy: PasswordPolicyService,
+    @Inject(PasswordHashingService)
     private readonly passwordHashing: PasswordHashingService,
+    @Inject(SecureTokenService)
     private readonly secureTokens: SecureTokenService,
+    @Inject(AuthNotificationService)
     private readonly notifications: Pick<AuthNotificationService, "deliverEmailVerification">,
-    private readonly now: () => Date = () => new Date(),
-  ) {}
+    @Optional()
+    @Inject("AuthRegistrationClock")
+    now?: () => Date,
+  ) {
+    this.now = now ?? (() => new Date());
+  }
 
   async register(input: RegisterRequest): Promise<AuthRegistrationResult> {
     const emailNormalized = normalizeEmail(input.email);

@@ -11,8 +11,8 @@ export interface GeneratedSecureToken {
 export class SecureTokenService {
   private readonly defaultBytes: number;
 
-  constructor(defaultBytes = readPositiveInteger("SECURE_TOKEN_BYTES", 32)) {
-    this.defaultBytes = defaultBytes;
+  constructor() {
+    this.defaultBytes = readPositiveInteger("SECURE_TOKEN_BYTES", 32);
   }
 
   generateToken(byteLength = this.defaultBytes): GeneratedSecureToken {

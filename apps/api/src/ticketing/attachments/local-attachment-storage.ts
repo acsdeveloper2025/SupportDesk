@@ -18,9 +18,9 @@ export interface StoredFileResult {
 export class LocalAttachmentStorage {
   private readonly root: string;
 
-  constructor(rootDirectory?: string) {
+  constructor() {
     this.root = path.resolve(
-      rootDirectory ?? process.env.ATTACHMENTS_STORAGE_ROOT ?? "./data/supportdesk/attachments",
+      process.env.ATTACHMENTS_STORAGE_ROOT ?? "./data/supportdesk/attachments",
     );
   }
 
