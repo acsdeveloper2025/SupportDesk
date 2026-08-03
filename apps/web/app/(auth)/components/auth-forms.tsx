@@ -2,6 +2,7 @@
 
 import { Button } from "@supportdesk/ui/button";
 import { KeyRound, LogIn, Mail, ShieldCheck } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -53,6 +54,9 @@ export function AuthShell({
 }
 
 export function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectToParam = searchParams?.get("redirectTo");
   const [state, setState] = useState<FormState>("idle");
   const {
     formState: { errors },
@@ -81,6 +85,15 @@ export function LoginForm() {
               },
             });
             setState("success");
+
+            const destination =
+              redirectToParam && redirectToParam.startsWith("/")
+                ? redirectToParam
+                : values.email.toLowerCase().includes("admin")
+                  ? "/admin"
+                  : "/tickets";
+
+            router.push(destination);
           } catch {
             setState("error");
           }

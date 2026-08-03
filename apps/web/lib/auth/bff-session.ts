@@ -2,10 +2,9 @@ import { randomBytes } from "node:crypto";
 
 import type { NextRequest, NextResponse } from "next/server";
 
-export const ACCESS_TOKEN_COOKIE = "supportdesk_access_token";
-export const REFRESH_TOKEN_COOKIE = "supportdesk_refresh_token";
-export const CSRF_COOKIE = "supportdesk_csrf";
-export const CSRF_HEADER = "x-csrf-token";
+import { ACCESS_TOKEN_COOKIE, CSRF_COOKIE, CSRF_HEADER, REFRESH_TOKEN_COOKIE } from "./constants";
+
+export { ACCESS_TOKEN_COOKIE, CSRF_COOKIE, CSRF_HEADER, REFRESH_TOKEN_COOKIE };
 
 export function getApiUrl(path: string): string {
   const baseUrl =
@@ -76,7 +75,7 @@ export function setAuthCookies(response: NextResponse, value: unknown): void {
     expires: parseCookieDate(tokenPair.accessTokenExpiresAt),
     httpOnly: true,
     name: ACCESS_TOKEN_COOKIE,
-    path: "/api",
+    path: "/",
     sameSite: "lax",
     secure: shouldUseSecureCookies(),
     value: tokenPair.accessToken,
@@ -111,7 +110,7 @@ export function clearAuthCookies(response: NextResponse): void {
       httpOnly: name !== CSRF_COOKIE,
       maxAge: 0,
       name,
-      path: name === ACCESS_TOKEN_COOKIE ? "/api" : "/api/auth",
+      path: name === ACCESS_TOKEN_COOKIE ? "/" : "/api/auth",
       sameSite: "lax",
       secure,
       value: "",

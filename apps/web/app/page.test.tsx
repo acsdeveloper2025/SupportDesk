@@ -1,14 +1,15 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { redirect } from "next/navigation";
+import { describe, expect, it, vi } from "vitest";
 
 import HomePage from "./page";
 
-describe("HomePage", () => {
-  it("renders the bootstrap landing page", () => {
-    render(<HomePage />);
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+}));
 
-    expect(screen.getByRole("heading", { name: "SupportDesk" })).toBeInTheDocument();
-    expect(screen.getByText("Enterprise Ticketing Platform")).toBeInTheDocument();
-    expect(screen.getByText("Project Successfully Bootstrapped")).toBeInTheDocument();
+describe("HomePage", () => {
+  it("redirects to /login", () => {
+    HomePage();
+    expect(redirect).toHaveBeenCalledWith("/login");
   });
 });

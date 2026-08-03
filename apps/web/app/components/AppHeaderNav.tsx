@@ -3,55 +3,49 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LogoutButton } from "@/app/components/LogoutButton";
+import { LogoutButton } from "./LogoutButton";
 
-const navItems = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/tenants", label: "Tenants" },
-  { href: "/admin/users", label: "Users & Sessions" },
-  { href: "/admin/roles", label: "Roles & Matrix" },
-  { href: "/admin/workflows", label: "Workflows" },
-  { href: "/admin/outbox", label: "Outbox Queue" },
-  { href: "/admin/sla", label: "SLA Engine" },
-  { href: "/admin/notifications", label: "Notifications" },
-  { href: "/admin/audit", label: "Audit & Security" },
-  { href: "/admin/health", label: "System Health" },
-  { href: "/admin/diagnostics", label: "Diagnostics" },
-  { href: "/admin/settings", label: "Global Settings" },
+const portalNavItems = [
+  { href: "/tickets", label: "Tickets" },
+  { href: "/kb", label: "Knowledge Base" },
+  { href: "/assets", label: "CMDB Assets" },
+  { href: "/reports", label: "Reports & Analytics" },
+  { href: "/profile", label: "Profile Settings" },
 ];
 
-export function AdminHeaderNav() {
+export function AppHeaderNav() {
   const pathname = usePathname();
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 font-bold text-white shadow">
-            SD
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Admin Console</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              SupportDesk Platform Management
-            </p>
-          </div>
+          <Link href="/tickets" className="flex items-center space-x-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 font-bold text-white shadow">
+              SD
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">SupportDesk</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Enterprise Service Portal</p>
+            </div>
+          </Link>
         </div>
 
         <div className="flex items-center space-x-3">
           <Link
-            href="/tickets"
+            href="/admin"
             className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
           >
-            ← Support Portal
+            Admin Console →
           </Link>
           <LogoutButton />
         </div>
       </div>
+
       <nav className="mx-auto flex max-w-7xl space-x-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
-        {navItems.map((item) => {
+        {portalNavItems.map((item) => {
           const isActive =
-            pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href));
+            pathname === item.href || (item.href !== "/tickets" && pathname?.startsWith(item.href));
           return (
             <Link
               key={item.href}

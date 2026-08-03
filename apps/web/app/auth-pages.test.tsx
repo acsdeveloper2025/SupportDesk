@@ -7,6 +7,14 @@ import LoginPage from "./(auth)/login/page";
 import ResetPasswordPage from "./(auth)/reset-password/page";
 import ProfilePage from "./profile/page";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("authentication pages", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();

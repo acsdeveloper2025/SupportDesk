@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:coverage:auth": "vitest run --coverage --coverage.include='src/auth/**/*.ts' --coverage.include='src/identity/**/*.ts' --coverage.include='src/rbac/**/*.ts' --coverage.exclude='src/**/*.spec.ts' --coverage.exclude='src/**/*.repository.ts' --coverage.exclude='src/**/*.types.ts' --coverage.exclude='src/**/*.module.ts' --coverage.exclude='src/auth/registration/auth-notification.service.ts' --coverage.reporter=text-summary --coverage.thresholds.lines=90 --coverage.thresholds.functions=90 --coverage.thresholds.branches=70 --coverage.thresholds.statements=90",
     "test:integration": "vitest run src/**/*.spec.ts",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "seed": "DATABASE_URL=\"postgresql://supportdesk:supportdesk@localhost:5432/supportdesk?schema=public\" TS_NODE_PROJECT=tsconfig.json node -r ts-node/register -r tsconfig-paths/register src/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.5",

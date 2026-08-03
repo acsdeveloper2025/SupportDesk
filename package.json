@@ -12,6 +12,7 @@
     "dev": "pnpm -r --parallel --filter @supportdesk/api --filter @supportdesk/web dev",
     "build": "pnpm -r --filter './packages/**' build && pnpm --filter @supportdesk/api build && pnpm --filter @supportdesk/web build",
     "prisma:generate": "pnpm --filter @supportdesk/api prisma:generate",
+    "seed": "pnpm --filter @supportdesk/api seed",
     "lint": "pnpm prisma:generate && eslint . --max-warnings=0",
     "typecheck": "pnpm prisma:generate && pnpm -r typecheck",
     "test": "pnpm prisma:generate && pnpm -r test",
