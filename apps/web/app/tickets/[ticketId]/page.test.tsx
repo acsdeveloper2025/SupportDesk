@@ -49,6 +49,19 @@ const sampleComments = {
   },
 };
 
+const sampleAttachments = {
+  items: [
+    {
+      id: "ffffffff-0000-4000-8000-000000000006",
+      originalFilename: "vpn-log.txt",
+      mimeType: "text/plain",
+      fileSize: 2048,
+      uploadedByUserId: "eeeeeeee-0000-4000-8000-000000000005",
+      createdAt: "2026-07-01T12:00:00.000Z",
+    },
+  ],
+};
+
 function makeParams(ticketId: string): Promise<{ ticketId: string }> {
   return Promise.resolve({ ticketId });
 }
@@ -80,6 +93,9 @@ describe("TicketDetailPage", () => {
         if (url.includes("/timeline")) {
           return Promise.resolve(Response.json({ items: [] }));
         }
+        if (url.includes("/attachments")) {
+          return Promise.resolve(Response.json(sampleAttachments));
+        }
         return Promise.resolve(Response.json(sampleTicket));
       }),
     );
@@ -92,6 +108,11 @@ describe("TicketDetailPage", () => {
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Detailed description of the VPN issue.")).toBeInTheDocument();
     expect(screen.getByText("We are investigating the issue.")).toBeInTheDocument();
+    expect(screen.getByText("vpn-log.txt")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download vpn-log.txt" })).toHaveAttribute(
+      "href",
+      "/api/attachments/ffffffff-0000-4000-8000-000000000006",
+    );
   });
 
   it("shows not-found error banner on 404", async () => {

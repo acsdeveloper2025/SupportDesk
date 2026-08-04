@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@supportdesk/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Download, Paperclip, Pencil } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { CommentForm } from "../components/comment-form";
@@ -32,6 +32,19 @@ interface AuditEvent {
   action: string;
   actorUserId?: string;
   createdAt: string;
+}
+
+interface TicketAttachment {
+  id: string;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedByUserId: string;
+  createdAt: string;
+}
+
+interface TicketAttachmentListResponse {
+  items?: TicketAttachment[];
 }
 
 async function getCsrfToken(): Promise<string> {
@@ -70,6 +83,8 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [timeline, setTimeline] = useState<AuditEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(true);
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
   // Track mounted state to prevent state updates on unmounted component
@@ -112,8 +127,9 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
       fetch(`/api/tickets/${id}`),
       fetch(`/api/tickets/${id}/comments?pageSize=50`),
       fetch(`/api/tickets/${id}/timeline`),
+      fetch(`/api/tickets/${id}/attachments`),
     ])
-      .then(([ticketRes, commentsRes, timelineRes]) => {
+      .then(([ticketRes, commentsRes, timelineRes, attachmentsRes]) => {
         if (!mountedRef.current) return;
 
         // Determine ticket load state
@@ -157,12 +173,25 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
         } else {
           setTimelineLoading(false);
         }
+
+        // Attachments – best effort
+        if (attachmentsRes.ok) {
+          void readJson<TicketAttachmentListResponse>(attachmentsRes).then((data) => {
+            if (mountedRef.current) {
+              setAttachments(data.items ?? []);
+              setAttachmentsLoading(false);
+            }
+          });
+        } else {
+          setAttachmentsLoading(false);
+        }
       })
       .catch(() => {
         if (mountedRef.current) {
           setLoadState("error");
           setCommentsLoading(false);
           setTimelineLoading(false);
+          setAttachmentsLoading(false);
         }
       });
   }, [ticketId]);
@@ -351,6 +380,46 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
           </TicketSection>
         )}
 
+        {/* ── Attachments ── */}
+        <TicketSection title="Attachments">
+          {attachmentsLoading ? (
+            <p aria-busy="true" className="text-sm text-slate-400">
+              Loading attachments...
+            </p>
+          ) : attachments.length === 0 ? (
+            <p className="text-sm text-slate-400">No attachments yet.</p>
+          ) : (
+            <ul aria-label="Ticket attachments" className="divide-y divide-slate-100">
+              {attachments.map((attachment) => (
+                <li
+                  className="flex items-center justify-between gap-4 py-3 text-sm"
+                  key={attachment.id}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Paperclip aria-hidden="true" className="shrink-0 text-slate-400" size={16} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-700">
+                        {attachment.originalFilename}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatFileSize(attachment.fileSize)} - {attachment.mimeType}
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    aria-label={`Download ${attachment.originalFilename}`}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+                    href={`/api/attachments/${attachment.id}`}
+                  >
+                    <Download aria-hidden="true" size={14} />
+                    Download
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </TicketSection>
+
         {/* ── Comments ── */}
         <TicketSection title="Comments">
           <div className="space-y-4">
@@ -430,4 +499,11 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)} KB`;
+  return `${(kib / 1024).toFixed(1)} MB`;
 }
