@@ -85,7 +85,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       const data = (await res.json()) as AssetDetail;
       setAsset(data);
 
-      const histRes = await fetch(`/api/assets/${assetId}?includeHistory=true`);
+      const histRes = await fetch(`/api/assets/${assetId}/history`);
       if (histRes.ok) {
         const histData = (await histRes.json()) as { history?: AssetHistoryItem[] };
         setHistory(histData.history ?? []);
@@ -111,7 +111,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
           setAsset(data);
         }
 
-        const histRes = await fetch(`/api/assets/${id}?includeHistory=true`);
+        const histRes = await fetch(`/api/assets/${id}/history`);
         if (histRes.ok) {
           const histData = (await histRes.json()) as { history?: AssetHistoryItem[] };
           if (!ignore) {

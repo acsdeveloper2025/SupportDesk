@@ -1,22 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getAccessToken, getApiUrl, validateRequestCsrf } from "@/lib/auth/bff-session";
+import { getAccessToken, getApiUrl } from "@/lib/auth/bff-session";
 
 interface RouteContext {
   params: Promise<{ assetId: string }>;
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   const { assetId } = await context.params;
-
-  if (!validateRequestCsrf(request)) {
-    return NextResponse.json(
-      { code: "CSRF_INVALID", message: "CSRF validation failed." },
-      { status: 403 },
-    );
-  }
-
   const accessToken = getAccessToken(request);
+
   if (!accessToken) {
     return NextResponse.json(
       { code: "AUTH_REQUIRED", message: "Authentication is required." },
@@ -24,13 +17,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const apiResponse = await fetch(getApiUrl(`/api/v1/assets/${assetId}/assignments`), {
-    body: await request.text(),
-    headers: {
-      authorization: `Bearer ${accessToken}`,
-      "content-type": request.headers.get("content-type") ?? "application/json",
-    },
-    method: "DELETE",
+  const apiResponse = await fetch(getApiUrl(`/api/v1/assets/${assetId}/history`), {
+    headers: { authorization: `Bearer ${accessToken}` },
+    method: "GET",
   });
 
   const body = await readJson(apiResponse);

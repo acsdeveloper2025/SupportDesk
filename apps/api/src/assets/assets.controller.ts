@@ -138,6 +138,7 @@ export class AssetsController {
       {
         page: page ? Number(page) : undefined,
         pageSize: pageSize ? Number(pageSize) : undefined,
+        q,
         lifecycleState: lifecycleState ? (lifecycleState as AssetLifecycleState) : undefined,
         categoryId,
         locationId,

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const apiResponse = await fetch(getApiUrl(`/api/v1/assets/${assetId}/assign`), {
+  const apiResponse = await fetch(getApiUrl(`/api/v1/assets/${assetId}/assignments`), {
     body: await request.text(),
     headers: {
       authorization: `Bearer ${accessToken}`,
