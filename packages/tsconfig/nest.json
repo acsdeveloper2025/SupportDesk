@@ -4,9 +4,9 @@
   "compilerOptions": {
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "isolatedModules": false,
     "lib": ["ES2022"],
     "module": "CommonJS",
-    "moduleResolution": "Node",
     "noEmit": false,
     "outDir": "dist",
     "removeComments": true,

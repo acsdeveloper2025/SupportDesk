@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "TS_NODE_PROJECT=tsconfig.json node --watch -r ts-node/register -r tsconfig-paths/register src/main.ts",
+    "dev": "TS_NODE_PROJECT=tsconfig.json node --env-file=../../.env --watch -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "eslint . --max-warnings=0",
@@ -15,15 +15,15 @@
     "seed": "DATABASE_URL=\"postgresql://supportdesk:supportdesk@localhost:5432/supportdesk?schema=public\" TS_NODE_PROJECT=tsconfig.json node -r ts-node/register -r tsconfig-paths/register src/seed.ts"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.5",
-    "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^11.1.5",
-    "@nestjs/platform-express": "^11.1.5",
-    "@nestjs/swagger": "^11.2.0",
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/swagger": "^11.4.6",
     "@node-rs/argon2": "^2.0.2",
-    "@prisma/client": "^6.13.0",
-    "helmet": "^8.1.0",
-    "jose": "^6.2.5",
+    "@prisma/client": "^6.19.3",
+    "helmet": "^8.3.0",
+    "jose": "^6.2.8",
     "luxon": "^3.7.2",
     "multer": "^2.2.0",
     "reflect-metadata": "^0.2.2",
@@ -32,14 +32,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@nestjs/testing": "^11.1.5",
+    "@nestjs/testing": "^11.1.28",
     "@supportdesk/tsconfig": "workspace:*",
-    "@types/express": "^5.0.3",
-    "@types/luxon": "^3.7.2",
+    "@types/express": "^5.0.6",
+    "@types/luxon": "^3.7.3",
     "@types/multer": "^2.2.0",
-    "@types/supertest": "^6.0.3",
-    "prisma": "^6.13.0",
-    "supertest": "^7.1.4",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^6.19.3",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
   }

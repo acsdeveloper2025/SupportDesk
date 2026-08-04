@@ -7,6 +7,7 @@ import type { NotificationsService } from "../notifications/notifications.servic
 import type { RbacService } from "../rbac/rbac.service";
 import type { SlaEngineService } from "../sla/sla-engine.service";
 import type { LocalAttachmentStorage } from "../ticketing/attachments/local-attachment-storage";
+import type { VirusScanner } from "../ticketing/attachments/virus-scanner";
 import type { CatalogRequestsRepository } from "./catalog-requests.repository";
 import { CatalogRequestsService } from "./catalog-requests.service";
 import type { CatalogServicesRepository } from "./catalog-services.repository";
@@ -170,7 +171,7 @@ describe("CatalogRequestsService", () => {
       rbacService as unknown as RbacService,
       slaEngine as unknown as SlaEngineService,
       storage as unknown as LocalAttachmentStorage,
-      virusScanner,
+      virusScanner as unknown as VirusScanner,
       prisma as unknown as PrismaService,
     );
   });

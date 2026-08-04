@@ -581,12 +581,10 @@ describe("TicketsController (Unit & API Integration Tests)", () => {
 
       updateTicketMock.mockImplementation((dto: { expectedVersion: number }) => {
         if (dto.expectedVersion !== dbVersion) {
-          return Promise.reject(
-            new TicketConcurrencyException(dto.expectedVersion, dbVersion, "tkt-id-001"),
-          );
+          throw new TicketConcurrencyException(dto.expectedVersion, dbVersion, "tkt-id-001");
         }
         dbVersion += 1;
-        return Promise.resolve(updatedSampleTicket);
+        return updatedSampleTicket;
       });
 
       // User 1 updates with version 1 (succeeds)
