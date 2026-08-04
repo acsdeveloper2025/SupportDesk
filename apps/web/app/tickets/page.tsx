@@ -8,6 +8,9 @@ import { TicketPriorityBadge } from "./components/ticket-priority-badge";
 import { TicketStatusBadge } from "./components/ticket-status-badge";
 import type { TicketPriority, TicketStatus, TicketType } from "./types";
 
+const ATTACHMENT_ACCEPT = ".csv,.doc,.docx,.gif,.jpeg,.jpg,.pdf,.png,.txt,.xls,.xlsx,.zip";
+const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
 interface TicketSummary {
   id: string;
   publicRef: string;
@@ -49,6 +52,7 @@ export default function TicketsPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newPriority, setNewPriority] = useState<TicketPriority>("MEDIUM");
   const [newType, setNewType] = useState<TicketType>("INCIDENT");
+  const [newAttachments, setNewAttachments] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
 
   const fetchTickets = useCallback(async () => {
@@ -153,8 +157,38 @@ export default function TicketsPage() {
         throw new Error(body?.error?.message ?? body?.message ?? "Failed to create ticket");
       }
 
+      const created = (await res.json()) as { id?: string };
+      if (newAttachments.length > 0) {
+        if (!created.id) {
+          throw new Error("Ticket created, but attachment upload could not find the ticket ID.");
+        }
+
+        for (const file of newAttachments) {
+          const formData = new FormData();
+          formData.append("file", file);
+          const uploadRes = await fetch(`/api/tickets/${created.id}/attachments`, {
+            method: "POST",
+            headers: {
+              "x-csrf-token": csrfData.csrfToken ?? "",
+            },
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const body = (await uploadRes.json().catch(() => undefined)) as
+              { error?: { message?: string }; message?: string } | undefined;
+            throw new Error(
+              body?.error?.message ??
+                body?.message ??
+                `Ticket created, but "${file.name}" could not be uploaded.`,
+            );
+          }
+        }
+      }
+
       setNewTitle("");
       setNewDesc("");
+      setNewAttachments([]);
       setIsCreateOpen(false);
       void fetchTickets();
     } catch (err) {
@@ -502,10 +536,47 @@ export default function TicketsPage() {
                 </div>
               </div>
 
+              <div>
+                <label
+                  className="block text-xs font-semibold text-gray-700 dark:text-gray-300"
+                  htmlFor="ticket-attachments"
+                >
+                  Attachments
+                </label>
+                <input
+                  id="ticket-attachments"
+                  type="file"
+                  multiple
+                  accept={ATTACHMENT_ACCEPT}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    const oversized = files.find((file) => file.size > ATTACHMENT_MAX_BYTES);
+                    if (oversized) {
+                      alert(`"${oversized.name}" exceeds the 10 MB attachment limit.`);
+                      e.target.value = "";
+                      setNewAttachments([]);
+                      return;
+                    }
+                    setNewAttachments(files);
+                  }}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:file:bg-gray-700 dark:file:text-gray-100"
+                />
+                {newAttachments.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    {newAttachments.map((file) => (
+                      <li key={`${file.name}-${file.size}`}>{file.name}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="mt-6 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setIsCreateOpen(false)}
+                  onClick={() => {
+                    setIsCreateOpen(false);
+                    setNewAttachments([]);
+                  }}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   Cancel
