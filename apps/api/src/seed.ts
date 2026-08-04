@@ -17,6 +17,18 @@ import {
 
 const prisma = new PrismaClient();
 
+/**
+ * Platform-scoped permissions granted only to the Platform Administrator
+ * elevation role, never to the Tenant Administrator role.
+ */
+const platformOnlyAdminPermissions = [
+  "admin.tenant.create",
+  "admin.tenant.lifecycle",
+  "admin.global.read",
+  "admin.global.update",
+  "admin.feature_flag.manage",
+];
+
 function createRandom(seed = 42) {
   let s = seed;
   return function () {
@@ -84,6 +96,12 @@ async function main() {
   });
 
   for (const perm of permissions) {
+    if (platformOnlyAdminPermissions.includes(perm.key)) {
+      await prisma.rolePermission.deleteMany({
+        where: { roleId: adminRole.id, permissionId: perm.id },
+      });
+      continue;
+    }
     await prisma.rolePermission.upsert({
       where: {
         tenantId_roleId_permissionId_scope: {
@@ -103,6 +121,41 @@ async function main() {
     });
   }
 
+  const platformAdminRole = await prisma.role.upsert({
+    where: { tenantId_key: { tenantId: tenant.id, key: "platform_admin" } },
+    update: { name: "Platform Administrator" },
+    create: {
+      tenantId: tenant.id,
+      key: "platform_admin",
+      name: "Platform Administrator",
+      description: "Platform-level operator elevation (tenant provisioning and lifecycle)",
+      isSystem: true,
+    },
+  });
+
+  for (const permKey of platformOnlyAdminPermissions) {
+    const perm = permissions.find((p) => p.key === permKey);
+    if (perm) {
+      await prisma.rolePermission.upsert({
+        where: {
+          tenantId_roleId_permissionId_scope: {
+            tenantId: tenant.id,
+            roleId: platformAdminRole.id,
+            permissionId: perm.id,
+            scope: RoleScope.PLATFORM,
+          },
+        },
+        update: {},
+        create: {
+          tenantId: tenant.id,
+          roleId: platformAdminRole.id,
+          permissionId: perm.id,
+          scope: RoleScope.PLATFORM,
+        },
+      });
+    }
+  }
+
   const agentRole = await prisma.role.upsert({
     where: { tenantId_key: { tenantId: tenant.id, key: "agent" } },
     update: { name: "Support Agent" },
@@ -120,15 +173,68 @@ async function main() {
     "ticket.create",
     "ticket.update",
     "ticket.assign",
-    "comment.read",
-    "comment.create",
-    "attachment.read",
-    "attachment.create",
-    "kb.read",
-    "kb.create",
+    "ticket.transition",
+    "ticket.comment.read",
+    "ticket.comment.internal.read",
+    "ticket.comment.public.create",
+    "ticket.comment.internal.create",
+    "ticket.comment.update",
+    "ticket.attachment.read",
+    "ticket.attachment.create",
+    "ticket.attachment.delete",
+    "sla.read",
+    "kb.category.read",
+    "kb.category.create",
+    "kb.category.update",
+    "kb.article.read",
+    "kb.article.read_internal",
+    "kb.article.create",
+    "kb.article.update",
+    "kb.article.publish",
+    "kb.article.archive",
+    "kb.article.link_ticket",
     "asset.read",
     "asset.update",
-    "catalog.read",
+    "asset.create",
+    "asset.delete",
+    "asset.transition",
+    "asset.assign",
+    "asset.unassign",
+    "asset.type.read",
+    "asset.category.read",
+    "asset.location.read",
+    "asset.relationship.create",
+    "asset.relationship.delete",
+    "asset.history.read",
+    "asset.ticket.link",
+    "asset.ticket.unlink",
+    "asset.kb.link",
+    "asset.attachment.create",
+    "asset.attachment.read",
+    "asset.attachment.delete",
+    "catalog.category.read",
+    "catalog.category.create",
+    "catalog.category.update",
+    "catalog.service.read",
+    "catalog.service.create",
+    "catalog.service.update",
+    "catalog.service.publish",
+    "catalog.form.read",
+    "catalog.form.update",
+    "catalog.template.read",
+    "catalog.template.create",
+    "catalog.template.update",
+    "catalog.request.create",
+    "catalog.request.read",
+    "catalog.request.read_all",
+    "catalog.request.update",
+    "catalog.request.cancel",
+    "catalog.request.fulfill",
+    "catalog.request.generate_ticket",
+    "catalog.request.complete",
+    "catalog.approval.decide",
+    "catalog.request.attachment.create",
+    "catalog.request.attachment.delete",
   ];
   for (const permKey of agentPermKeys) {
     const perm = permissions.find((p) => p.key === permKey);
@@ -168,13 +274,26 @@ async function main() {
   const requesterPermKeys = [
     "ticket.read",
     "ticket.create",
-    "comment.read",
-    "comment.create",
-    "attachment.read",
-    "attachment.create",
-    "kb.read",
-    "catalog.read",
-    "catalog.request",
+    "ticket.update",
+    "ticket.transition",
+    "ticket.comment.read",
+    "ticket.comment.public.create",
+    "ticket.comment.update",
+    "ticket.attachment.read",
+    "ticket.attachment.create",
+    "ticket.attachment.delete",
+    "kb.category.read",
+    "kb.article.read",
+    "catalog.category.read",
+    "catalog.service.read",
+    "catalog.form.read",
+    "catalog.template.read",
+    "catalog.request.create",
+    "catalog.request.read",
+    "catalog.request.update",
+    "catalog.request.cancel",
+    "catalog.request.attachment.create",
+    "catalog.request.attachment.delete",
   ];
   for (const permKey of requesterPermKeys) {
     const perm = permissions.find((p) => p.key === permKey);
@@ -208,6 +327,8 @@ async function main() {
     { email: "admin.security@acme.com", name: "Marcus Vance", roleId: adminRole.id },
     { email: "admin.ops@acme.com", name: "Elena Rostova", roleId: adminRole.id },
     { email: "admin.cloud@acme.com", name: "David Chen", roleId: adminRole.id },
+    { email: "agent@acme.com", name: "Acme Support Agent", roleId: agentRole.id },
+    { email: "user@acme.com", name: "Acme Requester", roleId: requesterRole.id },
   ];
 
   const agentNames = [
@@ -332,6 +453,24 @@ async function main() {
         roleId: u.roleId,
       },
     });
+
+    if (u.email === "superadmin@supportdesk.io") {
+      await prisma.userRole.upsert({
+        where: {
+          tenantId_userId_roleId: {
+            tenantId: tenant.id,
+            userId: user.id,
+            roleId: platformAdminRole.id,
+          },
+        },
+        update: { revokedAt: null },
+        create: {
+          tenantId: tenant.id,
+          userId: user.id,
+          roleId: platformAdminRole.id,
+        },
+      });
+    }
 
     createdUserIds.push(user.id);
     if (u.roleId === agentRole.id) {
@@ -906,7 +1045,7 @@ async function main() {
   ];
 
   for (const itemDef of catalogItemDefs) {
-    await prisma.serviceItem.upsert({
+    const item = await prisma.serviceItem.upsert({
       where: { tenantId_slug: { tenantId: tenant.id, slug: itemDef.slug } },
       update: {},
       create: {
@@ -918,6 +1057,19 @@ async function main() {
         kind: ServiceKind.BUSINESS,
         state: ConfigPublicationState.PUBLISHED,
         approvalMode: itemDef.approval ? ServiceApprovalMode.SINGLE : ServiceApprovalMode.NONE,
+        approvalSteps: itemDef.approval ? [{ ordinal: 1, approverRole: "TENANT_ADMIN" }] : [],
+      },
+    });
+    await prisma.serviceRequestForm.upsert({
+      where: { serviceId: item.id },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        serviceId: item.id,
+        formVersion: 1,
+        schema: {
+          fields: [{ key: "details", label: "Details", type: "TEXTAREA", required: true }],
+        },
       },
     });
   }
@@ -934,6 +1086,7 @@ async function main() {
       key: "us-business-hours",
       name: "US Business Hours (9 AM - 5 PM EST)",
       description: "Standard corporate support hours",
+      activeVersionNumber: 1,
       versions: {
         create: [
           {
@@ -941,13 +1094,13 @@ async function main() {
             versionNumber: 1,
             timeZone: "America/New_York",
             state: ConfigPublicationState.PUBLISHED,
-            weeklyHours: [
-              { day: "MONDAY", startTime: "09:00", endTime: "17:00" },
-              { day: "TUESDAY", startTime: "09:00", endTime: "17:00" },
-              { day: "WEDNESDAY", startTime: "09:00", endTime: "17:00" },
-              { day: "THURSDAY", startTime: "09:00", endTime: "17:00" },
-              { day: "FRIDAY", startTime: "09:00", endTime: "17:00" },
-            ],
+            weeklyHours: {
+              mon: [{ start: "09:00", end: "17:00" }],
+              tue: [{ start: "09:00", end: "17:00" }],
+              wed: [{ start: "09:00", end: "17:00" }],
+              thu: [{ start: "09:00", end: "17:00" }],
+              fri: [{ start: "09:00", end: "17:00" }],
+            },
             publishedAt: new Date(2024, 0, 1),
           },
         ],

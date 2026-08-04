@@ -10,6 +10,10 @@ import {
 } from "@nestjs/common";
 import type { AssetAttachment } from "@prisma/client";
 
+export type AssetAttachmentView = Omit<AssetAttachment, "sizeBytes"> & {
+  sizeBytes: string;
+};
+
 import { PrismaService } from "../database/prisma.service";
 import {
   ATTACHMENT_ALLOWED_EXTENSIONS,
@@ -75,7 +79,7 @@ export class AssetAttachmentsService {
     return extension;
   }
 
-  async upload(input: AssetAttachmentInput): Promise<AssetAttachment> {
+  async upload(input: AssetAttachmentInput): Promise<AssetAttachmentView> {
     const extension = this.validateUpload(input);
 
     const asset = await this.assetsRepository.findOne(input.tenantId, input.assetId);
@@ -172,18 +176,22 @@ export class AssetAttachmentsService {
     const attachment = await this.prisma.assetAttachment.findFirstOrThrow({
       where: { tenantId: input.tenantId, id: attachmentId },
     });
-    return attachment;
+    return { ...attachment, sizeBytes: attachment.sizeBytes.toString() };
   }
 
-  async list(tenantId: string, assetId: string): Promise<AssetAttachment[]> {
+  async list(tenantId: string, assetId: string): Promise<AssetAttachmentView[]> {
     const asset = await this.assetsRepository.findOne(tenantId, assetId);
     if (!asset) {
       throw new NotFoundException("Asset not found");
     }
-    return this.prisma.assetAttachment.findMany({
+    const attachments = await this.prisma.assetAttachment.findMany({
       where: { tenantId, assetId },
       orderBy: { createdAt: "desc" },
     });
+    return attachments.map((attachment) => ({
+      ...attachment,
+      sizeBytes: attachment.sizeBytes.toString(),
+    }));
   }
 
   async getDownload(

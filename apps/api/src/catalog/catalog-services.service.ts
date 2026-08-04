@@ -75,7 +75,19 @@ export class CatalogServicesService {
       fields: [{ key: "details", label: "Details", type: "TEXTAREA", required: true }],
     };
 
-    const service = await this.repository.createWithForm(tenantId, dto, slug, formSchema);
+    const approvalSteps =
+      dto.approvalMode &&
+      dto.approvalMode !== "NONE" &&
+      (!dto.approvalSteps || dto.approvalSteps.length === 0)
+        ? [{ ordinal: 1, approverRole: "TENANT_ADMIN" }]
+        : dto.approvalSteps;
+
+    const service = await this.repository.createWithForm(
+      tenantId,
+      { ...dto, approvalSteps },
+      slug,
+      formSchema,
+    );
 
     await this.prisma.auditEvent.create({
       data: buildAuditEventData({
@@ -107,8 +119,12 @@ export class CatalogServicesService {
       kind?: "BUSINESS" | "TECHNICAL";
       categoryId?: string;
       state?: "DRAFT" | "PUBLISHED" | "RETIRED";
+      canReadInternal?: boolean;
     },
   ) {
+    if (!options.canReadInternal) {
+      return this.repository.list(tenantId, { ...options, state: "PUBLISHED" });
+    }
     return this.repository.list(tenantId, options);
   }
 
@@ -116,7 +132,11 @@ export class CatalogServicesService {
     return this.repository.listPublished(tenantId);
   }
 
-  async getService(tenantId: string, idOrSlug: string): Promise<ServiceItemWithRelations> {
+  async getService(
+    tenantId: string,
+    idOrSlug: string,
+    canReadInternal = false,
+  ): Promise<ServiceItemWithRelations> {
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
     const service = isUuid
@@ -124,6 +144,9 @@ export class CatalogServicesService {
       : await this.repository.findBySlug(tenantId, idOrSlug);
 
     if (!service) {
+      throw new NotFoundException(`Service '${idOrSlug}' not found`);
+    }
+    if (!canReadInternal && service.state !== "PUBLISHED") {
       throw new NotFoundException(`Service '${idOrSlug}' not found`);
     }
     return service;

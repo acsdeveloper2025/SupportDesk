@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { cleanDatabase } from "../common/testing/clean-database";
 import type { PrismaService } from "../database/prisma.service";
 import { NotificationsRepository } from "../notifications/notifications.repository";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -69,17 +70,7 @@ describeIntegration("Ticketing PostgreSQL integration", () => {
   });
 
   beforeEach(async () => {
-    await prisma.notificationPreference.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.comment.deleteMany();
-    await prisma.attachment.deleteMany();
-    await prisma.ticket.deleteMany();
-    await prisma.auditEvent.deleteMany();
-    await prisma.rolePermission.deleteMany();
-    await prisma.userRole.deleteMany();
-    await prisma.role.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.tenant.deleteMany();
+    await cleanDatabase(prisma);
 
     tenantA = randomUUID();
     tenantB = randomUUID();

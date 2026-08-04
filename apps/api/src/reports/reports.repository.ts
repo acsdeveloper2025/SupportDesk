@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
 import { PrismaService } from "../database/prisma.service";
@@ -10,8 +10,17 @@ export class ReportsRepository {
 
   // Helper method to parse date filters from query
   private getDateRange(query: ReportQueryDto): { start: Date; end: Date } {
-    const end = query.endDate ? new Date(query.endDate) : new Date();
-    let start = query.startDate ? new Date(query.startDate) : new Date();
+    const parseDate = (value: string | undefined): Date | undefined => {
+      if (!value) return undefined;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException(`Invalid date '${value}'`);
+      }
+      return parsed;
+    };
+
+    const end = parseDate(query.endDate) ?? new Date();
+    let start = parseDate(query.startDate) ?? new Date();
 
     if (!query.startDate) {
       const range = query.range || "30d";

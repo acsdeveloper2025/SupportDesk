@@ -110,6 +110,11 @@ export class CatalogServicesController {
     await this.checkPermission(tenantId, userId, "catalog.service.read");
     const pageNumber = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
     const pageSizeNumber = Math.min(100, Math.max(1, Number.parseInt(pageSize ?? "20", 10) || 20));
+    const canReadInternal = await this.rbacService.can({
+      permissionKey: "catalog.service.publish",
+      tenantId,
+      userId,
+    });
 
     return this.servicesService.listServices(tenantId, {
       page: pageNumber,
@@ -117,6 +122,7 @@ export class CatalogServicesController {
       kind,
       categoryId,
       state,
+      canReadInternal,
     });
   }
 
@@ -141,8 +147,13 @@ export class CatalogServicesController {
   async getService(@Req() request: Request, @Param("idOrSlug") idOrSlug: string) {
     const { tenantId, userId } = this.requireAuth(request);
     await this.checkPermission(tenantId, userId, "catalog.service.read");
+    const canReadInternal = await this.rbacService.can({
+      permissionKey: "catalog.service.publish",
+      tenantId,
+      userId,
+    });
 
-    return this.servicesService.getService(tenantId, idOrSlug);
+    return this.servicesService.getService(tenantId, idOrSlug, canReadInternal);
   }
 
   @Patch(":id")
@@ -186,10 +197,10 @@ export class CatalogServicesController {
   @ApiBadRequestResponse({ description: "Service already retired" })
   @ApiNotFoundResponse({ description: "Service not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires catalog.service.retire permission" })
+  @ApiForbiddenResponse({ description: "Requires catalog.service.publish permission" })
   async retireService(@Req() request: Request, @Param("id") id: string) {
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "catalog.service.retire");
+    await this.checkPermission(tenantId, userId, "catalog.service.publish");
     const correlationId = getCorrelationId(request);
 
     return this.servicesService.publishService(tenantId, id, userId, correlationId, "RETIRED");

@@ -40,12 +40,42 @@ function getNestedValue(obj: Record<string, unknown> | null | undefined, path: s
   return current;
 }
 
+function resolveFieldValue(snapshot: Record<string, unknown>, field: string): unknown {
+  const direct = getNestedValue(snapshot, field);
+  if (direct !== undefined) {
+    return direct;
+  }
+  if (!field.includes(".")) {
+    const ticket = getNestedValue(snapshot, `ticket.${field}`);
+    if (ticket !== undefined) {
+      return ticket;
+    }
+    const asset = getNestedValue(snapshot, `asset.${field}`);
+    if (asset !== undefined) {
+      return asset;
+    }
+  }
+  return direct;
+}
+
+function normalizeOperator(operator: string): string {
+  switch (operator) {
+    case "eq":
+      return "equals";
+    case "neq":
+      return "not_equals";
+    default:
+      return operator;
+  }
+}
+
 export function evaluateCondition(
   condition: WorkflowCondition,
   snapshot: Record<string, unknown>,
 ): ConditionEvaluationDetail {
-  const actualValue = getNestedValue(snapshot, condition.field);
-  const { operator, value: expectedValue } = condition;
+  const actualValue = resolveFieldValue(snapshot, condition.field);
+  const { operator: rawOperator, value: expectedValue } = condition;
+  const operator = normalizeOperator(rawOperator);
   let passed: boolean;
 
   switch (operator) {

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 
 export interface GeneratedSecureToken {
   token: string;
@@ -11,7 +11,7 @@ export interface GeneratedSecureToken {
 export class SecureTokenService {
   private readonly defaultBytes: number;
 
-  constructor(defaultBytes?: number) {
+  constructor(@Optional() defaultBytes?: number) {
     this.defaultBytes = defaultBytes ?? readPositiveInteger("SECURE_TOKEN_BYTES", 32);
   }
 

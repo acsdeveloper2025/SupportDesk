@@ -27,13 +27,13 @@ describe("Admin RBAC & Tenant Isolation Security", () => {
   beforeEach(() => {
     adminService = mockAdminService;
     rbacService = { can: vi.fn().mockResolvedValue(true) } as unknown as RbacService;
-    auditController = new AuditAdminController(adminService);
+    auditController = new AuditAdminController(adminService, rbacService);
     new OutboxAdminController(adminService, rbacService);
-    systemHealthController = new SystemHealthAdminController(adminService);
+    systemHealthController = new SystemHealthAdminController(adminService, rbacService);
   });
 
   const validReq = {
-    user: { tenantId: "tenant-agent", userId: "agent-123" },
+    auth: { tenantId: "tenant-agent", userId: "agent-123" },
   } as unknown as Request;
 
   const invalidReq = {} as unknown as Request;

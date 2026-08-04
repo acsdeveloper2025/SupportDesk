@@ -9,6 +9,15 @@ import {
 } from "@prisma/client";
 
 import { PrismaService } from "../database/prisma.service";
+
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
+
+function coercePageNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(Math.floor(parsed), MAX_LIMIT);
+}
 import type {
   CreateKbArticleDto,
   ListKbArticlesQueryDto,
@@ -145,8 +154,8 @@ export class KbArticlesRepository {
       };
     }
 
-    const limit = query.limit ?? 20;
-    const offset = query.offset ?? 0;
+    const limit = coercePageNumber(query.limit, DEFAULT_LIMIT);
+    const offset = coercePageNumber(query.offset, 0);
 
     const [items, total] = await Promise.all([
       this.prisma.kbArticle.findMany({
@@ -181,6 +190,8 @@ export class KbArticlesRepository {
     limit = 20,
     offset = 0,
   ): Promise<{ items: KbArticleWithRelations[]; total: number }> {
+    limit = coercePageNumber(limit, DEFAULT_LIMIT);
+    offset = coercePageNumber(offset, 0);
     const orClause = buildKbArticleSearchOrClause(q);
     const where: Prisma.KbArticleWhereInput = {
       tenantId,
@@ -338,10 +349,15 @@ export class KbArticlesRepository {
     return this.prisma.$transaction(async (tx) => {
       const article = await tx.kbArticle.findUniqueOrThrow({ where: { id } });
 
+      // Derive the next snapshot number from the highest existing snapshot so a
+      // previously published (then archived) article never reuses a version
+      // number and violates the tenant/article/version unique constraint.
+      const latestVersion = await tx.kbArticleVersion.findFirst({
+        where: { tenantId, articleId: id },
+        orderBy: { versionNumber: "desc" },
+      });
       const newVersionNumber =
-        article.status === KbArticleStatus.PUBLISHED
-          ? article.versionNumber + 1
-          : article.versionNumber;
+        latestVersion === null ? article.versionNumber : latestVersion.versionNumber + 1;
 
       // Save version snapshot
       await tx.kbArticleVersion.create({

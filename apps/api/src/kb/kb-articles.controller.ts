@@ -48,6 +48,7 @@ import {
   validateUpdateArticlePayload,
 } from "./dto/article-dtos";
 import { KbArticlesService } from "./kb-articles.service";
+import { KB_SEARCH_QUERY_MAX_LENGTH } from "./kb-search.builder";
 
 @ApiTags("kb-articles")
 @Controller("api/v1/kb/articles")
@@ -126,6 +127,11 @@ export class KbArticlesController {
   @ApiForbiddenResponse({ description: "Requires kb.article.read permission" })
   async searchArticles(@Req() request: Request, @Query() query: SearchKbArticlesQueryDto) {
     const { tenantId, userId } = this.requireAuth(request);
+    if (query.q && query.q.length > KB_SEARCH_QUERY_MAX_LENGTH) {
+      throw new BadRequestException(
+        `Search query cannot exceed ${KB_SEARCH_QUERY_MAX_LENGTH} characters`,
+      );
+    }
     await this.requirePermission(tenantId, userId, "kb.article.read");
     const canReadInternal = await this.checkPermission(
       tenantId,

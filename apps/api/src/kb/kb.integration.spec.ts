@@ -4,6 +4,7 @@ import { KbArticleStatus, KbArticleVisibility } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../app.module";
+import { cleanDatabase } from "../common/testing/clean-database";
 import { PrismaService } from "../database/prisma.service";
 import { RbacService } from "../rbac/rbac.service";
 import { KbArticlesService } from "./kb-articles.service";
@@ -41,6 +42,8 @@ describeIntegration("Knowledge Base Integration Tests", () => {
   });
 
   beforeEach(async () => {
+    await cleanDatabase(prisma);
+
     const t1 = await prisma.tenant.create({
       data: {
         slug: `kb-t1-${Date.now()}-${Math.random().toString(36).substring(7)}`,

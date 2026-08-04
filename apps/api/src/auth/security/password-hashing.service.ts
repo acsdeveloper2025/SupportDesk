@@ -1,6 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { hash, verify } from "@node-rs/argon2";
-
 interface Argon2Settings {
   hashLength: number;
   memoryCost: number;
@@ -14,7 +13,7 @@ const argon2idAlgorithm = 2;
 export class PasswordHashingService {
   private readonly settings: Argon2Settings;
 
-  constructor(config?: Partial<Argon2Settings>) {
+  constructor(@Optional() config?: Partial<Argon2Settings>) {
     this.settings = {
       hashLength: config?.hashLength ?? readPositiveInteger("ARGON2_HASH_LENGTH", 32),
       memoryCost: config?.memoryCost ?? readPositiveInteger("ARGON2_MEMORY_COST_KIB", 65_536),

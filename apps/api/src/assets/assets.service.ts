@@ -568,6 +568,9 @@ export class AssetsService {
     if (!asset) {
       throw new NotFoundException("Asset not found");
     }
+    if (assetId === dto.targetAssetId) {
+      throw new BadRequestException("An asset cannot be related to itself");
+    }
     const relationship = await this.assetsRepository.createRelationship(
       ctx.tenantId,
       assetId,
@@ -614,7 +617,7 @@ export class AssetsService {
   // -------------------------------------------------------------------------
 
   async linkTicket(ctx: RequestContext, assetId: string, ticketId: string, correlationId?: string) {
-    await this.assertCan(ctx, "asset.link.ticket.create");
+    await this.assertCan(ctx, "asset.ticket.link");
     const link = await this.assetsRepository.linkTicket(
       ctx.tenantId,
       assetId,
@@ -634,7 +637,7 @@ export class AssetsService {
     ticketId: string,
     correlationId?: string,
   ) {
-    await this.assertCan(ctx, "asset.link.ticket.delete");
+    await this.assertCan(ctx, "asset.ticket.unlink");
     const removed = await this.assetsRepository.unlinkTicket(
       ctx.tenantId,
       assetId,
@@ -662,7 +665,7 @@ export class AssetsService {
     dto: CreateTicketFromAssetDto,
     correlationId?: string,
   ) {
-    await this.assertCan(ctx, "asset.link.ticket.create");
+    await this.assertCan(ctx, "asset.ticket.link");
     const result = await this.assetsRepository.createTicketFromAsset(
       ctx.tenantId,
       assetId,
@@ -683,7 +686,7 @@ export class AssetsService {
     articleId: string,
     correlationId?: string,
   ) {
-    await this.assertCan(ctx, "asset.type.link.kb");
+    await this.assertCan(ctx, "asset.kb.link");
     const link = await this.assetsRepository.linkAssetTypeKb(
       ctx.tenantId,
       assetTypeId,
@@ -703,7 +706,7 @@ export class AssetsService {
     articleId: string,
     correlationId?: string,
   ) {
-    await this.assertCan(ctx, "asset.type.link.kb");
+    await this.assertCan(ctx, "asset.kb.link");
     const removed = await this.assetsRepository.unlinkAssetTypeKb(
       ctx.tenantId,
       assetTypeId,

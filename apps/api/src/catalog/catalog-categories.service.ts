@@ -178,7 +178,7 @@ export class CatalogCategoriesService {
       throw new BadRequestException("Cannot delete category with subcategories");
     }
 
-    if ((category._count?.serviceItems ?? 0) > 0) {
+    if ((await this.repository.countServiceItems(tenantId, id)) > 0) {
       throw new BadRequestException("Cannot delete category containing services");
     }
 

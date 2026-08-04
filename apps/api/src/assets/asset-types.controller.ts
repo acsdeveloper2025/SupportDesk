@@ -156,14 +156,14 @@ export class AssetTypesController {
   @ApiCreatedResponse({ description: "KB link created" })
   @ApiNotFoundResponse({ description: "Asset type not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires asset.type.link.kb permission" })
+  @ApiForbiddenResponse({ description: "Requires asset.kb.link permission" })
   async linkKb(
     @Req() request: Request,
     @Param("id") id: string,
     @Body() body: { articleId: string },
   ) {
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "asset.type.link.kb");
+    await this.checkPermission(tenantId, userId, "asset.kb.link");
     return this.assetsService.linkAssetTypeKb(
       { tenantId, userId },
       id,
@@ -177,14 +177,14 @@ export class AssetTypesController {
   @ApiOkResponse({ description: "KB link removed" })
   @ApiNotFoundResponse({ description: "KB link not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires asset.type.link.kb permission" })
+  @ApiForbiddenResponse({ description: "Requires asset.kb.link permission" })
   async unlinkKb(
     @Req() request: Request,
     @Param("id") id: string,
     @Param("articleId") articleId: string,
   ) {
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "asset.type.link.kb");
+    await this.checkPermission(tenantId, userId, "asset.kb.link");
     return this.assetsService.unlinkAssetTypeKb(
       { tenantId, userId },
       id,

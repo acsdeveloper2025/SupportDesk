@@ -4,6 +4,7 @@ import { OutboxState } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../app.module";
+import { cleanDatabase } from "../common/testing/clean-database";
 import { PrismaService } from "../database/prisma.service";
 import { RbacService } from "../rbac/rbac.service";
 import { CommentsService } from "../ticketing/comments.service";
@@ -46,6 +47,8 @@ describeIntegration("Outbox Integration Tests", () => {
   });
 
   beforeEach(async () => {
+    await cleanDatabase(prisma);
+
     // Setup test tenant and user
     const tenant = await prisma.tenant.create({
       data: {

@@ -9,6 +9,7 @@ import {
 import { ConfigPublicationState, PrismaClient, RoleScope, UserState } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { cleanDatabase } from "../common/testing/clean-database";
 import type { PrismaService } from "../database/prisma.service";
 import { PrismaRbacRepository } from "../rbac/rbac.repository";
 import { RbacService } from "../rbac/rbac.service";
@@ -70,25 +71,7 @@ describeIntegration("Workflow definition PostgreSQL integration", () => {
   });
 
   beforeEach(async () => {
-    await prisma.workflowVersion.deleteMany();
-    await prisma.workflow.deleteMany();
-    await prisma.slaEvaluation.deleteMany();
-    await prisma.slaTarget.deleteMany();
-    await prisma.slaPolicyVersion.deleteMany();
-    await prisma.slaPolicy.deleteMany();
-    await prisma.businessScheduleVersion.deleteMany();
-    await prisma.businessSchedule.deleteMany();
-    await prisma.notificationPreference.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.comment.deleteMany();
-    await prisma.attachment.deleteMany();
-    await prisma.ticket.deleteMany();
-    await prisma.auditEvent.deleteMany();
-    await prisma.rolePermission.deleteMany();
-    await prisma.userRole.deleteMany();
-    await prisma.role.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.tenant.deleteMany();
+    await cleanDatabase(prisma);
 
     tenantA = randomUUID();
     tenantB = randomUUID();

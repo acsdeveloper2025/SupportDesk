@@ -12,6 +12,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -22,6 +23,8 @@ import {
 } from "@nestjs/swagger";
 import { Request, Response } from "express";
 
+import { AuthAccessTokenGuard } from "../auth/guards/auth-access-token.guard";
+import { getAuthenticatedRequestContext } from "../auth/guards/auth-context";
 import { RbacService } from "../rbac/rbac.service";
 import {
   CreateReportExportSchema,
@@ -33,6 +36,7 @@ import { ReportsService } from "./reports.service";
 
 @ApiTags("Reports & Analytics")
 @ApiBearerAuth()
+@UseGuards(AuthAccessTokenGuard)
 @Controller("api/v1/reports")
 export class ReportsController {
   constructor(
@@ -41,11 +45,11 @@ export class ReportsController {
   ) {}
 
   private requireAuth(req: Request): { tenantId: string; userId: string } {
-    const user = (req as unknown as { user?: { tenantId?: string; userId?: string } }).user;
-    if (!user || !user.tenantId || !user.userId) {
-      throw new UnauthorizedException("User context missing from request");
+    const context = getAuthenticatedRequestContext(req);
+    if (!context) {
+      throw new UnauthorizedException("Authentication token is invalid or missing");
     }
-    return { tenantId: user.tenantId, userId: user.userId };
+    return { tenantId: context.tenantId, userId: context.userId };
   }
 
   private async checkPermission(
@@ -65,7 +69,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Executive dashboard metrics" })
   public async getExecutiveDashboard(@Req() req: Request, @Query() query: unknown) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.executive.read");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.read");
     const filters = ReportQuerySchema.parse(query);
     return this.reportsService.getExecutiveDashboard(auth.tenantId, filters);
   }
@@ -76,7 +80,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Ticket analytics metrics" })
   public async getTicketAnalytics(@Req() req: Request, @Query() query: unknown) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.tickets.read");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.ticket.read");
     const filters = ReportQuerySchema.parse(query);
     return this.reportsService.getTicketAnalytics(auth.tenantId, filters);
   }
@@ -98,7 +102,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Workflow performance metrics" })
   public async getWorkflowReports(@Req() req: Request, @Query() query: unknown) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.workflows.read");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.workflow.read");
     const filters = ReportQuerySchema.parse(query);
     return this.reportsService.getWorkflowReports(auth.tenantId, filters);
   }
@@ -109,7 +113,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Asset inventory metrics" })
   public async getAssetReports(@Req() req: Request, @Query() query: unknown) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.assets.read");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.asset.read");
     const filters = ReportQuerySchema.parse(query);
     return this.reportsService.getAssetReports(auth.tenantId, filters);
   }
@@ -142,7 +146,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Agent productivity metrics" })
   public async getAgentProductivity(@Req() req: Request, @Query() query: unknown) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.agents.read");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.agent.read");
     const filters = ReportQuerySchema.parse(query);
     return this.reportsService.getAgentProductivity(auth.tenantId, filters);
   }
@@ -154,7 +158,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "Report export file stream" })
   public async exportReport(@Req() req: Request, @Body() body: unknown, @Res() res: Response) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.export");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.export.create");
     const payload = CreateReportExportSchema.parse(body);
     const result = await this.reportsService.exportReport(auth.tenantId, auth.userId, payload);
 
@@ -169,7 +173,7 @@ export class ReportsController {
   @ApiOkResponse({ description: "List of report exports" })
   public async listReportExports(@Req() req: Request) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.export");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.export.read");
     return this.reportsService.listReportExports(auth.tenantId, auth.userId);
   }
 
@@ -182,7 +186,7 @@ export class ReportsController {
     @Res() res: Response,
   ) {
     const auth = this.requireAuth(req);
-    await this.checkPermission(auth.tenantId, auth.userId, "report.export");
+    await this.checkPermission(auth.tenantId, auth.userId, "report.export.download");
     const result = await this.reportsService.downloadExportFile(auth.tenantId, auth.userId, id);
 
     res.setHeader("Content-Type", result.mimeType);

@@ -21,11 +21,11 @@ import { AssetsService } from "./assets.service";
 @Module({
   imports: [DatabaseModule, AuthModule, RbacModule, OutboxModule],
   controllers: [
-    AssetsController,
     AssetTypesController,
     AssetCategoriesController,
     AssetLocationsController,
     AssetAttachmentsController,
+    AssetsController,
   ],
   providers: [
     AssetsService,

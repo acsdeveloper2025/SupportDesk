@@ -130,18 +130,26 @@ describe("CatalogServicesService", () => {
 
   describe("getService", () => {
     it("finds by id for UUIDs and by slug otherwise", async () => {
-      repository.findById.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
-      await service.getService("ten-1", "11111111-1111-4111-8111-111111111111");
+      repository.findById.mockResolvedValue({
+        id: "11111111-1111-4111-8111-111111111111",
+        state: "PUBLISHED",
+      });
+      await service.getService("ten-1", "11111111-1111-4111-8111-111111111111", true);
       expect(repository.findBySlug).not.toHaveBeenCalled();
 
-      repository.findBySlug.mockResolvedValue({ id: "svc-1" });
-      await service.getService("ten-1", "software-request");
+      repository.findBySlug.mockResolvedValue({ id: "svc-1", state: "PUBLISHED" });
+      await service.getService("ten-1", "software-request", true);
       expect(repository.findBySlug).toHaveBeenCalledWith("ten-1", "software-request");
+    });
+
+    it("hides non-published services from users without internal read access", async () => {
+      repository.findById.mockResolvedValue({ id: "svc-1", state: "RETIRED" });
+      await expect(service.getService("ten-1", "svc-1", false)).rejects.toThrow(NotFoundException);
     });
 
     it("throws when not found", async () => {
       repository.findBySlug.mockResolvedValue(null);
-      await expect(service.getService("ten-1", "nope")).rejects.toThrow(NotFoundException);
+      await expect(service.getService("ten-1", "nope", true)).rejects.toThrow(NotFoundException);
     });
   });
 

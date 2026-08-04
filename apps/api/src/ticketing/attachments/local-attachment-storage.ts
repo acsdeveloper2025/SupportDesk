@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Optional } from "@nestjs/common";
 
 export interface StoredFileResult {
   absolutePath: string;
@@ -18,7 +18,7 @@ export interface StoredFileResult {
 export class LocalAttachmentStorage {
   private readonly root: string;
 
-  constructor(rootOverride?: string) {
+  constructor(@Optional() rootOverride?: string) {
     this.root = path.resolve(
       rootOverride ?? process.env.ATTACHMENTS_STORAGE_ROOT ?? "./data/supportdesk/attachments",
     );

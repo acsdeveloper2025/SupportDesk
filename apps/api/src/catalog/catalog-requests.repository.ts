@@ -599,6 +599,41 @@ export class CatalogRequestsRepository {
       correlationId?: string;
     },
   ): Promise<{ request: ServiceRequestWithRelations; ticket: { id: string; publicRef: string } }> {
+    // Count-based publicRefs collide when a ticket is deleted while higher refs
+    // remain. Retry with an attempt offset (the transaction is idempotent) so a
+    // P2002 unique-constraint failure picks a fresh ref instead of 500ing.
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        return await this.generateTicketTransaction(tenantId, requestId, input, audit, attempt);
+      } catch (error) {
+        const err = error as { code?: string };
+        if (err.code !== "P2002" || attempt >= maxAttempts - 1) {
+          throw error;
+        }
+      }
+    }
+    throw new Error("catalog.request.ticket_creation_failed");
+  }
+
+  private async generateTicketTransaction(
+    tenantId: string,
+    requestId: string,
+    input: {
+      title: string;
+      description: string;
+      priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+      type: "QUESTION" | "INCIDENT" | "PROBLEM" | "FEATURE_REQUEST";
+      requesterUserId: string;
+      correlationId?: string;
+    },
+    audit: {
+      action: string;
+      actorUserId: string;
+      correlationId?: string;
+    },
+    attempt: number,
+  ): Promise<{ request: ServiceRequestWithRelations; ticket: { id: string; publicRef: string } }> {
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$queryRaw`
@@ -626,7 +661,7 @@ export class CatalogRequestsRepository {
         }
 
         const count = await tx.ticket.count({ where: { tenantId } });
-        const publicRef = `TKT-${count + 1001}`;
+        const publicRef = `TKT-${count + 1001 + attempt}`;
         const ticketId = randomUUID();
 
         await tx.ticket.create({

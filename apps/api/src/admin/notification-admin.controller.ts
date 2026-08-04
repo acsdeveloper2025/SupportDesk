@@ -1,34 +1,55 @@
-import { Controller, Get, Post, Req, UnauthorizedException } from "@nestjs/common";
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiBearerAuth } from "@nestjs/swagger";
 import { Request } from "express";
 
+import { AuthAccessTokenGuard } from "../auth/guards/auth-access-token.guard";
+import { getAuthenticatedRequestContext } from "../auth/guards/auth-context";
+import { RbacService } from "../rbac/rbac.service";
 import { AdminService } from "./admin.service";
 
-interface AuthUser {
-  userId: string;
-  tenantId: string;
-}
-
-function getUserContext(req: Request): AuthUser {
-  const user = (req as unknown as { user?: { userId?: string; tenantId?: string } }).user;
-  if (!user || !user.userId || !user.tenantId) {
-    throw new UnauthorizedException("Authentication required");
-  }
-  return { userId: user.userId, tenantId: user.tenantId };
-}
-
+@UseGuards(AuthAccessTokenGuard)
+@ApiBearerAuth()
 @Controller("api/v1/admin/notifications")
 export class NotificationAdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly rbacService: RbacService,
+  ) {}
+
+  private requireAuth(req: Request): { userId: string; tenantId: string } {
+    const context = getAuthenticatedRequestContext(req);
+    if (!context) {
+      throw new UnauthorizedException("Authentication required");
+    }
+    return { userId: context.userId, tenantId: context.tenantId };
+  }
+
+  private async requirePermission(tenantId: string, userId: string, permissionKey: string) {
+    const allowed = await this.rbacService.can({ permissionKey, tenantId, userId });
+    if (!allowed) {
+      throw new ForbiddenException(`Permission ${permissionKey} denied`);
+    }
+  }
 
   @Get("monitoring")
   async getNotificationMonitoring(@Req() req: Request) {
-    const user = getUserContext(req);
+    const user = this.requireAuth(req);
+    await this.requirePermission(user.tenantId, user.userId, "admin.notification.manage");
     return this.adminService.getNotificationMonitoring(user.tenantId);
   }
 
   @Post("retry-failed")
   async retryFailedNotificationIntents(@Req() req: Request) {
-    const user = getUserContext(req);
+    const user = this.requireAuth(req);
+    await this.requirePermission(user.tenantId, user.userId, "admin.notification.manage");
     return this.adminService.retryFailedNotificationIntents(user.userId, user.tenantId);
   }
 }

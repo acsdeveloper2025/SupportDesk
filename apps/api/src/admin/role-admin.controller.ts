@@ -7,10 +7,13 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 
+import { AuthAccessTokenGuard } from "../auth/guards/auth-access-token.guard";
+import { getAuthenticatedRequestContext } from "../auth/guards/auth-context";
 import { RbacService } from "../rbac/rbac.service";
 import { AdminService } from "./admin.service";
 import { RoleDto } from "./admin.types";
@@ -18,6 +21,7 @@ import { RoleDto } from "./admin.types";
 @ApiTags("Administration - Roles & Permission Matrix")
 @ApiBearerAuth()
 @Controller("api/v1/admin")
+@UseGuards(AuthAccessTokenGuard)
 export class RoleAdminController {
   constructor(
     private readonly adminService: AdminService,
@@ -25,11 +29,11 @@ export class RoleAdminController {
   ) {}
 
   private requireAuth(req: Request): { tenantId: string; userId: string } {
-    const user = (req as unknown as { user?: { tenantId?: string; userId?: string } }).user;
-    if (!user || !user.tenantId || !user.userId) {
+    const context = getAuthenticatedRequestContext(req);
+    if (!context) {
       throw new UnauthorizedException("User context missing from request");
     }
-    return { tenantId: user.tenantId, userId: user.userId };
+    return { tenantId: context.tenantId, userId: context.userId };
   }
 
   private async checkPermission(

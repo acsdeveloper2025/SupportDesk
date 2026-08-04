@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type {
   Asset,
   AssetAssignment,
@@ -868,90 +868,106 @@ export class AssetsRepository {
     actorUserId: string,
     audit: AuditEventInput,
   ): Promise<{ asset: Asset; ticket: Ticket }> {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`
-        SELECT "id" FROM "assets"
-        WHERE "tenant_id" = ${tenantId}::uuid AND "id" = ${assetId}::uuid
-        FOR UPDATE
-      `;
+    const maxRetries = 15;
+    let attempt = 0;
 
-      const asset = await tx.asset.findFirst({ where: { tenantId, id: assetId, deletedAt: null } });
-      if (!asset) {
-        throw new Error("asset.not_found");
+    while (true) {
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`
+            SELECT "id" FROM "assets"
+            WHERE "tenant_id" = ${tenantId}::uuid AND "id" = ${assetId}::uuid
+            FOR UPDATE
+          `;
+
+          const asset = await tx.asset.findFirst({
+            where: { tenantId, id: assetId, deletedAt: null },
+          });
+          if (!asset) {
+            throw new NotFoundException("Asset not found");
+          }
+
+          const count = await tx.ticket.count({ where: { tenantId } });
+          const publicRef = `TKT-${count + 1001 + attempt}`;
+          const ticketId = randomUUID();
+
+          await tx.ticket.create({
+            data: {
+              id: ticketId,
+              tenantId,
+              publicRef,
+              title: dto.title.trim(),
+              description: dto.description.trim(),
+              status: "NEW",
+              priority: dto.priority ?? "MEDIUM",
+              channel: "WEB",
+              type: dto.type ?? "INCIDENT",
+              requesterUserId: actorUserId,
+              version: 1,
+            },
+          });
+
+          await tx.assetTicketLink.create({
+            data: { tenantId, assetId, ticketId, createdByUserId: actorUserId },
+          });
+
+          await this.writeHistory(tx, tenantId, assetId, "asset.ticket_created", actorUserId, {
+            metadata: { ticketId, publicRef },
+          });
+          await this.writeAudit(tx, tenantId, {
+            ...audit,
+            targetId: ticketId,
+            metadata: { ...audit.metadata, assetId, assetRef: asset.assetRef, publicRef },
+          });
+
+          await this.appendOutbox(tx, tenantId, {
+            eventType: "ticket.created",
+            aggregateType: "ticket",
+            aggregateId: ticketId,
+            correlationId: audit.correlationId,
+            payload: {
+              ticket: {
+                id: ticketId,
+                tenantId,
+                publicRef,
+                title: dto.title.trim(),
+                description: dto.description.trim(),
+                status: "NEW",
+                priority: dto.priority ?? "MEDIUM",
+                channel: "WEB",
+                type: dto.type ?? "INCIDENT",
+                requesterUserId: actorUserId,
+              },
+              sourceAssetId: assetId,
+              sourceAssetRef: asset.assetRef,
+            },
+          });
+
+          await this.appendOutbox(tx, tenantId, {
+            eventType: "asset.ticket_created",
+            aggregateType: "asset",
+            aggregateId: assetId,
+            correlationId: audit.correlationId,
+            payload: {
+              assetId,
+              assetRef: asset.assetRef,
+              ticketId,
+              publicRef,
+            },
+          });
+
+          const ticket = await tx.ticket.findFirstOrThrow({ where: { tenantId, id: ticketId } });
+          return { asset, ticket };
+        });
+      } catch (error) {
+        const prismaError = error as { code?: string };
+        if (prismaError.code === "P2002" && attempt < maxRetries) {
+          attempt += 1;
+          continue;
+        }
+        throw error;
       }
-
-      const count = await tx.ticket.count({ where: { tenantId } });
-      const publicRef = `TKT-${count + 1001}`;
-      const ticketId = randomUUID();
-
-      await tx.ticket.create({
-        data: {
-          id: ticketId,
-          tenantId,
-          publicRef,
-          title: dto.title.trim(),
-          description: dto.description.trim(),
-          status: "NEW",
-          priority: dto.priority ?? "MEDIUM",
-          channel: "WEB",
-          type: dto.type ?? "INCIDENT",
-          requesterUserId: actorUserId,
-          version: 1,
-        },
-      });
-
-      await tx.assetTicketLink.create({
-        data: { tenantId, assetId, ticketId, createdByUserId: actorUserId },
-      });
-
-      await this.writeHistory(tx, tenantId, assetId, "asset.ticket_created", actorUserId, {
-        metadata: { ticketId, publicRef },
-      });
-      await this.writeAudit(tx, tenantId, {
-        ...audit,
-        targetId: ticketId,
-        metadata: { ...audit.metadata, assetId, assetRef: asset.assetRef, publicRef },
-      });
-
-      await this.appendOutbox(tx, tenantId, {
-        eventType: "ticket.created",
-        aggregateType: "ticket",
-        aggregateId: ticketId,
-        correlationId: audit.correlationId,
-        payload: {
-          ticket: {
-            id: ticketId,
-            tenantId,
-            publicRef,
-            title: dto.title.trim(),
-            description: dto.description.trim(),
-            status: "NEW",
-            priority: dto.priority ?? "MEDIUM",
-            channel: "WEB",
-            type: dto.type ?? "INCIDENT",
-            requesterUserId: actorUserId,
-          },
-          sourceAssetId: assetId,
-          sourceAssetRef: asset.assetRef,
-        },
-      });
-
-      await this.appendOutbox(tx, tenantId, {
-        eventType: "asset.ticket_created",
-        aggregateType: "asset",
-        aggregateId: assetId,
-        correlationId: audit.correlationId,
-        payload: {
-          assetId,
-          assetRef: asset.assetRef,
-          ticketId,
-          publicRef,
-        },
-      });
-
-      const ticket = await tx.ticket.findFirstOrThrow({ where: { tenantId, id: ticketId } });
-      return { asset, ticket };
-    });
+    }
   }
 
   // -------------------------------------------------------------------------

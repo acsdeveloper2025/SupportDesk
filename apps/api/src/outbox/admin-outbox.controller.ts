@@ -40,7 +40,7 @@ export class AdminOutboxController {
     @Query("offset") offset?: string,
   ) {
     const context = this.requireAuth(request);
-    await this.requirePermission(context.tenantId, context.userId, "admin:outbox:read");
+    await this.requirePermission(context.tenantId, context.userId, "admin.outbox.manage");
 
     const limitNum = limit ? parseInt(limit, 10) : 50;
     const offsetNum = offset ? parseInt(offset, 10) : 0;
@@ -64,7 +64,7 @@ export class AdminOutboxController {
   @ApiOperation({ summary: "Replay a dead-lettered or failed outbox event" })
   async replayOutboxEvent(@Req() request: Request, @Param("id", new ParseUUIDPipe()) id: string) {
     const context = this.requireAuth(request);
-    await this.requirePermission(context.tenantId, context.userId, "admin:outbox:replay");
+    await this.requirePermission(context.tenantId, context.userId, "admin.outbox.replay");
 
     const replayed = await this.outboxRepository.replayOutboxEvent(id, context.tenantId);
     return {

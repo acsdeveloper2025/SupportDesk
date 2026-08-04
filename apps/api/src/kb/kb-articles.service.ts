@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { type KbArticle, type KbArticleVersion, KbArticleVisibility } from "@prisma/client";
+import {
+  type KbArticle,
+  KbArticleStatus,
+  type KbArticleVersion,
+  KbArticleVisibility,
+} from "@prisma/client";
 
 import { buildAuditEventData } from "../audit/audit-event";
 import { PrismaService } from "../database/prisma.service";
@@ -85,6 +90,10 @@ export class KbArticlesService {
     }
 
     if (article.visibility === KbArticleVisibility.INTERNAL && !canReadInternal) {
+      throw new NotFoundException(`Article '${idOrSlug}' not found`);
+    }
+
+    if (article.status !== KbArticleStatus.PUBLISHED && !canReadInternal) {
       throw new NotFoundException(`Article '${idOrSlug}' not found`);
     }
 

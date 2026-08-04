@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../app.module";
+import { cleanDatabase } from "../common/testing/clean-database";
 import { PrismaService } from "../database/prisma.service";
 import { RbacService } from "../rbac/rbac.service";
 import { AssetsRepository } from "./assets.repository";
@@ -37,29 +38,7 @@ describeIntegration("Asset Management Integration Tests", () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.assetAttachment.deleteMany();
-      await prisma.assetTicketLink.deleteMany();
-      await prisma.assetRelationship.deleteMany();
-      await prisma.assetAssignment.deleteMany();
-      await prisma.assetHistory.deleteMany();
-      await prisma.asset.deleteMany();
-      await prisma.assetType.deleteMany({ where: { isSystem: false } });
-      await prisma.assetCategory.deleteMany();
-      await prisma.assetLocation.deleteMany();
-      await prisma.assetTypeKbLink.deleteMany();
-      await prisma.kbArticleTag.deleteMany();
-      await prisma.kbArticleVersion.deleteMany();
-      await prisma.kbArticle.deleteMany();
-      await prisma.kbCategory.deleteMany();
-      await prisma.ticket.deleteMany();
-      await prisma.outboxEvent.deleteMany();
-      await prisma.auditEvent.deleteMany();
-      await prisma.notification.deleteMany();
-      await prisma.rolePermission.deleteMany();
-      await prisma.userRole.deleteMany();
-      await prisma.role.deleteMany();
-      await prisma.user.deleteMany();
-      await prisma.tenant.deleteMany();
+      await cleanDatabase(prisma);
     }
     if (moduleRef) {
       await moduleRef.close();
@@ -67,30 +46,7 @@ describeIntegration("Asset Management Integration Tests", () => {
   });
 
   beforeEach(async () => {
-    await prisma.assetAttachment.deleteMany();
-    await prisma.assetTicketLink.deleteMany();
-    await prisma.assetRelationship.deleteMany();
-    await prisma.assetAssignment.deleteMany();
-    await prisma.assetHistory.deleteMany();
-    await prisma.asset.deleteMany();
-    await prisma.assetType.deleteMany({ where: { isSystem: false } });
-    await prisma.assetCategory.deleteMany();
-    await prisma.assetLocation.deleteMany();
-    await prisma.assetTypeKbLink.deleteMany();
-    await prisma.kbArticleTag.deleteMany();
-    await prisma.kbArticleVersion.deleteMany();
-    await prisma.kbArticle.deleteMany();
-    await prisma.kbCategory.deleteMany();
-    await prisma.ticket.deleteMany();
-    await prisma.outboxEvent.deleteMany();
-    await prisma.auditEvent.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.rolePermission.deleteMany();
-    await prisma.userRole.deleteMany();
-    await prisma.role.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.tenant.deleteMany();
-
+    await cleanDatabase(prisma);
     const t1 = await prisma.tenant.create({
       data: {
         name: `Asset Tenant 1 ${Date.now()}`,

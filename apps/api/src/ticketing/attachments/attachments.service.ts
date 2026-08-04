@@ -263,7 +263,7 @@ export class AttachmentsService {
       resource: {
         assigneeUserId: ticket.assigneeUserId,
         groupId: ticket.assignedGroupId,
-        ownerUserId: ticket.requesterUserId,
+        ownerUserId: entity.uploadedBy,
       },
       tenantId,
       userId: actorUserId,

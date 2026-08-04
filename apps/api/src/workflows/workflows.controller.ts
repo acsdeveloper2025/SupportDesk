@@ -208,7 +208,7 @@ export class WorkflowsController {
     @Req() request: Request,
   ) {
     const context = this.requireAuth(request);
-    const raw = body as unknown as Record<string, unknown>;
+    const raw = (body ?? {}) as Record<string, unknown>;
     return this.workflowsService.pause(
       context.tenantId,
       workflowId,

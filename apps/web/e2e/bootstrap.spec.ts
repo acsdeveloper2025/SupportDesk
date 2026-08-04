@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("renders the bootstrap landing page", async ({ page }) => {
+test("root route redirects to login page", async ({ page }) => {
   await page.goto("/");
-
-  await expect(page.getByRole("heading", { name: "SupportDesk" })).toBeVisible();
-  await expect(page.getByText("Enterprise Ticketing Platform")).toBeVisible();
-  await expect(page.getByText("Project Successfully Bootstrapped")).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });

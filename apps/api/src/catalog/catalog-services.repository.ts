@@ -87,8 +87,11 @@ export class CatalogServicesRepository {
       deletedAt: null,
       ...(options.kind ? { kind: options.kind } : {}),
       ...(options.categoryId ? { categoryId: options.categoryId } : {}),
-      ...(options.state ? { state: options.state } : {}),
-      ...(options.includeRetired ? {} : { state: { not: "RETIRED" } }),
+      ...(options.state
+        ? { state: options.state }
+        : options.includeRetired
+          ? {}
+          : { state: { not: "RETIRED" } }),
     };
     const [items, totalRecords] = await this.prisma.$transaction([
       this.prisma.serviceItem.findMany({

@@ -18,6 +18,7 @@ describe("CatalogCategoriesService", () => {
     softDelete: ReturnType<typeof vi.fn>;
     slugExists: ReturnType<typeof vi.fn>;
     listDescendantIds: ReturnType<typeof vi.fn>;
+    countServiceItems: ReturnType<typeof vi.fn>;
   };
   let prisma: {
     auditEvent: {
@@ -36,6 +37,7 @@ describe("CatalogCategoriesService", () => {
       softDelete: vi.fn(),
       slugExists: vi.fn(),
       listDescendantIds: vi.fn(),
+      countServiceItems: vi.fn(),
     };
     prisma = {
       auditEvent: {
@@ -170,11 +172,8 @@ describe("CatalogCategoriesService", () => {
     });
 
     it("rejects deletion with services", async () => {
-      repository.findById.mockResolvedValue({
-        id: "cat-1",
-        children: [],
-        _count: { serviceItems: 2 },
-      });
+      repository.findById.mockResolvedValue({ id: "cat-1", children: [] });
+      repository.countServiceItems.mockResolvedValue(2);
 
       await expect(service.deleteCategory("ten-1", "cat-1", "usr-1")).rejects.toThrow(
         BadRequestException,
@@ -185,8 +184,8 @@ describe("CatalogCategoriesService", () => {
       repository.findById.mockResolvedValue({
         id: "cat-1",
         children: [],
-        _count: { serviceItems: 0 },
       });
+      repository.countServiceItems.mockResolvedValue(0);
       repository.softDelete.mockResolvedValue({ id: "cat-1" });
 
       const res = await service.deleteCategory("ten-1", "cat-1", "usr-1");

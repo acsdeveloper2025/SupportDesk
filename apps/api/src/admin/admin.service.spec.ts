@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { PasswordHashingService } from "../auth/security/password-hashing.service";
 import type { PrismaService } from "../database/prisma.service";
 import type { RbacService } from "../rbac/rbac.service";
 import { AdminService } from "./admin.service";
@@ -121,8 +122,12 @@ describe("AdminService", () => {
     can: vi.fn().mockResolvedValue(true),
   } as unknown as RbacService;
 
+  const mockPasswordHashing = {
+    hashPassword: vi.fn().mockResolvedValue("$argon2id$mock-hash"),
+  } as unknown as PasswordHashingService;
+
   beforeEach(() => {
-    service = new AdminService(mockPrisma, mockRbac);
+    service = new AdminService(mockPrisma, mockRbac, mockPasswordHashing);
   });
 
   it("should be defined", () => {

@@ -118,7 +118,8 @@ export class WorkflowDispatcherService {
           (typeof t === "string" && t === event.eventType) ||
           (t &&
             typeof t === "object" &&
-            (t as Record<string, unknown>).eventType === event.eventType),
+            ((t as Record<string, unknown>).eventType ?? (t as Record<string, unknown>).type) ===
+              event.eventType),
       );
     });
 

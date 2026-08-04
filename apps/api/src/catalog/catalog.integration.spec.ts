@@ -4,6 +4,7 @@ import { TicketPriority } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../app.module";
+import { cleanDatabase } from "../common/testing/clean-database";
 import { PrismaService } from "../database/prisma.service";
 import { RbacService } from "../rbac/rbac.service";
 import { BusinessSchedulesService } from "../sla/business-schedules.service";
@@ -47,23 +48,7 @@ describeIntegration("Service Catalog Integration Tests", () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.serviceRequestHistory.deleteMany();
-      await prisma.serviceRequestApproval.deleteMany();
-      await prisma.serviceRequestAttachment.deleteMany();
-      await prisma.serviceRequest.deleteMany();
-      await prisma.requestTemplate.deleteMany();
-      await prisma.serviceRequestForm.deleteMany();
-      await prisma.serviceItem.deleteMany();
-      await prisma.serviceCategory.deleteMany();
-      await prisma.notification.deleteMany();
-      await prisma.ticket.deleteMany();
-      await prisma.outboxEvent.deleteMany();
-      await prisma.auditEvent.deleteMany();
-      await prisma.rolePermission.deleteMany();
-      await prisma.userRole.deleteMany();
-      await prisma.role.deleteMany();
-      await prisma.user.deleteMany();
-      await prisma.tenant.deleteMany();
+      await cleanDatabase(prisma);
     }
     if (moduleRef) {
       await moduleRef.close();
@@ -71,31 +56,7 @@ describeIntegration("Service Catalog Integration Tests", () => {
   });
 
   beforeEach(async () => {
-    await prisma.serviceRequestHistory.deleteMany();
-    await prisma.serviceRequestApproval.deleteMany();
-    await prisma.serviceRequestAttachment.deleteMany();
-    await prisma.serviceRequest.deleteMany();
-    await prisma.requestTemplate.deleteMany();
-    await prisma.serviceRequestForm.deleteMany();
-    await prisma.serviceItem.deleteMany();
-    await prisma.serviceCategory.deleteMany();
-    await prisma.slaEvaluation.deleteMany();
-    await prisma.slaTarget.deleteMany();
-    await prisma.slaPolicyVersion.deleteMany();
-    await prisma.slaPolicy.deleteMany();
-    await prisma.businessScheduleVersion.deleteMany();
-    await prisma.businessSchedule.deleteMany();
-    await prisma.notificationPreference.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.attachment.deleteMany();
-    await prisma.ticket.deleteMany();
-    await prisma.outboxEvent.deleteMany();
-    await prisma.auditEvent.deleteMany();
-    await prisma.rolePermission.deleteMany();
-    await prisma.userRole.deleteMany();
-    await prisma.role.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.tenant.deleteMany();
+    await cleanDatabase(prisma);
 
     const t1 = await prisma.tenant.create({
       data: {

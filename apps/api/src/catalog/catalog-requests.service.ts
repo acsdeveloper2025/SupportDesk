@@ -33,6 +33,23 @@ import { CatalogTemplatesRepository } from "./catalog-templates.repository";
 import { isApprovalGateSatisfied, stepDecisionOutcome } from "./domain/approval-gate";
 import { sanitizeAnswers, type ServiceFormSchema, validateAnswers } from "./domain/form-engine";
 import { isEditableStatus, isTerminalStatus } from "./domain/request-status";
+
+export type ServiceRequestAttachmentView = {
+  id: string;
+  tenantId: string;
+  requestId: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: string;
+  storagePath: string;
+  uploadedById: string;
+  createdAt: Date;
+};
+
+export type ServiceRequestView = Omit<ServiceRequestWithRelations, "attachments"> & {
+  attachments?: ServiceRequestAttachmentView[];
+};
 import {
   type CancelServiceRequestDto,
   type CreateServiceRequestDto,
@@ -78,20 +95,17 @@ export class CatalogRequestsService {
     }
   }
 
-  private async loadRequestOrThrow(
-    ctx: RequestContext,
-    id: string,
-  ): Promise<ServiceRequestWithRelations> {
+  private async loadRequestOrThrow(ctx: RequestContext, id: string): Promise<ServiceRequestView> {
     const request = await this.repository.findById(ctx.tenantId, id);
     if (!request) {
       throw new NotFoundException(`Service request '${id}' not found`);
     }
-    return request;
+    return this.toRequestView(request);
   }
 
   private async assertRequestVisible(
     ctx: RequestContext,
-    request: ServiceRequestWithRelations,
+    request: ServiceRequestView,
   ): Promise<void> {
     if (request.requesterUserId === ctx.userId) {
       return;
@@ -102,6 +116,16 @@ export class CatalogRequestsService {
     }
   }
 
+  private toRequestView(request: ServiceRequestWithRelations): ServiceRequestView {
+    return {
+      ...request,
+      attachments: request.attachments?.map((attachment) => ({
+        ...attachment,
+        sizeBytes: attachment.sizeBytes.toString(),
+      })),
+    };
+  }
+
   // ------------------------------------------------------------------
   // Submission
   // ------------------------------------------------------------------
@@ -110,7 +134,7 @@ export class CatalogRequestsService {
     ctx: RequestContext,
     dto: CreateServiceRequestDto,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.request.create");
 
     const service = await this.servicesRepository.findById(ctx.tenantId, dto.serviceId);
@@ -234,13 +258,15 @@ export class CatalogRequestsService {
   ) {
     if (scope === "all") {
       await this.assertCan(ctx, "catalog.request.read_all");
-      return this.repository.listAll(ctx.tenantId, options);
+      const result = await this.repository.listAll(ctx.tenantId, options);
+      return { ...result, items: result.items.map((item) => this.toRequestView(item)) };
     }
     await this.assertCan(ctx, "catalog.request.read");
-    return this.repository.listByRequester(ctx.tenantId, ctx.userId, options);
+    const result = await this.repository.listByRequester(ctx.tenantId, ctx.userId, options);
+    return { ...result, items: result.items.map((item) => this.toRequestView(item)) };
   }
 
-  async getRequest(ctx: RequestContext, id: string): Promise<ServiceRequestWithRelations> {
+  async getRequest(ctx: RequestContext, id: string): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.request.read");
     const request = await this.loadRequestOrThrow(ctx, id);
     await this.assertRequestVisible(ctx, request);
@@ -268,7 +294,7 @@ export class CatalogRequestsService {
     id: string,
     dto: UpdateServiceRequestAnswersDto,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     const request = await this.loadRequestOrThrow(ctx, id);
     if (request.requesterUserId !== ctx.userId) {
       const canUpdateAll = await this.can(ctx, "catalog.request.read_all");
@@ -377,7 +403,7 @@ export class CatalogRequestsService {
     id: string,
     dto: CancelServiceRequestDto,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     const request = await this.loadRequestOrThrow(ctx, id);
     if (request.requesterUserId !== ctx.userId) {
       const canReadAll = await this.can(ctx, "catalog.request.read_all");
@@ -457,7 +483,7 @@ export class CatalogRequestsService {
     approvalId: string,
     dto: DecideApprovalDto,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.approval.decide");
 
     const request = await this.loadRequestOrThrow(ctx, id);
@@ -661,7 +687,7 @@ export class CatalogRequestsService {
     ctx: RequestContext,
     id: string,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.request.fulfill");
 
     const request = await this.loadRequestOrThrow(ctx, id);
@@ -752,7 +778,7 @@ export class CatalogRequestsService {
     ctx: RequestContext,
     id: string,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.request.generate_ticket");
 
     const request = await this.loadRequestOrThrow(ctx, id);
@@ -859,7 +885,7 @@ export class CatalogRequestsService {
     id: string,
     note?: string,
     correlationId?: string,
-  ): Promise<ServiceRequestWithRelations> {
+  ): Promise<ServiceRequestView> {
     await this.assertCan(ctx, "catalog.request.complete");
 
     const request = await this.loadRequestOrThrow(ctx, id);
@@ -1012,13 +1038,17 @@ export class CatalogRequestsService {
       }),
     });
 
-    return attachment;
+    return { ...attachment, sizeBytes: attachment.sizeBytes.toString() };
   }
 
   async listAttachments(ctx: RequestContext, id: string) {
     const request = await this.loadRequestOrThrow(ctx, id);
     await this.assertRequestVisible(ctx, request);
-    return this.repository.listAttachments(ctx.tenantId, request.id);
+    const attachments = await this.repository.listAttachments(ctx.tenantId, request.id);
+    return attachments.map((attachment) => ({
+      ...attachment,
+      sizeBytes: attachment.sizeBytes.toString(),
+    }));
   }
 
   async deleteAttachment(

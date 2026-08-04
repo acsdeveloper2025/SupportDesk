@@ -2,6 +2,7 @@ import { UnauthorizedException } from "@nestjs/common";
 import type { Request } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { RbacService } from "../rbac/rbac.service";
 import type { AdminService } from "./admin.service";
 import { GlobalAdminController } from "./global-admin.controller";
 import { TenantAdminController } from "./tenant-admin.controller";
@@ -29,14 +30,18 @@ describe("AdminControllers", () => {
     transitionTenantState: transitionTenantStateMock,
   } as unknown as AdminService;
 
+  const mockRbac = {
+    can: vi.fn().mockResolvedValue(true),
+  } as unknown as RbacService;
+
   beforeEach(() => {
     adminService = mockAdminService;
-    globalController = new GlobalAdminController(adminService);
-    tenantController = new TenantAdminController(adminService);
+    globalController = new GlobalAdminController(adminService, mockRbac);
+    tenantController = new TenantAdminController(adminService, mockRbac);
   });
 
   const validReq = {
-    user: { tenantId: "tenant-1", userId: "user-1" },
+    auth: { tenantId: "tenant-1", userId: "user-1" },
   } as unknown as Request;
 
   const invalidReq = {} as unknown as Request;
@@ -62,6 +67,9 @@ describe("AdminControllers", () => {
   it("should suspend tenant when authorized", async () => {
     const result = await tenantController.suspendTenant(validReq, "tenant-1");
     expect(result).toBeDefined();
-    expect(transitionTenantStateMock).toHaveBeenCalledWith("user-1", "tenant-1", "SUSPENDED");
+    expect(transitionTenantStateMock).toHaveBeenCalledWith("user-1", "tenant-1", "SUSPENDED", {
+      userId: "user-1",
+      tenantId: "tenant-1",
+    });
   });
 });

@@ -11,6 +11,7 @@ import { Reflector } from "@nestjs/core";
 import type { Request, Response } from "express";
 
 import { getCorrelationId } from "../../common/logging/correlation-id";
+import { getAuthenticatedRequestContext } from "../guards/auth-context";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import { AuthRateLimitAuditService } from "./auth-rate-limit-audit.service";
 
@@ -84,6 +85,18 @@ export class AuthRateLimitGuard implements CanActivate {
 function buildDimensions(request: Request): string[] {
   const body = asRecord(request.body);
   const tenant = asRecord(body["tenant"]);
+  const context = getAuthenticatedRequestContext(request);
+
+  if (context) {
+    return [
+      `tenant:${context.tenantId}`,
+      `identifier:${context.userId}`,
+      `token:none`,
+      `session:${request.header("x-session-id") ?? "none"}`,
+      `device:${request.header("user-agent") ?? "unknown"}`,
+      `ip:${request.ip || "unknown"}`,
+    ];
+  }
 
   return [
     `tenant:${readString(body["tenantId"]) ?? readString(tenant["slug"]) ?? "unknown"}`,

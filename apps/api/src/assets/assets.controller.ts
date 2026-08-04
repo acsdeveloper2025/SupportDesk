@@ -380,7 +380,7 @@ export class AssetsController {
   @ApiCreatedResponse({ description: "Asset-ticket link created" })
   @ApiNotFoundResponse({ description: "Asset or ticket not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires asset.link.ticket.create permission" })
+  @ApiForbiddenResponse({ description: "Requires asset.ticket.link permission" })
   async linkTicket(
     @Req() request: Request,
     @Param("id") id: string,
@@ -388,7 +388,7 @@ export class AssetsController {
   ) {
     validateLinkAssetTicketPayload(body);
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "asset.link.ticket.create");
+    await this.checkPermission(tenantId, userId, "asset.ticket.link");
     return this.assetsService.linkTicket(
       { tenantId, userId },
       id,
@@ -403,7 +403,7 @@ export class AssetsController {
   @ApiBadRequestResponse({ description: "Invalid ticket payload" })
   @ApiNotFoundResponse({ description: "Asset not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires asset.link.ticket.create permission" })
+  @ApiForbiddenResponse({ description: "Requires asset.ticket.link permission" })
   async createTicket(
     @Req() request: Request,
     @Param("id") id: string,
@@ -411,7 +411,7 @@ export class AssetsController {
   ) {
     validateCreateTicketFromAssetPayload(body);
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "asset.link.ticket.create");
+    await this.checkPermission(tenantId, userId, "asset.ticket.link");
     return this.assetsService.createTicketFromAsset(
       { tenantId, userId },
       id,
@@ -425,14 +425,14 @@ export class AssetsController {
   @ApiOkResponse({ description: "Asset-ticket link removed" })
   @ApiNotFoundResponse({ description: "Asset-ticket link not found" })
   @ApiUnauthorizedResponse({ description: "Authentication required" })
-  @ApiForbiddenResponse({ description: "Requires asset.link.ticket.delete permission" })
+  @ApiForbiddenResponse({ description: "Requires asset.ticket.unlink permission" })
   async unlinkTicket(
     @Req() request: Request,
     @Param("id") id: string,
     @Param("ticketId") ticketId: string,
   ) {
     const { tenantId, userId } = this.requireAuth(request);
-    await this.checkPermission(tenantId, userId, "asset.link.ticket.delete");
+    await this.checkPermission(tenantId, userId, "asset.ticket.unlink");
     return this.assetsService.unlinkTicket(
       { tenantId, userId },
       id,

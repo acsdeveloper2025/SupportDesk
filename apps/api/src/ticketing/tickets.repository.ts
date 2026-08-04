@@ -103,7 +103,11 @@ export class TicketsRepository {
         const created = await this.prisma.$transaction(
           async (tx) => {
             const count = await tx.ticket.count({ where: { tenantId: props.tenantId } });
-            const publicRef = `TKT-${count + 1001}`;
+            // Count-based refs collide whenever a ticket is deleted (count drops
+            // while higher refs remain). Offset by the retry attempt so a P2002
+            // unique-constraint retry picks a fresh ref instead of retrying the
+            // same colliding one until the 15-attempt cap.
+            const publicRef = `TKT-${count + 1001 + attempt}`;
 
             const ticket = await tx.ticket.create({
               data: this.toCreateData({ ...props, publicRef }),
