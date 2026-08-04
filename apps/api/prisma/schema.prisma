@@ -1675,7 +1675,7 @@ model AssetAttachment {
 }
 
 model SavedReport {
-  id          String   @id(map: "pk_saved_reports") @default(uuid()) @db.Uuid
+  id          String   @id(map: "pk_saved_reports") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
   createdById String   @map("created_by_id") @db.Uuid
   name        String   @db.VarChar(200)
@@ -1684,7 +1684,7 @@ model SavedReport {
   config      Json     @default("{}")
   isPublic    Boolean  @default(false) @map("is_public")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_saved_reports__tenants__tenant_id")
   createdBy        User              @relation("SavedReportCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_saved_reports__users__created_by_id")
@@ -1696,7 +1696,7 @@ model SavedReport {
 }
 
 model ScheduledReport {
-  id               String    @id(map: "pk_scheduled_reports") @default(uuid()) @db.Uuid
+  id               String    @id(map: "pk_scheduled_reports") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId         String    @map("tenant_id") @db.Uuid
   createdById      String    @map("created_by_id") @db.Uuid
   savedReportId    String?   @map("saved_report_id") @db.Uuid
@@ -1713,7 +1713,7 @@ model ScheduledReport {
   lastStatus       String?   @map("last_status") @db.VarChar(50)
   lastError        Json?     @map("last_error")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_scheduled_reports__tenants__tenant_id")
   createdBy   User         @relation("ScheduledReportCreator", fields: [createdById], references: [id], onDelete: Cascade, map: "fk_scheduled_reports__users__created_by_id")
@@ -1725,7 +1725,7 @@ model ScheduledReport {
 }
 
 model ReportExport {
-  id            String    @id(map: "pk_report_exports") @default(uuid()) @db.Uuid
+  id            String    @id(map: "pk_report_exports") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId      String    @map("tenant_id") @db.Uuid
   createdById   String    @map("created_by_id") @db.Uuid
   reportType    String    @map("report_type") @db.VarChar(100)
@@ -1747,13 +1747,13 @@ model ReportExport {
 }
 
 model GlobalSetting {
-  id              String   @id(map: "pk_global_settings") @default(uuid()) @db.Uuid
+  id              String   @id(map: "pk_global_settings") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   key             String   @unique(map: "uq_global_settings__key") @db.VarChar(100)
   value           Json     @default("{}")
   description     String?  @db.VarChar(500)
   updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   updatedByUser User? @relation("GlobalSettingModifier", fields: [updatedByUserId], references: [id], onDelete: SetNull, map: "fk_global_settings__users__updated_by_user_id")
 
@@ -1761,7 +1761,7 @@ model GlobalSetting {
 }
 
 model FeatureFlag {
-  id              String   @id(map: "pk_feature_flags") @default(uuid()) @db.Uuid
+  id              String   @id(map: "pk_feature_flags") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId        String?  @map("tenant_id") @db.Uuid
   key             String   @db.VarChar(100)
   name            String   @db.VarChar(200)
@@ -1770,7 +1770,7 @@ model FeatureFlag {
   rules           Json     @default("{}")
   createdByUserId String   @map("created_by_user_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_feature_flags__tenants__tenant_id")
   createdBy User    @relation("FeatureFlagCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_feature_flags__users__created_by_user_id")
@@ -1781,7 +1781,7 @@ model FeatureFlag {
 }
 
 model SystemMaintenanceWindow {
-  id               String   @id(map: "pk_system_maintenance_windows") @default(uuid()) @db.Uuid
+  id               String   @id(map: "pk_system_maintenance_windows") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title            String   @db.VarChar(200)
   description      String?  @db.Text
   isPlatformWide   Boolean  @default(true) @map("is_platform_wide")
@@ -1792,7 +1792,7 @@ model SystemMaintenanceWindow {
   allowAdminAccess Boolean  @default(true) @map("allow_admin_access")
   createdByUserId  String   @map("created_by_user_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_system_maintenance_windows__tenants__tenant_id")
   createdBy User    @relation("MaintenanceWindowCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, map: "fk_system_maintenance_windows__users__created_by_user_id")
@@ -1800,5 +1800,3 @@ model SystemMaintenanceWindow {
   @@index([status, startsAt], map: "idx_maintenance_windows__status_starts_at")
   @@map("system_maintenance_windows")
 }
-
-

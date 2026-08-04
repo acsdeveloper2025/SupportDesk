@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { DataTable } from "../components/DataTable";
 
 interface ScheduledReportItem {
@@ -52,7 +54,7 @@ export default function ScheduledReportsPage() {
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
-    fetch("/api/reports/scheduled", {
+    fetchWithCsrf("/api/reports/scheduled", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -80,7 +82,7 @@ export default function ScheduledReportsPage() {
   const handleDelete = (id: string) => {
     if (!confirm("Are you sure you want to delete this scheduled report job?")) return;
     setLoading(true);
-    fetch(`/api/reports/scheduled/${id}`, { method: "DELETE" })
+    fetchWithCsrf(`/api/reports/scheduled/${id}`, { method: "DELETE" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to delete scheduled report: HTTP ${res.status}`);
         loadSchedules();

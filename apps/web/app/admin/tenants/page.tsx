@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { AdminHeaderNav } from "../components/AdminHeaderNav";
 
 interface TenantItem {
@@ -24,6 +26,7 @@ export default function TenantAdminPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantSlug, setNewTenantSlug] = useState("");
@@ -71,13 +74,21 @@ export default function TenantAdminPage() {
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/admin/tenants", {
+    setCreateError(null);
+    const trimmedName = newTenantName.trim();
+    const trimmedSlug = newTenantSlug.trim();
+    if (!trimmedName || !trimmedSlug) return;
+    if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
+      setCreateError("Tenant slug must contain only lowercase letters, digits, and dashes.");
+      return;
+    }
+    const res = await fetchWithCsrf("/api/admin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: newTenantName,
-        slug: newTenantSlug,
-        adminEmail: "admin@" + newTenantSlug + ".com",
+        name: trimmedName,
+        slug: trimmedSlug,
+        adminEmail: "admin@" + trimmedSlug + ".com",
         adminName: "Tenant Admin",
       }),
     });
@@ -86,6 +97,9 @@ export default function TenantAdminPage() {
       setNewTenantName("");
       setNewTenantSlug("");
       fetchTenants();
+    } else {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      setCreateError(body?.message ?? `Failed to create tenant: HTTP ${res.status}`);
     }
   };
 
@@ -93,7 +107,7 @@ export default function TenantAdminPage() {
     tenantId: string,
     action: "activate" | "deactivate" | "suspend",
   ) => {
-    await fetch(`/api/admin/tenants/${tenantId}/${action}`, { method: "POST" });
+    await fetchWithCsrf(`/api/admin/tenants/${tenantId}/${action}`, { method: "POST" });
     fetchTenants(search);
   };
 
@@ -234,6 +248,11 @@ export default function TenantAdminPage() {
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 Provision New Tenant
               </h3>
+              {createError && (
+                <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+                  {createError}
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   void handleCreateTenant(e);
@@ -260,6 +279,8 @@ export default function TenantAdminPage() {
                   <input
                     type="text"
                     required
+                    pattern="[a-z0-9-]+"
+                    title="Use only lowercase letters, digits, and dashes."
                     value={newTenantSlug}
                     onChange={(e) =>
                       setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))

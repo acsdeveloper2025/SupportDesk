@@ -63,7 +63,7 @@ describe("Tickets OpenAPI Document", () => {
       new DocumentBuilder()
         .setTitle("SupportDesk API")
         .setDescription("SupportDesk API")
-        .setVersion("0.1.0")
+        .setVersion("1.0.0")
         .addBearerAuth({
           bearerFormat: "JWT",
           scheme: "bearer",

@@ -28,9 +28,9 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle("SupportDesk API")
     .setDescription(
-      "SupportDesk API surface for the bootstrapped platform and Authentication & Identity foundation.",
+      "SupportDesk Enterprise v1.0.0 API surface for the modular service desk platform.",
     )
-    .setVersion("0.1.0")
+    .setVersion("1.0.0")
     .addBearerAuth({
       bearerFormat: "JWT",
       scheme: "bearer",

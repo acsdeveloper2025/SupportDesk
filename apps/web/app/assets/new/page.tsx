@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 interface AssetType {
   id: string;
   name: string;
@@ -101,6 +103,10 @@ export default function CreateAssetPage() {
       setError("Asset name and type are required");
       return;
     }
+    if (cost.trim() && !/^\d+(\.\d{1,2})?$/.test(cost.trim())) {
+      setError("Cost must be a decimal number with up to 2 decimal places.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -118,7 +124,7 @@ export default function CreateAssetPage() {
       vendor: vendor.trim() || undefined,
       purchaseDate: purchaseDate || undefined,
       warrantyExpiresAt: warrantyExpiresAt || undefined,
-      cost: cost ? cost : undefined,
+      cost: cost.trim() || undefined,
       lifecycleState,
       notes: notes.trim() || undefined,
       customFields,
@@ -126,7 +132,7 @@ export default function CreateAssetPage() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/assets", {
+        const res = await fetchWithCsrf("/api/assets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -341,6 +347,9 @@ export default function CreateAssetPage() {
             <label className="text-foreground mb-1 block text-sm font-medium">Cost ($)</label>
             <input
               type="text"
+              inputMode="decimal"
+              pattern="\\d+(\\.\\d{1,2})?"
+              title="Enter a decimal amount with up to 2 decimal places."
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               placeholder="2499.00"

@@ -238,7 +238,7 @@ export default function TicketDetailPage({ params }: Readonly<PageProps>) {
         {/* Back navigation */}
         <nav aria-label="Breadcrumb">
           <a
-            className="focus-visible:ring-brand-accent inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 focus:outline-none focus-visible:ring-2"
+            className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
             href="/tickets"
           >
             <ArrowLeft aria-hidden="true" size={14} />

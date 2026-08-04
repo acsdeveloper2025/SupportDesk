@@ -144,14 +144,15 @@
 
 ### Admin & Timeline API Layer
 
-#### [NEW] [admin-outbox.controller.ts](file:///Users/mayurkulkarni/Downloads/SupportDesk/apps/api/src/outbox/admin-outbox.controller.ts)
+#### [MODIFY] [outbox-admin.controller.ts](file:///Users/mayurkulkarni/Downloads/SupportDesk/apps/api/src/admin/outbox-admin.controller.ts)
 
 #### [MODIFY] [workflows.controller.ts](file:///Users/mayurkulkarni/Downloads/SupportDesk/apps/api/src/workflows/workflows.controller.ts)
 
 #### [MODIFY] [tickets.controller.ts](file:///Users/mayurkulkarni/Downloads/SupportDesk/apps/api/src/ticketing/tickets.controller.ts)
 
-- `GET /api/v1/admin/outbox`: List/filter outbox backlog and status (`admin:outbox:read`).
-- `POST /api/v1/admin/outbox/:id/replay`: Admin outbox replay endpoint (`admin:outbox:replay`).
+- `GET /api/v1/admin/outbox/stats`: Outbox backlog and status summary (`admin.outbox.manage`).
+- `GET /api/v1/admin/outbox/events`: List/filter outbox backlog and history (`admin.outbox.manage`).
+- `POST /api/v1/admin/outbox/events/:id/replay`: Admin outbox replay endpoint (`admin.outbox.replay`).
 - `GET /api/v1/workflows/:id/executions`: Execution history endpoint with attempt breakdown (`workflow:read`).
 - Enrich `GET /api/v1/tickets/:id/timeline` to include workflow execution summaries for ticket events.
 

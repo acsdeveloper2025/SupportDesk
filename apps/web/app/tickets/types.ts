@@ -7,7 +7,7 @@
 export type TicketStatus = "NEW" | "OPEN" | "PENDING" | "ON_HOLD" | "SOLVED" | "CLOSED";
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type TicketChannel = "WEB" | "EMAIL" | "PHONE" | "API" | "CHAT";
-export type TicketType = "QUESTION" | "INCIDENT" | "PROBLEM" | "TASK";
+export type TicketType = "QUESTION" | "INCIDENT" | "PROBLEM" | "FEATURE_REQUEST";
 export type CommentVisibility = "PUBLIC" | "INTERNAL";
 
 export interface Ticket {

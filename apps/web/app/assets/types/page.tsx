@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 interface AssetType {
   id: string;
   key: string;
@@ -32,7 +34,7 @@ export default function AssetTypesAdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/asset-types");
+      const res = await fetchWithCsrf("/api/asset-types");
       if (!res.ok) throw new Error("Failed to load asset types");
       const data = (await res.json()) as ListTypesResponse;
       setTypes(data.items ?? []);
@@ -48,7 +50,7 @@ export default function AssetTypesAdminPage() {
     async function load() {
       try {
         setError(null);
-        const res = await fetch("/api/asset-types");
+        const res = await fetchWithCsrf("/api/asset-types");
         if (!res.ok) throw new Error("Failed to load asset types");
         const data = (await res.json()) as ListTypesResponse;
         if (!ignore) {
@@ -72,17 +74,23 @@ export default function AssetTypesAdminPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!key.trim() || !name.trim()) return;
+    const trimmedKey = key.trim();
+    const trimmedName = name.trim();
+    if (!trimmedKey || !trimmedName) return;
+    if (!/^[a-z0-9_]+$/.test(trimmedKey)) {
+      alert("Asset type key must be lowercase alphanumeric with underscores.");
+      return;
+    }
 
     setSubmitting(true);
     void (async () => {
       try {
-        const res = await fetch("/api/asset-types", {
+        const res = await fetchWithCsrf("/api/asset-types", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            key: key.trim(),
-            name: name.trim(),
+            key: trimmedKey,
+            name: trimmedName,
             description: description.trim() || undefined,
           }),
         });
@@ -134,6 +142,8 @@ export default function AssetTypesAdminPage() {
               <input
                 type="text"
                 required
+                pattern="[a-z0-9_]+"
+                title="Use only lowercase letters, digits, and underscores."
                 placeholder="e.g. mobile_phone"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { AdminHeaderNav } from "../components/AdminHeaderNav";
 
 interface FlagItem {
@@ -45,7 +47,7 @@ export default function SettingsAdminPage() {
   }, []);
 
   const handleToggleFlag = async (flag: FlagItem) => {
-    await fetch("/api/admin/feature-flags", {
+    await fetchWithCsrf("/api/admin/feature-flags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

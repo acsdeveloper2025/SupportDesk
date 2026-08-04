@@ -21,7 +21,7 @@ export function TimelineItem({
       ) : null}
       <Circle
         aria-hidden="true"
-        className="text-brand-accent relative mt-0.5 shrink-0"
+        className="relative mt-0.5 shrink-0 text-brand-accent"
         fill="currentColor"
         size={18}
       />

@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -6,6 +6,7 @@ import {
   CSRF_COOKIE,
   REFRESH_TOKEN_COOKIE,
   sanitizeTokenResponse,
+  setCsrfCookie,
   validateCsrf,
 } from "@/lib/auth/bff-session";
 
@@ -172,6 +173,14 @@ describe("auth BFF session routes", () => {
 });
 
 describe("auth BFF CSRF and response helpers", () => {
+  it("sets the CSRF cookie at the application root for all BFF mutations", () => {
+    const response = NextResponse.json({});
+
+    setCsrfCookie(response, "csrf-token");
+
+    expect(response.headers.get("set-cookie")).toMatch(/;\s*Path=\/(?:;|$)/);
+  });
+
   it("requires matching csrf cookie and header for unsafe methods", () => {
     expect(
       validateCsrf({

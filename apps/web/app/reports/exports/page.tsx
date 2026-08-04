@@ -42,7 +42,7 @@ export default function ExportCenterPage() {
   }, [loadExports]);
 
   const handleDownload = (id: string) => {
-    window.open(`/api/v1/reports/exports/${id}/download`, "_blank");
+    window.open(`/api/reports/exports/${id}/download`, "_blank");
   };
 
   return (

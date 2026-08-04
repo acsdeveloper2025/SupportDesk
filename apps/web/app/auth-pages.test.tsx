@@ -7,16 +7,25 @@ import LoginPage from "./(auth)/login/page";
 import ResetPasswordPage from "./(auth)/reset-password/page";
 import ProfilePage from "./profile/page";
 
+const navigationMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: navigationMock.push,
+    replace: navigationMock.replace,
   }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => navigationMock.searchParams,
 }));
 
 describe("authentication pages", () => {
   beforeEach(() => {
+    navigationMock.push.mockReset();
+    navigationMock.replace.mockReset();
+    navigationMock.searchParams = new URLSearchParams();
     vi.unstubAllGlobals();
   });
 
@@ -88,10 +97,34 @@ describe("authentication pages", () => {
     );
     expect(await screen.findByText("Signed in.")).toBeInTheDocument();
   });
+
+  it("rejects protocol-relative login redirect targets", async () => {
+    navigationMock.searchParams = new URLSearchParams({
+      redirectTo: "//evil.example/admin",
+    });
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ csrfToken: "csrf-token" }))
+      .mockResolvedValueOnce(Response.json({ status: "authenticated" }));
+    vi.stubGlobal("fetch", fetch);
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Tenant slug"), { target: { value: "acme" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "agent@acme.test" } });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "CorrectHorse9!Battery" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(navigationMock.push).toHaveBeenCalledWith("/tickets"));
+  });
 });
 
 describe("profile page", () => {
   beforeEach(() => {
+    navigationMock.push.mockReset();
+    navigationMock.replace.mockReset();
+    navigationMock.searchParams = new URLSearchParams();
     vi.unstubAllGlobals();
   });
 

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { ExportModal } from "./components/ExportModal";
 import { KPICard } from "./components/KPICard";
 import { ReportFilterBar } from "./components/ReportFilterBar";
@@ -55,7 +57,7 @@ export default function ReportsHubPage() {
   };
 
   const handleExport = async (format: "csv" | "pdf" | "xlsx") => {
-    const res = await fetch("/api/reports/export", {
+    const res = await fetchWithCsrf("/api/reports/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reportType: "executive", exportFormat: format, filters: { range } }),

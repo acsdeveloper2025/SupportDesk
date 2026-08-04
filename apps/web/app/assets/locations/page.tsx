@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 interface AssetLocation {
   id: string;
   name: string;
@@ -28,7 +30,7 @@ export default function AssetLocationsAdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/asset-locations");
+      const res = await fetchWithCsrf("/api/asset-locations");
       if (!res.ok) throw new Error("Failed to load asset locations");
       const data = (await res.json()) as ListLocationsResponse;
       setLocations(data.items ?? []);
@@ -44,7 +46,7 @@ export default function AssetLocationsAdminPage() {
     async function load() {
       try {
         setError(null);
-        const res = await fetch("/api/asset-locations");
+        const res = await fetchWithCsrf("/api/asset-locations");
         if (!res.ok) throw new Error("Failed to load asset locations");
         const data = (await res.json()) as ListLocationsResponse;
         if (!ignore) {
@@ -73,7 +75,7 @@ export default function AssetLocationsAdminPage() {
     setSubmitting(true);
     void (async () => {
       try {
-        const res = await fetch("/api/asset-locations", {
+        const res = await fetchWithCsrf("/api/asset-locations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

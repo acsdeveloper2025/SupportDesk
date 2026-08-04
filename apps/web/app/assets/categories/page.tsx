@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 interface AssetCategory {
   id: string;
   name: string;
@@ -31,7 +33,7 @@ export default function AssetCategoriesAdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/asset-categories");
+      const res = await fetchWithCsrf("/api/asset-categories");
       if (!res.ok) throw new Error("Failed to load asset categories");
       const data = (await res.json()) as ListCategoriesResponse;
       setCategories(data.items ?? []);
@@ -47,7 +49,7 @@ export default function AssetCategoriesAdminPage() {
     async function load() {
       try {
         setError(null);
-        const res = await fetch("/api/asset-categories");
+        const res = await fetchWithCsrf("/api/asset-categories");
         if (!res.ok) throw new Error("Failed to load asset categories");
         const data = (await res.json()) as ListCategoriesResponse;
         if (!ignore) {
@@ -71,17 +73,23 @@ export default function AssetCategoriesAdminPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    const trimmedSlug = slug.trim();
+    if (!trimmedName) return;
+    if (trimmedSlug && !/^[a-z0-9-]+$/.test(trimmedSlug)) {
+      alert("Category slug must be lowercase alphanumeric with hyphens.");
+      return;
+    }
 
     setSubmitting(true);
     void (async () => {
       try {
-        const res = await fetch("/api/asset-categories", {
+        const res = await fetchWithCsrf("/api/asset-categories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: name.trim(),
-            slug: slug.trim() || undefined,
+            name: trimmedName,
+            slug: trimmedSlug || undefined,
             parentId: parentId || undefined,
             description: description.trim() || undefined,
           }),
@@ -142,6 +150,8 @@ export default function AssetCategoriesAdminPage() {
               </label>
               <input
                 type="text"
+                pattern="[a-z0-9-]+"
+                title="Use only lowercase letters, digits, and hyphens."
                 placeholder="e.g. laptops"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}

@@ -95,7 +95,7 @@ export function setCsrfCookie(response: NextResponse, token: string): void {
   response.cookies.set({
     httpOnly: false,
     name: CSRF_COOKIE,
-    path: "/api/auth",
+    path: "/",
     sameSite: "lax",
     secure: shouldUseSecureCookies(),
     value: token,
@@ -110,12 +110,22 @@ export function clearAuthCookies(response: NextResponse): void {
       httpOnly: name !== CSRF_COOKIE,
       maxAge: 0,
       name,
-      path: name === ACCESS_TOKEN_COOKIE ? "/" : "/api/auth",
+      path: name === REFRESH_TOKEN_COOKIE ? "/api/auth" : "/",
       sameSite: "lax",
       secure,
       value: "",
     });
   }
+
+  response.cookies.set({
+    httpOnly: false,
+    maxAge: 0,
+    name: CSRF_COOKIE,
+    path: "/api/auth",
+    sameSite: "lax",
+    secure,
+    value: "",
+  });
 }
 
 export function getAccessToken(request: NextRequest): string | undefined {

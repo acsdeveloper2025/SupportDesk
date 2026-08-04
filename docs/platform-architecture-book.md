@@ -1,8 +1,8 @@
-# SupportDesk Enterprise Platform Architecture Book (v1.1)
+# SupportDesk Enterprise Platform Architecture Book (v1.0.0)
 
 > **Canonical Technical Reference & Architecture Book**  
-> **Release Target**: SupportDesk Platform v1.1 (`v1.1-knowledge-base`)  
-> **Scope**: Enterprise SaaS Infrastructure, Ticket Platform, Knowledge Base Engine, SLA Engine, Notification Dispatcher, and Workflow Runtime Platform.
+> **Release Target**: SupportDesk Enterprise v1.0.0  
+> **Scope**: Enterprise SaaS Infrastructure, Ticket Platform, Knowledge Base, SLA Engine, Notification Dispatcher, Workflow Runtime, Service Catalog, Asset Management, Reports, and Administration.
 
 ---
 
@@ -106,7 +106,7 @@ The system is architected as a **Modular Monolith** with explicit context bounda
   - `apply_sla`: Overrides or attaches SLA policies dynamically.
 - **Governance**: Maximum automation recursion depth budget (`MAX_RECURSION_DEPTH = 3`) to prevent infinite cascades.
 
-### 3.7 Enterprise Reports & Analytics Module (v1.3)
+### 3.7 Enterprise Reports & Analytics Module (v1.0)
 
 - **Capabilities**: Cross-domain analytics for Executive Dashboard, Ticket Analytics (volume, MTTR, MTTA, open ticket aging, reopened tickets, escalations), SLA Reports (compliance %, breach priority breakdown, business hours vs actual elapsed time), Workflow Reports (executions, success/failure rate, retries, dead letter events, automation time saved), Asset Reports (inventory, status, warranty expiry, utilization), Service Catalog Reports (request volume, top services, approval stats, completion times), KB Reports (published/draft counts, view counts, ticket/asset linking, helpfulness rate), and Agent Productivity (assigned/closed tickets, response/resolution times, comment counts, workload ranking).
 - **Export Engine**: Export report data into CSV, PDF, and Excel (XLSX) formats.
@@ -155,7 +155,7 @@ The schema uses PostgreSQL with UUID primary keys and strict foreign key relatio
   - Pre-commit hooks verifying Prettier formatting, ESLint rules, and TypeScript compilation.
   - Integration testing with real PostgreSQL database (`supportdesk-postgres`).
   - Outbox queue processing & multi-tenant isolation negative test coverage.
-- **Git Release Tag**: `v1.1-knowledge-base`
+- **Git Release Tag**: `v1.0.0`
 
 ---
 

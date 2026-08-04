@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { DataTable } from "../components/DataTable";
 
 interface SavedReportItem {
@@ -52,7 +54,7 @@ export default function SavedReportsPage() {
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
-    fetch("/api/reports/saved", {
+    fetchWithCsrf("/api/reports/saved", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -81,7 +83,7 @@ export default function SavedReportsPage() {
   const handleDelete = (id: string) => {
     if (!confirm("Are you sure you want to delete this saved report?")) return;
     setLoading(true);
-    fetch(`/api/reports/saved/${id}`, { method: "DELETE" })
+    fetchWithCsrf(`/api/reports/saved/${id}`, { method: "DELETE" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to delete saved report: HTTP ${res.status}`);
         loadSaved();

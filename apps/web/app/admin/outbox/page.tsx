@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { AdminHeaderNav } from "../components/AdminHeaderNav";
 
 interface OutboxItem {
@@ -52,7 +54,7 @@ export default function OutboxAdminPage() {
   }, []);
 
   const handleReplay = async (id: string) => {
-    await fetch(`/api/admin/outbox/events/${id}/replay`, { method: "POST" });
+    await fetchWithCsrf(`/api/admin/outbox/events/${id}/replay`, { method: "POST" });
     const [s, evts] = await Promise.all([
       fetch("/api/admin/outbox/stats").then((r) =>
         r.ok ? (r.json() as Promise<OutboxStats>) : null,
@@ -66,7 +68,7 @@ export default function OutboxAdminPage() {
   };
 
   const handleBatchRetry = async () => {
-    await fetch("/api/admin/outbox/events/retry-failed", { method: "POST" });
+    await fetchWithCsrf("/api/admin/outbox/events/retry-failed", { method: "POST" });
     const [s, evts] = await Promise.all([
       fetch("/api/admin/outbox/stats").then((r) =>
         r.ok ? (r.json() as Promise<OutboxStats>) : null,

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 interface AssetDetail {
   id: string;
   assetRef: string;
@@ -139,7 +141,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     setTransitioning(true);
     void (async () => {
       try {
-        const res = await fetch(`/api/assets/${id}/transition`, {
+        const res = await fetchWithCsrf(`/api/assets/${id}/transition`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -164,17 +166,27 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedUserId = assignUserId.trim();
+    const trimmedDept = assignDept.trim();
+    if (assignKind === "USER" && !trimmedUserId) {
+      alert("User ID is required for user assignments.");
+      return;
+    }
+    if (assignKind === "DEPARTMENT" && !trimmedDept) {
+      alert("Department name is required for department assignments.");
+      return;
+    }
     setAssigning(true);
     void (async () => {
       try {
         const payload: Record<string, unknown> = {
           kind: assignKind,
-          reason: assignReason || undefined,
+          reason: assignReason.trim() || undefined,
         };
-        if (assignKind === "USER") payload.assignedToUserId = assignUserId;
-        if (assignKind === "DEPARTMENT") payload.assignedDepartment = assignDept;
+        if (assignKind === "USER") payload.assignedToUserId = trimmedUserId;
+        if (assignKind === "DEPARTMENT") payload.assignedDepartment = trimmedDept;
 
-        const res = await fetch(`/api/assets/${id}/assign`, {
+        const res = await fetchWithCsrf(`/api/assets/${id}/assign`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -199,7 +211,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     if (!confirm("Are you sure you want to unassign this asset?")) return;
     void (async () => {
       try {
-        const res = await fetch(`/api/assets/${id}/unassign`, { method: "POST" });
+        const res = await fetchWithCsrf(`/api/assets/${id}/unassign`, { method: "POST" });
         if (!res.ok) throw new Error("Unassignment failed");
         await fetchAssetDetails(id);
       } catch (err: unknown) {
@@ -477,6 +489,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                   </label>
                   <input
                     type="text"
+                    required
                     value={assignUserId}
                     onChange={(e) => setAssignUserId(e.target.value)}
                     placeholder="User UUID..."
@@ -490,6 +503,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                   </label>
                   <input
                     type="text"
+                    required
                     value={assignDept}
                     onChange={(e) => setAssignDept(e.target.value)}
                     placeholder="e.g. Engineering, IT Support"

@@ -1,6 +1,6 @@
 # SupportDesk
 
-SupportDesk is an enterprise, multi-tenant ticketing SaaS built as a modular monolith. The monorepo includes Authentication & Identity, deny-by-default RBAC, audit logging, and the Ticket Module (API + ticket detail UI). This branch adds attachment upload/storage on top of the `v1.0-ticket-module` baseline. Organizations, notifications, SLA, Workflow Engine, search, and reports remain deferred until their milestones are approved.
+SupportDesk is an enterprise, multi-tenant service desk SaaS built as a modular monolith. The v1.0.0 release includes Authentication & Identity, deny-by-default RBAC, tenant isolation, audit logging, ticketing, notifications, SLA policies and targets, workflow runtime with transactional outbox, Knowledge Base, Service Catalog, Asset Management, Reports & Analytics, and administration portals.
 
 ## Project foundation
 
@@ -50,7 +50,7 @@ Default local URLs:
 
 Browser authentication uses same-origin Next.js route handlers under `/api/auth/*`. Those handlers call the NestJS API through server-only `SUPPORTDESK_API_URL`, store access/refresh material in `HttpOnly` cookies, and require CSRF tokens for cookie-authenticated mutations. Frontend components must not store auth tokens in `localStorage`, `sessionStorage`, or other browser-readable storage.
 
-Authentication pages are available at `/login`, `/forgot-password`, `/reset-password`, `/email-verification`, and `/profile`. Ticket detail is available at `/tickets/[ticketId]` (list/create UI and broader agent workspace remain deferred). Do not start Workflow Engine work until the [Ticket Module v1 engineering audit](docs/ticket-module-v1-engineering-audit.md) gate is approved.
+Authentication pages are available at `/login`, `/forgot-password`, `/reset-password`, `/email-verification`, and `/profile`. The implemented v1.0.0 workspace includes `/tickets`, `/kb`, `/catalog`, `/assets`, `/reports`, and `/admin` surfaces backed by same-origin BFF route handlers.
 
 ## Docker Development
 
@@ -113,4 +113,4 @@ Shared, normative terms are defined in the [glossary](docs/glossary.md). “Must
 
 ## Status
 
-Architecture foundation, Authentication & Identity, and Ticket Module v1 (API + detail UI) are implemented and frozen at tag `v1.0-ticket-module`. Pre-Workflow evidence: [hardening report](docs/ticket-module-v1-hardening-report.md) and [Ready for Workflow Engine](docs/ready-for-workflow-engine.md). See also the [completion report](docs/22-architecture-foundation-completion-report.md) and [authentication quality gate](docs/authentication-milestone-quality-gate.md). Accepted assumptions are in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).
+SupportDesk Enterprise v1.0.0 is implemented as a modular monolith across the API, web BFF, frontend portals, Prisma schema, migrations, and CI quality gates. Historical milestone evidence remains available in the architecture foundation, authentication, ticketing, workflow, SLA, catalog, asset, reports, and administration documentation. Accepted assumptions are in the [decision log](docs/decision-log.md); open questions are not commitments. Changes follow [CONTRIBUTING.md](CONTRIBUTING.md).

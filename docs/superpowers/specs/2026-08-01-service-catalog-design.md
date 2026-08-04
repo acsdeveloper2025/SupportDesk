@@ -3,7 +3,7 @@
 **Status:** Approved for implementation planning
 **Date:** 2026-08-01
 **Module:** 2 (release `v1.2-service-catalog`)
-**Related:** Module 1 Knowledge Base (`v1.1-knowledge-base`), E11-I01/I02/I03 (workflow definition, validation, runtime), E10 (SLA engine), E06 (notifications), E05-I08 (attachments), decision-log ADR-0004/ADR-0012 (transactional outbox)
+**Related:** Knowledge Base, E11-I01/I02/I03 (workflow definition, validation, runtime), E10 (SLA engine), E06 (notifications), E05-I08 (attachments), decision-log ADR-0004/ADR-0012 (transactional outbox)
 **Depends on:** Module 1 merged; Workflow runtime + SLA engine + notifications + ticket platform baselines
 
 ## Goal

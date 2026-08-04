@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { AdminHeaderNav } from "../components/AdminHeaderNav";
 
 interface UserItem {
@@ -23,6 +25,7 @@ export default function UserAdminPage() {
   const [search] = useState("");
   const [loading, setLoading] = useState(true);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -62,12 +65,16 @@ export default function UserAdminPage() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/admin/users/invite", {
+    setInviteError(null);
+    const trimmedEmail = inviteEmail.trim();
+    const trimmedName = inviteName.trim();
+    if (!trimmedEmail || !trimmedName) return;
+    const res = await fetchWithCsrf("/api/admin/users/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: inviteEmail,
-        fullName: inviteName,
+        email: trimmedEmail,
+        fullName: trimmedName,
         roleKeys: [inviteRole],
       }),
     });
@@ -76,17 +83,20 @@ export default function UserAdminPage() {
       setInviteEmail("");
       setInviteName("");
       fetchUsers();
+    } else {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      setInviteError(body?.message ?? `Failed to invite user: HTTP ${res.status}`);
     }
   };
 
   const handleToggleLock = async (userId: string, isCurrentlyLocked: boolean) => {
     const action = isCurrentlyLocked ? "unlock" : "lock";
-    await fetch(`/api/admin/users/${userId}/${action}`, { method: "POST" });
+    await fetchWithCsrf(`/api/admin/users/${userId}/${action}`, { method: "POST" });
     fetchUsers(search);
   };
 
   const handleForceLogout = async (userId: string) => {
-    await fetch(`/api/admin/users/${userId}/force-logout`, { method: "POST" });
+    await fetchWithCsrf(`/api/admin/users/${userId}/force-logout`, { method: "POST" });
     alert("User active sessions revoked successfully.");
   };
 
@@ -197,6 +207,11 @@ export default function UserAdminPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Invite User</h3>
+              {inviteError && (
+                <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+                  {inviteError}
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   void handleInvite(e);

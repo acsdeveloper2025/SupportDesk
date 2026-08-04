@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getAccessToken, getApiUrl } from "@/lib/auth/bff-session";
+import { getAccessToken, getApiUrl, validateRequestCsrf } from "@/lib/auth/bff-session";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await context.params;
@@ -24,6 +24,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ slug: string[] }> }) {
+  if (!validateRequestCsrf(request)) {
+    return NextResponse.json(
+      { code: "CSRF_INVALID", message: "CSRF validation failed." },
+      { status: 403 },
+    );
+  }
+
   const { slug } = await context.params;
   const path = slug.join("/");
   const accessToken = getAccessToken(request);
@@ -50,6 +57,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
 }
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ slug: string[] }> }) {
+  if (!validateRequestCsrf(request)) {
+    return NextResponse.json(
+      { code: "CSRF_INVALID", message: "CSRF validation failed." },
+      { status: 403 },
+    );
+  }
+
   const { slug } = await context.params;
   const path = slug.join("/");
   const accessToken = getAccessToken(request);

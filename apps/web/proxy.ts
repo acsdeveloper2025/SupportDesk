@@ -4,7 +4,7 @@ import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/constants";
 
 const protectedRoutePrefixes = ["/admin", "/tickets", "/reports", "/assets", "/kb", "/profile"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtectedRoute = protectedRoutePrefixes.some(

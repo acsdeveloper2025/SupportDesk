@@ -86,12 +86,10 @@ export function LoginForm() {
             });
             setState("success");
 
-            const destination =
-              redirectToParam && redirectToParam.startsWith("/")
-                ? redirectToParam
-                : values.email.toLowerCase().includes("admin")
-                  ? "/admin"
-                  : "/tickets";
+            const fallbackDestination = values.email.toLowerCase().includes("admin")
+              ? "/admin"
+              : "/tickets";
+            const destination = getSafeRedirectPath(redirectToParam) ?? fallbackDestination;
 
             router.push(destination);
           } catch {
@@ -373,4 +371,21 @@ async function postWithCsrf(path: string, body: unknown): Promise<unknown> {
   }
 
   return response.json();
+}
+
+function getSafeRedirectPath(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value, "http://supportdesk.local");
+    if (parsed.origin !== "http://supportdesk.local") {
+      return null;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
 }

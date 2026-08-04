@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchWithCsrf } from "@/lib/auth/csrf-client";
+
 import { AdminHeaderNav } from "../components/AdminHeaderNav";
 
 interface ExecutionItem {
@@ -51,7 +53,7 @@ export default function WorkflowsAdminPage() {
   }, []);
 
   const handleRetry = async (id: string) => {
-    await fetch(`/api/admin/workflows/executions/${id}/retry`, { method: "POST" });
+    await fetchWithCsrf(`/api/admin/workflows/executions/${id}/retry`, { method: "POST" });
     const [mon, execs] = await Promise.all([
       fetch("/api/admin/workflows/monitoring").then((r) =>
         r.ok ? (r.json() as Promise<WorkflowMonitoring>) : null,

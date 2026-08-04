@@ -120,7 +120,13 @@ export default function TicketsPage() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    const title = newTitle.trim();
+    const description = newDesc.trim();
+    if (!title) return;
+    if (!description) {
+      alert("Ticket description is required.");
+      return;
+    }
 
     setCreating(true);
     try {
@@ -134,15 +140,17 @@ export default function TicketsPage() {
           "x-csrf-token": csrfData.csrfToken ?? "",
         },
         body: JSON.stringify({
-          title: newTitle,
-          description: newDesc,
+          title,
+          description,
           priority: newPriority,
           type: newType,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to create ticket");
+        const body = (await res.json().catch(() => undefined)) as
+          { error?: { message?: string }; message?: string } | undefined;
+        throw new Error(body?.error?.message ?? body?.message ?? "Failed to create ticket");
       }
 
       setNewTitle("");
@@ -417,10 +425,14 @@ export default function TicketsPage() {
               className="space-y-4"
             >
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <label
+                  className="block text-xs font-semibold text-gray-700 dark:text-gray-300"
+                  htmlFor="ticket-title"
+                >
                   Ticket Subject / Title
                 </label>
                 <input
+                  id="ticket-title"
                   type="text"
                   required
                   placeholder="e.g. Cannot connect to corporate VPN"
@@ -431,11 +443,16 @@ export default function TicketsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <label
+                  className="block text-xs font-semibold text-gray-700 dark:text-gray-300"
+                  htmlFor="ticket-description"
+                >
                   Detailed Description
                 </label>
                 <textarea
+                  id="ticket-description"
                   rows={3}
+                  required
                   placeholder="Provide details about the issue..."
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
@@ -445,10 +462,14 @@ export default function TicketsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <label
+                    className="block text-xs font-semibold text-gray-700 dark:text-gray-300"
+                    htmlFor="ticket-priority"
+                  >
                     Priority
                   </label>
                   <select
+                    id="ticket-priority"
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value as TicketPriority)}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -461,10 +482,14 @@ export default function TicketsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <label
+                    className="block text-xs font-semibold text-gray-700 dark:text-gray-300"
+                    htmlFor="ticket-type"
+                  >
                     Type
                   </label>
                   <select
+                    id="ticket-type"
                     value={newType}
                     onChange={(e) => setNewType(e.target.value as TicketType)}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"

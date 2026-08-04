@@ -38,7 +38,8 @@ echo "==> prisma migrate diff (expect: No difference detected)"
   DATABASE_URL="${VERIFY_URL}" pnpm exec prisma migrate diff \
     --from-migrations prisma/migrations \
     --to-schema-datamodel prisma/schema.prisma \
-    --shadow-database-url "${SHADOW_URL}"
+    --shadow-database-url "${SHADOW_URL}" \
+    --exit-code
 )
 
 echo "==> prisma generate (required before schema integration tests)"
